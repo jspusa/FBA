@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亞馬遜運費與利潤計算機</title>
+    <style>
+        /* 原始的 CSS 代碼 */
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 30px;
+            background-color: #fff;
+            color: #000;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background-color: #000;
+            color: #fff;
+        }
+        .section {
+            display: inline-block;
+            text-align: left;
+            margin: 20px;
+            vertical-align: top;
+            width: 300px;
+        }
+        .section h3 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            color: #000;
+        }
+        body.dark-mode input[type="number"], body.dark-mode select {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #fff;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 40px;
+            font-size: 18px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        table {
+            margin: 20px;
+            border-collapse: collapse;
+            width: 400px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #000;
+        }
+        body.dark-mode th {
+            background-color: #444;
+            color: #fff;
+        }
+        .valid {
+            color: green;
+        }
+        .invalid {
+            color: red;
+        }
+        .penalized {
+            color: red;
+        }
+        .highlight {
+            background-color: #ffd700;
+        }
+        .negative-profit {
+            background-color: #ffcccc;
+        }
+        #theme-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        #theme-toggle button {
+            padding: 5px 10px;
+            background-color: #ccc;
+            color: #000;
+            border: none;
+            cursor: pointer;
+        }
+        body.dark-mode #theme-toggle button {
+            background-color: #555;
+            color: #fff;
+        }
+        /* 隱藏元素的樣式 */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 主題切換按鈕 -->
+    <div id="theme-toggle">
+        <button onclick="toggleTheme()">切換主題</button>
+    </div>
+
+    <h2>亞馬遜運費與利潤計算機</h2>
+    
+    <!-- 商品規格區 -->
+    <div class="section">
+        <h3>商品規格</h3>
+        <label for="product">選擇商品:</label>
+        <select id="product" onchange="selectProduct()">
+            <option value="">選擇商品</option>
+            <option value="GTS01">GTS01袋</option>
+            <option value="GTSL01">GTSL01袋</option>
+            <option value="TTS05Box">TTS05盒裝</option>
+            <option value="TTS05HalfPound">TTS05半磅</option>
+            <option value="KTB01_4">KTB01-4袋</option>
+            <option value="KTB03_2">KTB03-2袋</option>
+            <option value="EZD010">EZD010</option>
+            <option value="EZD011">EZD011</option>
+            <option value="EZD015">EZD015</option>
+        </select>
+
+        <label for="length">長(mm): </label>
+        <input type="number" id="length" placeholder="長度 (毫米)">
+
+        <label for="width">寬(mm): </label>
+        <input type="number" id="width" placeholder="寬度 (毫米)">
+
+        <label for="height">高(mm): </label>
+        <input type="number" id="height" placeholder="高度 (毫米)">
+
+        <!-- 新增重量輸入區 -->
+        <label for="weightG">重量(g): </label>
+        <input type="number" id="weightG" placeholder="重量 (克)" oninput="syncWeight('g')">
+
+        <label for="weightOz">重量(oz): </label>
+        <input type="number" id="weightOz" placeholder="重量 (盎司)" oninput="syncWeight('oz')">
+    </div>
+
+    <!-- 訂價資訊區 -->
+    <div class="section">
+        <h3>訂價資訊</h3>
+        <label for="salePrice">商品售價(美元): </label>
+        <input type="number" id="salePrice" placeholder="售價" value="0">
+
+        <label for="cost">成本(美元): </label>
+        <input type="number" id="cost" placeholder="成本" value="0">
+
+        <label for="adRate">廣告費(%): </label>
+        <input type="number" id="adRate" placeholder="廣告費率" value="15">
+
+        <!-- 活動價選項 -->
+        <div>
+            <label><input type="checkbox" id="promotionCheckbox" onclick="togglePromotion()"> 使用活動價</label>
+        </div>
+
+        <div id="promotionSection" class="hidden">
+            <label for="discountRate">折扣率(% off): </label>
+            <input type="number" id="discountRate" placeholder="折扣率 (如 20 表示 8 折)" value="20">
+            <label><input type="checkbox" id="couponCheckbox"> 使用優惠券 ($0.6 費用)</label>
+        </div>
+
+        <!-- 代營運費用選項 -->
+        <div>
+            <label><input type="checkbox" id="managementFeeCheckbox" onclick="toggleManagementFee()" checked> 有代營運費用</label>
+        </div>
+
+        <div id="managementFeeSection">
+            <label for="managementRate">代營運費用(%): </label>
+            <input type="number" id="managementRate" placeholder="代營運費率" value="2">
+        </div>
+
+        <!-- 新增透明計畫費用選項 -->
+        <div>
+            <label><input type="checkbox" id="transparentFeeCheckbox"> 使用透明計畫費用</label>
+        </div>
+
+        <!-- 倉儲費月份 -->
+        <div>
+            <label for="storageMonths">倉儲月數: </label>
+            <input type="number" id="storageMonths" placeholder="倉儲月數" value="3">
+        </div>
+
+        <!-- 旺季/淡季單選按鈕，預設旺季 -->
+        <label>選擇季節:</label><br>
+        <label><input type="radio" name="season" value="peakSeason" checked> 旺季</label>
+        <label><input type="radio" name="season" value="offSeason"> 淡季</label>
+    </div>
+
+    <div style="text-align: center;">
+        <button onclick="checkAndConvert()">計算</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        // 常量定義
+        const COMMISSION_RATE = 0.15;
+        const MAX_LENGTH_IN = 15; // 英寸
+        const MAX_WIDTH_IN = 12;
+        const MAX_HEIGHT_IN = 0.75;
+        const MIN_SHORT_SIDE_INCHES = 2; // 懲罰後的最小短邊
+        const MM_PER_INCH = 25.4;
+
+        // 商品數據 (以毫米為單位)，新增海運費和售價
+        const products = {
+            GTS01: { length: 330, width: 120, height: 30, weightG: 85, salePrice: 14.99, seaFreight: 0.14 },
+            GTSL01: { length: 260, width: 320, height: 55, weightG: 454, salePrice: 49.99, seaFreight: 0.56 },
+            TTS05Box: { length: 280, width: 160, height: 160, weightG: 850, salePrice: 134.00, seaFreight: 1.74 },
+            TTS05HalfPound: { length: 260, width: 320, height: 30, weightG: 227, salePrice: 29.99, seaFreight: 0.40 },
+            KTB01_4: { length: 260, width: 140, height: 15, weightG: 45, salePrice: 14.99, seaFreight: 0.13 },
+            KTB03_2: { length: 260, width: 140, height: 25, weightG: 72, salePrice: 14.99, seaFreight: 0.15 },
+            EZD010: { length: 245, width: 150, height: 40, weightG: 100, salePrice: 9.99, seaFreight: 0.19 },
+            EZD011: { length: 380, width: 200, height: 275, weightG: 908, salePrice: 29.99, seaFreight: 0.93 },
+            EZD015: { length: 380, width: 200, height: 270, weightG: 2270, salePrice: 49.99, seaFreight: 2.10 }
+        };
+
+        // 旺季和淡季費率
+        const rates = {
+            peakSeason: {
+                small: [
+                    { maxWeightOz: 2, shippingCost: 3.25, level: "2 盎司或以下" },
+                    { maxWeightOz: 4, shippingCost: 3.34, level: "2 盎司~4 盎司" },
+                    { maxWeightOz: 6, shippingCost: 3.44, level: "4 盎司~6 盎司" },
+                    { maxWeightOz: 8, shippingCost: 3.54, level: "6 盎司~8 盎司" },
+                    { maxWeightOz: 10, shippingCost: 3.64, level: "8 盎司~10 盎司" },
+                    { maxWeightOz: 12, shippingCost: 3.74, level: "10 盎司~12 盎司" },
+                    { maxWeightOz: 14, shippingCost: 3.82, level: "12 盎司~14 盎司" },
+                    { maxWeightOz: 16, shippingCost: 3.87, level: "14 盎司~16 盎司" },
+                ],
+                large: [
+                    { maxWeightOz: 4, shippingCost: 3.92, level: "4 盎司或以下" },
+                    { maxWeightOz: 8, shippingCost: 4.16, level: "4 盎司~8 盎司" },
+                    { maxWeightOz: 12, shippingCost: 4.43, level: "8 盎司~12 盎司" },
+                    { maxWeightOz: 16, shippingCost: 4.84, level: "12 盎司~16 盎司" },
+                    { maxWeightOz: 9999, shippingCost: null, level: null } // 後續處理
+                ],
+                storageRate: 2.40 // 每立方英尺每月
+            },
+            offSeason: {
+                small: [
+                    { maxWeightOz: 2, shippingCost: 3.06, level: "2 盎司或以下" },
+                    { maxWeightOz: 4, shippingCost: 3.15, level: "2 盎司~4 盎司" },
+                    { maxWeightOz: 6, shippingCost: 3.24, level: "4 盎司~6 盎司" },
+                    { maxWeightOz: 8, shippingCost: 3.33, level: "6 盎司~8 盎司" },
+                    { maxWeightOz: 10, shippingCost: 3.43, level: "8 盎司~10 盎司" },
+                    { maxWeightOz: 12, shippingCost: 3.53, level: "10 盎司~12 盎司" },
+                    { maxWeightOz: 14, shippingCost: 3.60, level: "12 盎司~14 盎司" },
+                    { maxWeightOz: 16, shippingCost: 3.65, level: "14 盎司~16 盎司" },
+                ],
+                large: [
+                    { maxWeightOz: 4, shippingCost: 3.68, level: "4 盎司或以下" },
+                    { maxWeightOz: 8, shippingCost: 3.90, level: "4 盎司~8 盎司" },
+                    { maxWeightOz: 12, shippingCost: 4.15, level: "8 盎司~12 盎司" },
+                    { maxWeightOz: 16, shippingCost: 4.55, level: "12 盎司~16 盎司" },
+                    { maxWeightOz: 9999, shippingCost: null, level: null } // 後續處理
+                ],
+                storageRate: 0.78 // 每立方英尺每月
+            }
+        };
+
+        // 選擇商品後自動填入數據
+        function selectProduct() {
+            var selectedProduct = document.getElementById("product").value;
+            if (products[selectedProduct]) {
+                document.getElementById("length").value = products[selectedProduct].length;
+                document.getElementById("width").value = products[selectedProduct].width;
+                document.getElementById("height").value = products[selectedProduct].height;
+                document.getElementById("weightG").value = products[selectedProduct].weightG !== null ? products[selectedProduct].weightG : '';
+                syncWeight('g');
+
+                // 如果有售價，填入
+                if (products[selectedProduct].salePrice) {
+                    document.getElementById("salePrice").value = products[selectedProduct].salePrice;
+                }
+            } else {
+                // 清空輸入欄位
+                document.getElementById("length").value = '';
+                document.getElementById("width").value = '';
+                document.getElementById("height").value = '';
+                document.getElementById("weightG").value = '';
+                document.getElementById("weightOz").value = '';
+            }
+        }
+
+        // 同步重量輸入
+        function syncWeight(unit) {
+            if (unit === 'g') {
+                var weightG = parseFloat(document.getElementById("weightG").value);
+                if (!isNaN(weightG)) {
+                    var weightOz = weightG * 0.03527396;
+                    document.getElementById("weightOz").value = weightOz.toFixed(2);
+                } else {
+                    document.getElementById("weightOz").value = '';
+                }
+            } else if (unit === 'oz') {
+                var weightOz = parseFloat(document.getElementById("weightOz").value);
+                if (!isNaN(weightOz)) {
+                    var weightG = weightOz / 0.03527396;
+                    document.getElementById("weightG").value = weightG.toFixed(2);
+                } else {
+                    document.getElementById("weightG").value = '';
+                }
+            }
+        }
+
+        // 切換代營運費用輸入框的顯示
+        function toggleManagementFee() {
+            var checkbox = document.getElementById("managementFeeCheckbox");
+            var section = document.getElementById("managementFeeSection");
+            if (checkbox.checked) {
+                section.classList.remove("hidden");
+            } else {
+                section.classList.add("hidden");
+            }
+        }
+
+        // 切換活動價輸入框的顯示
+        function togglePromotion() {
+            var checkbox = document.getElementById("promotionCheckbox");
+            var section = document.getElementById("promotionSection");
+            if (checkbox.checked) {
+                section.classList.remove("hidden");
+            } else {
+                section.classList.add("hidden");
+            }
+        }
+
+        // 輸入驗證函數，允許成本和售價為0
+        function validateInput(value, fieldName, allowZero = false) {
+            if (value === '' || value === null || value === undefined || isNaN(value) || value < 0 || (!allowZero && value === 0)) {
+                alert(`請輸入有效的${fieldName}`);
+                return false;
+            }
+            return true;
+        }
+
+        // 格式化百分比，去除無用的小數點
+        function formatPercentage(value) {
+            return (value % 1 === 0) ? value.toFixed(0) : value.toFixed(2);
+        }
+
+        // 主計算函數
+        function checkAndConvert() {
+            var lengthMm = parseFloat(document.getElementById("length").value);
+            var widthMm = parseFloat(document.getElementById("width").value);
+            var heightMm = parseFloat(document.getElementById("height").value);
+            var weightG = parseFloat(document.getElementById("weightG").value);
+            var weightOz = parseFloat(document.getElementById("weightOz").value);
+            var salePrice = parseFloat(document.getElementById("salePrice").value);
+            var cost = parseFloat(document.getElementById("cost").value);
+            var adRate = parseFloat(document.getElementById("adRate").value);
+            var season = document.querySelector('input[name="season"]:checked').value;
+            var managementFeeOption = document.getElementById("managementFeeCheckbox").checked;
+            var managementRateInput = document.getElementById("managementRate").value;
+            var managementRate = managementRateInput === '' ? NaN : parseFloat(managementRateInput);
+            var storageMonthsInput = document.getElementById("storageMonths").value;
+            var storageMonths = storageMonthsInput === '' ? 0 : parseFloat(storageMonthsInput);
+            var promotionOption = document.getElementById("promotionCheckbox").checked;
+            var discountRateInput = document.getElementById("discountRate").value;
+            var discountRate = discountRateInput === '' ? NaN : parseFloat(discountRateInput);
+            var couponOption = document.getElementById("couponCheckbox").checked;
+            var transparentFeeOption = document.getElementById("transparentFeeCheckbox").checked;
+
+            // 取得所選商品的海運費
+            var selectedProduct = document.getElementById("product").value;
+            var seaFreight = 0;
+            if (products[selectedProduct] && products[selectedProduct].seaFreight) {
+                seaFreight = products[selectedProduct].seaFreight;
+            }
+
+            // 輸入驗證
+            if (!validateInput(lengthMm, "長度") || !validateInput(widthMm, "寬度") ||
+                !validateInput(heightMm, "高度") ||
+                (!validateInput(weightG, "重量 (g)", true) && !validateInput(weightOz, "重量 (oz)", true)) ||
+                !validateInput(salePrice, "商品售價", true) || !validateInput(cost, "成本", true) ||
+                !validateInput(adRate, "廣告費率") ||
+                (managementFeeOption && !validateInput(managementRate, "代營運費率")) ||
+                (promotionOption && !validateInput(discountRate, "折扣率")) ||
+                storageMonths < 0) {
+                return;
+            }
+
+            // 確保至少有一個重量被輸入
+            if (isNaN(weightG) && isNaN(weightOz)) {
+                alert("請輸入重量（g 或 oz）");
+                return;
+            }
+
+            // 單位轉換
+            if (isNaN(weightOz)) {
+                weightOz = weightG * 0.03527396; // 克轉盎司
+            } else {
+                weightG = weightOz / 0.03527396; // 盎司轉克
+            }
+
+            // 尺寸轉換為英寸
+            var length = lengthMm / MM_PER_INCH;
+            var width = widthMm / MM_PER_INCH;
+            var height = heightMm / MM_PER_INCH;
+
+            // 檢查尺寸是否符合小件貨物標準
+            var isSmall = checkDimensions(length, width, height);
+
+            var type = isSmall ? "small" : "large";
+            var adjusted = false;
+            var adjustedDimensionsInches = [length, width, height];
+            var penalizedDimensions = [false, false, false];
+
+            // 處理懲罰後的尺寸
+            if (!isSmall) {
+                var dimensionsInches = [length, width, height];
+                var shortestSideInches = Math.min(...dimensionsInches);
+                var shortestSideIndex = dimensionsInches.indexOf(shortestSideInches);
+
+                if (shortestSideInches < MIN_SHORT_SIDE_INCHES) {
+                    // 調整最短邊為2英寸
+                    dimensionsInches[shortestSideIndex] = MIN_SHORT_SIDE_INCHES;
+                    adjusted = true;
+                    penalizedDimensions[shortestSideIndex] = true;
+                }
+
+                adjustedDimensionsInches = dimensionsInches.slice();
+
+                // 計算重量材積
+                var volumeInches = adjustedDimensionsInches[0] * adjustedDimensionsInches[1] * adjustedDimensionsInches[2];
+                var dimensionalWeight = volumeInches / 139;
+            } else {
+                // 尺寸符合小件貨物標準
+                var volumeInches = length * width * height;
+                var dimensionalWeight = volumeInches / 139;
+            }
+
+            // 計算立方英尺
+            var cubicFeet = volumeInches / 1728; // 1 立方英尺 = 12^3 立方英寸
+
+            // 計算倉儲費
+            var storageRate = rates[season].storageRate;
+            var storageFee = cubicFeet * storageRate * storageMonths;
+
+            // 計算運費
+            var [shippingCost, level, weightLeftOz] = calculateShippingCost(weightOz, type, season);
+
+            // 計算活動價
+            var finalPrice = salePrice;
+            var discountAmount = 0;
+            var couponFee = 0;
+
+            if (promotionOption) {
+                discountAmount = salePrice * (discountRate / 100);
+                finalPrice = salePrice - discountAmount;
+                if (couponOption) {
+                    couponFee = 0.6;
+                }
+            }
+
+            // 計算抽成、廣告費（基於活動價）
+            var commission = finalPrice * COMMISSION_RATE;
+            var adCost = finalPrice * (adRate / 100);
+
+            // 透明計畫費用
+            var transparentFee = transparentFeeOption ? 0.06 : 0;
+
+            // 計算淨銷售額
+            var netSales = finalPrice - commission - shippingCost - adCost - storageFee - couponFee - transparentFee;
+
+            // 計算代營運費用
+            var managementFee = 0;
+            if (managementFeeOption) {
+                managementFee = netSales * (managementRate / 100);
+            }
+
+            // 計算利潤，扣除海運費
+            var profit = netSales - managementFee - cost - seaFreight;
+
+            // 計算毛利率
+            var grossMargin = (profit / finalPrice) * 100;
+
+            // 構建結果表格
+            var pricingHTML = '<table>';
+            pricingHTML += '<tr><th colspan="2">利潤結構</th></tr>';
+            pricingHTML += `<tr><td>商品售價</td><td>$${salePrice.toFixed(2)}</td></tr>`;
+            if (promotionOption) {
+                pricingHTML += `<tr><td>折扣(${formatPercentage(discountRate)}% off)</td><td>-$${discountAmount.toFixed(2)}</td></tr>`;
+                pricingHTML += `<tr><td><strong>活動價</strong></td><td><strong>$${finalPrice.toFixed(2)}</strong></td></tr>`;
+                if (couponOption) {
+                    pricingHTML += `<tr><td>優惠券費用</td><td>$${couponFee.toFixed(2)}</td></tr>`;
+                }
+            }
+            pricingHTML += `<tr><td>抽成(15%)</td><td>$${commission.toFixed(2)}</td></tr>`;
+            pricingHTML += `<tr><td>運費</td><td>$${shippingCost.toFixed(2)}</td></tr>`;
+            pricingHTML += `<tr><td>廣告費(${formatPercentage(adRate)}%)</td><td>$${adCost.toFixed(2)}</td></tr>`;
+            pricingHTML += `<tr><td>倉儲費(${storageMonths}個月)</td><td>$${storageFee.toFixed(2)}</td></tr>`;
+            if (couponOption && !promotionOption) {
+                pricingHTML += `<tr><td>優惠券費用</td><td>$${couponFee.toFixed(2)}</td></tr>`;
+            }
+            if (transparentFeeOption) {
+                pricingHTML += `<tr><td>透明計畫費用</td><td>$${transparentFee.toFixed(2)}</td></tr>`;
+            }
+            if (managementFeeOption) {
+                pricingHTML += `<tr><td>代營運費用(${formatPercentage(managementRate)}%)</td><td>$${managementFee.toFixed(2)}</td></tr>`;
+            }
+            pricingHTML += `<tr><td>成本</td><td>$${cost.toFixed(2)}</td></tr>`;
+            pricingHTML += `<tr><td>海運費</td><td>$${seaFreight.toFixed(2)}</td></tr>`;
+            var profitClass = profit < 0 ? 'negative-profit' : 'highlight';
+            pricingHTML += `<tr class="${profitClass}"><td><strong>利潤</strong></td><td><strong>$${profit.toFixed(2)}</strong></td></tr>`;
+            pricingHTML += `<tr><td>毛利率</td><td>${grossMargin.toFixed(2)}%</td></tr>`;
+            pricingHTML += '</table>';
+
+            // 計算尺寸超標或未超標的部分
+            var dimensionStatus = getDimensionStatus(length, width, height, penalizedDimensions);
+
+            // 計算剩餘重量
+            var weightLeftGrams = weightLeftOz * 28.3495;
+
+            // 商品規格表格
+            var specsHTML = '<table>';
+            specsHTML += '<tr><th colspan="2">商品規格</th></tr>';
+            specsHTML += `<tr><td>貨物類型</td><td>${isSmall ? '<span class="valid">小件貨物</span>' : '<span class="invalid">大件貨物</span>'}</td></tr>`;
+            specsHTML += `<tr><td>運費級距</td><td>${level}</td></tr>`;
+            if (weightLeftOz > 0) {
+                specsHTML += `<tr><td>重量空間</td><td>剩餘 ${weightLeftGrams.toFixed(2)} g 空間</td></tr>`;
+            }
+            specsHTML += `<tr><td>運費</td><td>$${shippingCost.toFixed(2)}</td></tr>`;
+            specsHTML += `<tr><td>長</td><td class="${dimensionStatus.length.status}">${length.toFixed(2)} in (${dimensionStatus.length.message})</td></tr>`;
+            specsHTML += `<tr><td>寬</td><td class="${dimensionStatus.width.status}">${width.toFixed(2)} in (${dimensionStatus.width.message})</td></tr>`;
+            specsHTML += `<tr><td>高</td><td class="${dimensionStatus.height.status}">${height.toFixed(2)} in (${dimensionStatus.height.message})</td></tr>`;
+            if (adjusted) {
+                specsHTML += `<tr><td>調整後尺寸</td><td>${adjustedDimensionsInches[0].toFixed(2)} in x ${adjustedDimensionsInches[1].toFixed(2)} in x ${adjustedDimensionsInches[2].toFixed(2)} in</td></tr>`;
+                specsHTML += `<tr><td></td><td>(超標懲罰)</td></tr>`;
+            }
+            specsHTML += `<tr><td>重量</td><td>${weightG.toFixed(2)} g (${weightOz.toFixed(2)} oz)</td></tr>`;
+            specsHTML += `<tr><td>重量材積</td><td>${dimensionalWeight.toFixed(2)}</td></tr>`;
+            specsHTML += `<tr><td>立方英尺</td><td>${cubicFeet.toFixed(4)}</td></tr>`;
+            specsHTML += '</table>';
+
+            document.getElementById("result").innerHTML = pricingHTML + specsHTML;
+        }
+
+        // 檢查尺寸是否符合小件貨物標準（使用英寸）
+        function checkDimensions(length, width, height) {
+            var dimensions = [length, width, height].sort(function(a, b){return b - a});
+            var longestSide = dimensions[0];
+            var middleSide = dimensions[1];
+            var shortestSide = dimensions[2];
+            return longestSide <= MAX_LENGTH_IN && middleSide <= MAX_WIDTH_IN && shortestSide <= MAX_HEIGHT_IN;
+        }
+
+        // 計算尺寸超標或未超標的部分（使用英寸）
+        function getDimensionStatus(length, width, height, penalizedDimensions) {
+            var status = {
+                length: {},
+                width: {},
+                height: {}
+            };
+
+            // 長
+            if (length <= MAX_LENGTH_IN) {
+                status.length.status = 'valid';
+                status.length.message = `剩餘 ${((MAX_LENGTH_IN - length) * MM_PER_INCH).toFixed(2)} mm 空間`;
+            } else {
+                status.length.status = 'invalid';
+                status.length.message = `超出 ${((length - MAX_LENGTH_IN) * MM_PER_INCH).toFixed(2)} mm`;
+            }
+
+            // 寬
+            if (width <= MAX_WIDTH_IN) {
+                status.width.status = 'valid';
+                status.width.message = `剩餘 ${((MAX_WIDTH_IN - width) * MM_PER_INCH).toFixed(2)} mm 空間`;
+            } else {
+                status.width.status = 'invalid';
+                status.width.message = `超出 ${((width - MAX_WIDTH_IN) * MM_PER_INCH).toFixed(2)} mm`;
+            }
+
+            // 高
+            if (height <= MAX_HEIGHT_IN) {
+                status.height.status = 'valid';
+                status.height.message = `剩餘 ${((MAX_HEIGHT_IN - height) * MM_PER_INCH).toFixed(2)} mm 空間`;
+            } else {
+                status.height.status = 'invalid';
+                status.height.message = `超出 ${((height - MAX_HEIGHT_IN) * MM_PER_INCH).toFixed(2)} mm`;
+            }
+
+            return status;
+        }
+
+        // 計算運費函數
+        function calculateShippingCost(weightOz, type, season) {
+            var shippingCost = 0;
+            var level = "";
+            var rateData = rates[season][type];
+            var weightLeftOz = 0;
+
+            if (type === "small") {
+                for (var i = 0; i < rateData.length; i++) {
+                    if (weightOz <= rateData[i].maxWeightOz) {
+                        shippingCost = rateData[i].shippingCost;
+                        level = rateData[i].level;
+                        weightLeftOz = rateData[i].maxWeightOz - weightOz;
+                        break;
+                    }
+                }
+            } else if (type === "large") {
+                if (weightOz <= 16) {
+                    for (var i = 0; i < rateData.length; i++) {
+                        if (weightOz <= rateData[i].maxWeightOz) {
+                            shippingCost = rateData[i].shippingCost;
+                            level = rateData[i].level;
+                            weightLeftOz = rateData[i].maxWeightOz - weightOz;
+                            break;
+                        }
+                    }
+                } else if (weightOz <= 48) {
+                    var weightLb = Math.ceil(weightOz / 16 * 4) / 4;
+                    var weightRanges = [
+                        { maxWeightLb: 1.25, shippingCost: season === 'offSeason' ? 4.99 : 5.29, level: "1 磅~1.25 磅" },
+                        { maxWeightLb: 1.5, shippingCost: season === 'offSeason' ? 5.37 : 5.68, level: "1.25 磅~1.5 磅" },
+                        { maxWeightLb: 1.75, shippingCost: season === 'offSeason' ? 5.52 : 5.84, level: "1.5 磅~1.75 磅" },
+                        { maxWeightLb: 2, shippingCost: season === 'offSeason' ? 5.77 : 6.10, level: "1.75 磅~2 磅" },
+                        { maxWeightLb: 2.25, shippingCost: season === 'offSeason' ? 5.87 : 6.24, level: "2 磅~2.25 磅" },
+                        { maxWeightLb: 2.5, shippingCost: season === 'offSeason' ? 6.05 : 6.44, level: "2.25 磅~2.5 磅" },
+                        { maxWeightLb: 2.75, shippingCost: season === 'offSeason' ? 6.21 : 6.61, level: "2.5 磅~2.75 磅" },
+                        { maxWeightLb: 3, shippingCost: season === 'offSeason' ? 6.62 : 7.03, level: "2.75 磅~3 磅" },
+                    ];
+
+                    for (var j = 0; j < weightRanges.length; j++) {
+                        if (weightLb <= weightRanges[j].maxWeightLb) {
+                            shippingCost = weightRanges[j].shippingCost;
+                            level = weightRanges[j].level;
+                            weightLeftOz = weightRanges[j].maxWeightLb * 16 - weightOz;
+                            break;
+                        }
+                    }
+                } else {
+                    // 超過 3 磅的情況
+                    var extraWeightOz = weightOz - 48;
+                    var extraCost = Math.ceil(extraWeightOz / 4) * 0.08;
+                    shippingCost = (season === 'offSeason' ? 6.92 : 7.46) + extraCost;
+                    level = "超過 3 磅，每增加 4 盎司，加 $0.08";
+                    weightLeftOz = 0;
+                }
+            }
+
+            return [shippingCost, level, weightLeftOz];
+        }
+
+        // 主題切換函數
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
+</body>
+</html>
