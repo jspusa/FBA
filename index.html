@@ -92,12 +92,32 @@
 <main>
   <div class="stack">
     <div class="card">
-      <h2>① 綜合檔案區 <span class="pill">自動分類（CSV / PDF）</span></h2>
+      <h2>① 包裝箱標籤 <span class="pill">PDF</span></h2>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
+      </div>
+      <div class="drop" id="dropPack">
+        <div class="row">
+          <div>
+            <div><b>提供「包裝箱標籤」PDF</b></div>
+            <div class="hint">這區請手動放包裝箱標籤；亦可按「選擇PDF大量選取」</div>
+          </div>
+          <div>
+            <label class="btn" for="inPack">選擇 PDF</label>
+            <input id="inPack" type="file" accept="application/pdf" multiple />
+          </div>
+        </div>
+        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>② 綜合檔案區 <span class="pill">自動分類（CSV / BOL / 其餘→Pallet）</span></h2>
       <div class="drop" id="dropMixed">
         <div class="row">
           <div>
-            <div><b>所有檔案都可丟進來</b></div>
-            <div class="hint">CSV 直接進 CSV；PDF 自動辨識：BILL OF LADING=提單、Pallet#=棧板，其餘當包裝箱標籤。</div>
+            <div><b>請丟 CSV、BOL、Pallet 檔案</b></div>
+            <div class="hint">CSV 進 CSV；PDF 若為 BILL OF LADING 進提單，其餘 PDF 一律進棧板標籤。</div>
           </div>
           <div>
             <label class="btn" for="inMixed">選擇檔案</label>
@@ -109,7 +129,7 @@
     </div>
 
     <div class="card">
-      <h2>② CSV 區 <span class="pill">拖曳或選檔</span></h2>
+      <h2>③ CSV 區 <span class="pill">拖曳或選檔</span></h2>
       <div class="drop" id="dropCsv">
         <div class="row">
           <div>
@@ -122,26 +142,6 @@
           </div>
         </div>
         <div class="row"><div class="log" id="logCsv" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearCsv" type="button">清除此區</button></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>③ 包裝箱標籤 <span class="pill">PDF</span></h2>
-      <div class="row" style="margin-bottom:10px;">
-        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
-      </div>
-      <div class="drop" id="dropPack">
-        <div class="row">
-          <div>
-            <div><b>提供「包裝箱標籤」PDF</b></div>
-            <div class="hint">亦可按「選擇PDF大量選取」</div>
-          </div>
-          <div>
-            <label class="btn" for="inPack">選擇 PDF</label>
-            <input id="inPack" type="file" accept="application/pdf" multiple />
-          </div>
-        </div>
-        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
       </div>
     </div>
 
@@ -664,12 +664,9 @@
       if(category === 'bol'){
         await handleBol([f]);
         log('mixed', `<span class="ok">✓</span> 已分類為提單（BOL）：<b>${escapeHtml(f.name)}</b>`);
-      } else if(category === 'pallet'){
-        await handlePallet([f]);
-        log('mixed', `<span class="ok">✓</span> 已分類為棧板標籤：<b>${escapeHtml(f.name)}</b>`);
       } else {
-        await handlePack([f]);
-        log('mixed', `<span class="ok">✓</span> 已分類為包裝箱標籤：<b>${escapeHtml(f.name)}</b>`);
+        await handlePallet([f]);
+        log('mixed', `<span class="ok">✓</span> 已分類為棧板標籤（非 BOL PDF）：<b>${escapeHtml(f.name)}</b>`);
       }
     }
   }
