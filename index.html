@@ -288,19 +288,33 @@
     return baseName(filename).toUpperCase().startsWith('FBA');
   }
 
+  function classifyTextToPdfCategory(rawText){
+    const normalized = (rawText || '')
+      .replaceAll('＃', '#')
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    if(normalized.includes('BILL OF LADING')) return 'bol';
+    if(normalized.includes('PALLET#') || normalized.includes('PALLET #')) return 'pallet';
+    return 'pack';
+  }
+
   async function detectPdfCategory(file){
     try{
       if(!window.pdfjsLib) return 'pack';
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.js';
       const buf = await file.arrayBuffer();
-      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-      const page = await pdf.getPage(1);
-      const text = await page.getTextContent();
-      const merged = text.items.map(x=>x.str || '').join(' ').replace(/\s+/g, ' ').toUpperCase();
-      const normalized = merged.replaceAll('＃', '#');
-      if(normalized.includes('BILL OF LADING')) return 'bol';
-      if(normalized.includes('PALLET#') || normalized.includes('PALLET #')) return 'pallet';
-      return 'pack';
+      const loadingTask = window.pdfjsLib.getDocument({
+        data: buf,
+        disableWorker: true
+      });
+      const pdf = await loadingTask.promise;
+      const pageCount = Math.min(pdf.numPages, 2);
+      let textBlob = '';
+      for(let i = 1; i <= pageCount; i++){
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        textBlob += ' ' + text.items.map(x=>x.str || '').join(' ');
+      }
+      return classifyTextToPdfCategory(textBlob);
     } catch {
       return 'pack';
     }
