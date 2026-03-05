@@ -293,28 +293,51 @@
       .replaceAll('＃', '#')
       .replace(/\s+/g, ' ')
       .toUpperCase();
-    if(normalized.includes('BILL OF LADING')) return 'bol';
-    if(normalized.includes('PALLET#') || normalized.includes('PALLET #')) return 'pallet';
+    const compact = normalized.replace(/[^A-Z0-9#]/g, '');
+    if(normalized.includes('BILL OF LADING') || compact.includes('BILLOFLADING')) return 'bol';
+    if(normalized.includes('PALLET#') || normalized.includes('PALLET #') || compact.includes('PALLET#') || compact.includes('PALLET')) return 'pallet';
+    return 'pack';
+  }
+
+  function classifyFilenameToPdfCategory(filename){
+    const upper = (filename || '').toUpperCase();
+    if(upper.includes('BOL') || upper.includes('BILL OF LADING')) return 'bol';
+    if(upper.includes('PALLET')) return 'pallet';
     return 'pack';
   }
 
   async function detectPdfCategory(file){
+    const byName = classifyFilenameToPdfCategory(file.name);
+    if(byName !== 'pack') return byName;
+
+    let buf;
     try{
-      if(!window.pdfjsLib) return 'pack';
-      const buf = await file.arrayBuffer();
-      const loadingTask = window.pdfjsLib.getDocument({
-        data: buf,
-        disableWorker: true
-      });
-      const pdf = await loadingTask.promise;
-      const pageCount = Math.min(pdf.numPages, 2);
-      let textBlob = '';
-      for(let i = 1; i <= pageCount; i++){
-        const page = await pdf.getPage(i);
-        const text = await page.getTextContent();
-        textBlob += ' ' + text.items.map(x=>x.str || '').join(' ');
+      buf = await file.arrayBuffer();
+    } catch {
+      return 'pack';
+    }
+
+    if(window.pdfjsLib){
+      try{
+        const loadingTask = window.pdfjsLib.getDocument({ data: buf, disableWorker: true });
+        const pdf = await loadingTask.promise;
+        const pageCount = Math.min(pdf.numPages, 3);
+        let textBlob = '';
+        for(let i = 1; i <= pageCount; i++){
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent({ normalizeWhitespace: true });
+          textBlob += ' ' + text.items.map(x=>x.str || '').join(' ');
+        }
+        const byText = classifyTextToPdfCategory(textBlob);
+        if(byText !== 'pack') return byText;
+      } catch {
+        // fall through to raw byte scan
       }
-      return classifyTextToPdfCategory(textBlob);
+    }
+
+    try{
+      const raw = new TextDecoder('latin1').decode(new Uint8Array(buf));
+      return classifyTextToPdfCategory(raw);
     } catch {
       return 'pack';
     }
