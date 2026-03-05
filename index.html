@@ -300,6 +300,10 @@
     const hasPalletKeyword =
       /\bPALLET\b/.test(normalized) ||
       /PALLET\s*#\s*:?\s*\d+\s*\/\s*\d+/.test(normalized) ||
+      /PALLET\s*#\s*:?\s*\d+\s*OF\s*\d+/.test(normalized) ||
+      /PALLET\s*(NO\.?|NUMBER)?\s*:?\s*\d+\s*(\/|OF)\s*\d+/.test(normalized) ||
+      normalized.includes('FBA-NEW / STICKERLESS') ||
+      normalized.includes('STICKERLESS') ||
       compact.includes('PALLET#') ||
       compact.includes('PALLETNO') ||
       compact.includes('PALLETNUMBER');
@@ -307,9 +311,9 @@
 
     const hasCartonLabelSignals =
       normalized.includes('SINGLE SKU') ||
-      normalized.includes('QTY ') ||
-      normalized.includes('SHIP FROM:') ||
-      normalized.includes('PLEASE LEAVE THIS LABEL UNCOVERED');
+      /\bQTY\b\s*\d+/.test(normalized) ||
+      /\bEXP\b\s*[A-Z]{3}/.test(normalized) ||
+      /FBA[A-Z0-9]+U\d{6}/.test(normalized);
     if(hasCartonLabelSignals) return 'pack';
 
     return 'pack';
