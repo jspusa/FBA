@@ -104,7 +104,7 @@
             <input id="inCsv" type="file" accept=".csv" multiple />
           </div>
         </div>
-        <div class="log" id="logCsv"></div>
+        <div class="row"><div class="log" id="logCsv" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearCsv" type="button">清除此區</button></div>
       </div>
     </div>
 
@@ -124,7 +124,7 @@
             <input id="inPack" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="log" id="logPack"></div>
+        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
       </div>
     </div>
 
@@ -144,7 +144,7 @@
             <input id="inPallet" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="log" id="logPallet"></div>
+        <div class="row"><div class="log" id="logPallet" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPallet" type="button">清除此區</button></div>
       </div>
     </div>
 
@@ -164,7 +164,7 @@
             <input id="inBol" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="log" id="logBol"></div>
+        <div class="row"><div class="log" id="logBol" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearBol" type="button">清除此區</button></div>
       </div>
     </div>
   </div>
@@ -193,7 +193,6 @@
         </table>
       </div>
       <div class="row" style="margin-top:12px;">
-        <button class="btn danger" id="btnClear" type="button">清空全部</button>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn primary" id="btnExport" type="button" disabled>匯出 ZIP</button>
         </div>
@@ -243,7 +242,10 @@
     bolDedupNotice: document.getElementById('bolDedupNotice'),
     aliasBody: document.getElementById('aliasBody'),
     btnExport: document.getElementById('btnExport'),
-    btnClear: document.getElementById('btnClear'),
+    btnClearCsv: document.getElementById('btnClearCsv'),
+    btnClearPack: document.getElementById('btnClearPack'),
+    btnClearPallet: document.getElementById('btnClearPallet'),
+    btnClearBol: document.getElementById('btnClearBol'),
     logs: {
       csv: document.getElementById('logCsv'),
       pack: document.getElementById('logPack'),
@@ -422,6 +424,14 @@
   }
 
   // ====== Handlers per zone ======
+
+  async function fileHash(file){
+    const buf = await file.arrayBuffer();
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    const bytes = new Uint8Array(hashBuf);
+    return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
   async function handleCsv(files){
     if(files.length === 0){
       log('csv', `<span class="warn">（沒有偵測到 CSV）</span>`);
@@ -475,16 +485,16 @@
       log('bol', `<span class="warn">（沒有偵測到 PDF）</span>`);
       return;
     }
-    const seen = new Set();
+    const seenHashes = new Set();
     const deduped = [];
     const removed = [];
     for(const f of files){
-      const sig = `${f.name}::${f.size}`;
-      if(seen.has(sig)){
+      const hash = await fileHash(f);
+      if(seenHashes.has(hash)){
         removed.push(f.name);
         continue;
       }
-      seen.add(sig);
+      seenHashes.add(hash);
       deduped.push(f);
     }
     for(const f of deduped){
@@ -495,13 +505,14 @@
       log('bol', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
     }
     if(removed.length > 0){
-      els.bolDedupNotice.innerHTML = `<span class="check warn">已自動剔除重複提單 ${removed.length} 份</span>`;
-      log('bol', `<span class="warn">⚠ 已自動剔除重複提單：${escapeHtml(removed.join(', '))}</span>`);
+      els.bolDedupNotice.innerHTML = `<span class="check warn">已自動剔除重複提單 ${removed.length} 份（依檔案內容）</span>`;
+      log('bol', `<span class="warn">⚠ 已依內容自動剔除重複提單：${escapeHtml(removed.join(', '))}</span>`);
     } else {
       els.bolDedupNotice.innerHTML = '';
     }
     refreshTree(); refreshExportState();
   }
+
 
   // ====== Export ZIP ======
   async function exportZip(){
@@ -524,12 +535,31 @@
     saveAs(blob, `FBA_Sorted_${yyyy}${mm}${dd}.zip`);
   }
 
-  function clearAll(){
-    folders.clear();
-    for(const k of Object.keys(els.logs)) els.logs[k].innerHTML = "";
-    els.bolDedupNotice.innerHTML = '';
+  function clearByType(type){
+    const toDeleteFolder = [];
+    for(const [folderName, meta] of folders.entries()){
+      const keep = new Map();
+      for(const [fname, file] of meta.files.entries()){
+        const isCsv = fname.toLowerCase().endsWith('.csv');
+        const isPallet = fname.startsWith('Pallet-');
+        const isBol = fname.startsWith('BOL-');
+        const isPack = fname.toLowerCase().endsWith('.pdf') && !isPallet && !isBol;
+        const shouldRemove =
+          (type === 'csv' && isCsv) ||
+          (type === 'pack' && isPack) ||
+          (type === 'pallet' && isPallet) ||
+          (type === 'bol' && isBol);
+        if(!shouldRemove) keep.set(fname, file);
+      }
+      meta.files = keep;
+      if(meta.files.size === 0) toDeleteFolder.push(folderName);
+    }
+    for(const folderName of toDeleteFolder) folders.delete(folderName);
+    if(type === 'bol') els.bolDedupNotice.innerHTML = '';
+    if(els.logs[type]) els.logs[type].innerHTML = '';
     refreshAliasTable(); refreshTree(); refreshExportState();
   }
+
 
   // ====== Wire up ======
   wireDrop(
@@ -558,7 +588,10 @@
   );
 
   els.btnExport.addEventListener('click', exportZip);
-  els.btnClear.addEventListener('click', clearAll);
+  els.btnClearCsv.addEventListener('click', ()=>clearByType('csv'));
+  els.btnClearPack.addEventListener('click', ()=>clearByType('pack'));
+  els.btnClearPallet.addEventListener('click', ()=>clearByType('pallet'));
+  els.btnClearBol.addEventListener('click', ()=>clearByType('bol'));
   els.btnAliasToggle.addEventListener('click', ()=>{
     els.aliasPanel.classList.toggle('open');
   });
