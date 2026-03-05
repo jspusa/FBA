@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FBA 檔案整理器（CSV / 包裝箱標籤 / 棧板標籤 / 提單）</title>
+  <style>
+    :root { --bg:#0b0f19; --card:#121a2b; --muted:#9fb0d0; --text:#e9f0ff; --accent:#6aa6ff; --ok:#36d399; --warn:#fbbf24; --err:#fb7185; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial; background:linear-gradient(180deg,#070a12 0%, #0b0f19 100%); color:var(--text); }
+    header { padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.08); position:sticky; top:0; background:rgba(11,15,25,.85); backdrop-filter: blur(10px); }
+    header h1 { margin:0; font-size:18px; letter-spacing:.5px; }
+    header .sub { margin-top:6px; color:var(--muted); font-size:13px; line-height:1.4; }
+    main { padding:18px 20px 28px; max-width:1200px; margin:0 auto; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+    .card { background:rgba(18,26,43,.92); border:1px solid rgba(255,255,255,.10); border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    .card h2 { margin:0 0 10px; font-size:15px; display:flex; align-items:center; gap:10px; }
+    .pill { font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.14); color:var(--muted); }
+    .drop {
+      border:2px dashed rgba(106,166,255,.35);
+      border-radius:16px;
+      padding:14px;
+      min-height:110px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:10px;
+      background:rgba(106,166,255,.06);
+      transition:.15s ease;
+    }
+    .drop.dragover { border-color: rgba(106,166,255,.9); background:rgba(106,166,255,.12); transform: translateY(-1px); }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .btn {
+      appearance:none; border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06); color:var(--text);
+      padding:9px 12px; border-radius:12px; cursor:pointer;
+      font-size:13px; transition:.15s ease; user-select:none;
+    }
+    .btn:hover { border-color: rgba(106,166,255,.7); background:rgba(106,166,255,.10); }
+    .btn.primary { border-color: rgba(106,166,255,.7); background:rgba(106,166,255,.18); }
+    .btn.danger { border-color: rgba(251,113,133,.55); background:rgba(251,113,133,.12); }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    input[type="file"]{ display:none; }
+    select, input[type="text"]{
+      border-radius:12px; padding:9px 10px; font-size:13px; color:var(--text);
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+      outline:none; min-width:260px;
+    }
+    select:focus, input[type="text"]:focus{ border-color: rgba(106,166,255,.7); }
+    .hint { color:var(--muted); font-size:12px; line-height:1.45; }
+    .log { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; max-height:120px; overflow:auto; padding-right:6px; }
+    .log b { color:var(--text); }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .err { color:var(--err); }
+    .split { display:grid; grid-template-columns: 1.25fr .75fr; gap:14px; margin-top:14px; }
+    @media (max-width: 980px){ .split{ grid-template-columns:1fr; } }
+    .tree { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-size:12px; color:var(--muted); line-height:1.45; white-space:pre; overflow:auto; max-height:380px; padding-right:6px; }
+    table { width:100%; border-collapse:separate; border-spacing:0 10px; }
+    th { text-align:left; font-size:12px; color:var(--muted); font-weight:600; padding:0 8px; }
+    td { padding:8px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+    td:first-child { border-radius:12px 0 0 12px; }
+    td:last-child { border-radius:0 12px 12px 0; }
+    .small { font-size:12px; color:var(--muted); }
+  </style>
+</head>
+<body>
+<header>
+  <h1>FBA 檔案整理器（拖曳上傳 → 自動分類改名 → 匯出 ZIP）</h1>
+  <div class="sub">
+    規則：CSV 建資料夾；包裝箱標籤 PDF 原名入夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>。<br/>
+    若你的 PDF 前綴要對應到不同 CSV 資料夾，可在「對應規則（Aliases）」新增別名。
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>① CSV 區 <span class="pill">拖曳或選檔</span></h2>
+      <div class="drop" id="dropCsv">
+        <div class="row">
+          <div>
+            <div><b>提供CSV</b></div>
+            <div class="hint">亦可按「選擇CSV大量選取」</div>
+          </div>
+          <div>
+            <label class="btn" for="inCsv">選擇 CSV</label>
+            <input id="inCsv" type="file" accept=".csv" multiple />
+          </div>
+        </div>
+        <div class="log" id="logCsv"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>② 包裝箱標籤 <span class="pill">PDF</span></h2>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
+      </div>
+      <div class="drop" id="dropPack">
+        <div class="row">
+          <div>
+            <div><b>提供「包裝箱標籤」PDF</b></div>
+            <div class="hint">亦可按「選擇PDF大量選取」</div>
+          </div>
+          <div>
+            <label class="btn" for="inPack">選擇 PDF</label>
+            <input id="inPack" type="file" accept="application/pdf" multiple />
+          </div>
+        </div>
+        <div class="log" id="logPack"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>③ 棧板標籤 <span class="pill">PDF（自動加 Pallet-）</span></h2>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
+      </div>
+      <div class="drop" id="dropPallet">
+        <div class="row">
+          <div>
+            <div><b>提供「棧板標籤」PDF</b></div>
+            <div class="hint">亦可按「選擇PDF大量選取」</div>
+          </div>
+          <div>
+            <label class="btn" for="inPallet">選擇 PDF</label>
+            <input id="inPallet" type="file" accept="application/pdf" multiple />
+          </div>
+        </div>
+        <div class="log" id="logPallet"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>④ 下載提單 <span class="pill">PDF（自動加 BOL-）</span></h2>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="hint">注意提單檔案需下載6次，然後提供5個。</div>
+      </div>
+      <div class="drop" id="dropBol">
+        <div class="row">
+          <div>
+            <div><b>提供「提單」PDF</b></div>
+            <div class="hint">亦可按「選擇PDF大量選取」</div>
+          </div>
+          <div>
+            <label class="btn" for="inBol">選擇 PDF</label>
+            <input id="inBol" type="file" accept="application/pdf" multiple />
+          </div>
+        </div>
+        <div class="log" id="logBol"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <h2>資料夾預覽 <span class="pill">將會匯出成 ZIP</span></h2>
+      <div class="tree" id="tree">(尚未加入任何檔案)</div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn danger" id="btnClear" type="button">清空全部</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn primary" id="btnExport" type="button" disabled>匯出 ZIP</button>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px;">
+        建議：先丟 CSV 建好資料夾，再丟各種 PDF。若你先丟 PDF，也會自動建立資料夾（以 FBA 前綴命名）。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>對應規則（Aliases）<span class="pill">解決 CSV 名稱 ≠ PDF 前綴</span></h2>
+      <div class="hint">
+        每個資料夾會有「識別碼清單」。預設包含資料夾本名；你可以額外新增別名（用逗號分隔）。<br/>
+        例：想把 <b>FBA198KGBY12-xxxx.pdf</b> 放進 <b>FBA198KL62GV/</b>，就把 <b>FBA198KGBY12</b> 填在 <b>FBA198KL62GV</b> 的別名欄位。
+      </div>
+      <div style="margin-top:10px; overflow:auto; max-height:420px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:38%;">資料夾</th>
+              <th>別名（逗號分隔）</th>
+            </tr>
+          </thead>
+          <tbody id="aliasBody">
+            <tr><td colspan="2" class="small">（尚未建立任何資料夾）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">注意：別名只影響「分到哪個資料夾」，不會改變檔案改名規則。</div>
+    </div>
+  </div>
+</main>
+
+<!-- JSZip + FileSaver -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<script>
+  // ====== In-memory "virtual file system" ======
+  // folders: Map<folderName, { ids:Set<string>, files: Map<filename, File> }>
+  const folders = new Map();
+
+  const els = {
+    tree: document.getElementById('tree'),
+    aliasBody: document.getElementById('aliasBody'),
+    btnExport: document.getElementById('btnExport'),
+    btnClear: document.getElementById('btnClear'),
+    logs: {
+      csv: document.getElementById('logCsv'),
+      pack: document.getElementById('logPack'),
+      pallet: document.getElementById('logPallet'),
+      bol: document.getElementById('logBol')
+    }
+  };
+
+  function log(where, html){
+    const box = els.logs[where];
+    box.innerHTML = html + (box.innerHTML ? "<br/>" + box.innerHTML : "");
+  }
+
+  function baseName(filename){
+    const idx = filename.lastIndexOf('.');
+    return idx >= 0 ? filename.slice(0, idx) : filename;
+  }
+
+  // For pdf: folder key defaults to text before first '-'
+  function inferFolderKey(filename){
+    const name = baseName(filename);
+    const dash = name.indexOf('-');
+    return (dash > 0) ? name.slice(0, dash) : name;
+  }
+
+  function ensureFolder(folderName){
+    if(!folders.has(folderName)){
+      folders.set(folderName, { ids: new Set([folderName]), files: new Map() });
+    }
+    refreshAliasTable();
+    refreshTree();
+    refreshExportState();
+    return folders.get(folderName);
+  }
+
+  function resolveFolderByKey(key){
+    // 1) exact folder name
+    if(folders.has(key)) return key;
+
+    // 2) match aliases
+    for(const [folderName, meta] of folders.entries()){
+      if(meta.ids.has(key)) return folderName;
+    }
+
+    // 3) not found -> create new folder by key
+    ensureFolder(key);
+    return key;
+  }
+
+  function uniqueName(folderName, desired){
+    const meta = folders.get(folderName);
+    if(!meta.files.has(desired)) return desired;
+
+    // add (2), (3) before extension
+    const dot = desired.lastIndexOf('.');
+    const stem = dot >= 0 ? desired.slice(0, dot) : desired;
+    const ext = dot >= 0 ? desired.slice(dot) : '';
+    let i = 2;
+    while(meta.files.has(`${stem} (${i})${ext}`)) i++;
+    return `${stem} (${i})${ext}`;
+  }
+
+  function addFileToFolder(folderName, filename, file){
+    const meta = ensureFolder(folderName);
+    const finalName = uniqueName(folderName, filename);
+    meta.files.set(finalName, file);
+    return finalName;
+  }
+
+  function refreshExportState(){
+    let count = 0;
+    for(const [, meta] of folders.entries()) count += meta.files.size;
+    els.btnExport.disabled = count === 0;
+  }
+
+  function refreshTree(){
+    if(folders.size === 0){
+      els.tree.textContent = "(尚未加入任何檔案)";
+      return;
+    }
+    const lines = [];
+    const sortedFolders = [...folders.keys()].sort((a,b)=>a.localeCompare(b));
+    for(const folderName of sortedFolders){
+      const meta = folders.get(folderName);
+      lines.push(`${folderName}/`);
+      const files = [...meta.files.keys()].sort((a,b)=>a.localeCompare(b));
+      for(const f of files) lines.push(`  └─ ${f}`);
+      lines.push("");
+    }
+    els.tree.textContent = lines.join("\n").trimEnd();
+  }
+
+  function refreshAliasTable(){
+    if(folders.size === 0){
+      els.aliasBody.innerHTML = `<tr><td colspan="2" class="small">（尚未建立任何資料夾）</td></tr>`;
+      return;
+    }
+    const rows = [...folders.entries()]
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([folderName, meta])=>{
+        const aliases = [...meta.ids].filter(x=>x!==folderName).join(", ");
+        return `
+          <tr>
+            <td><b>${escapeHtml(folderName)}</b><div class="small">識別碼：${escapeHtml([...meta.ids].join(", "))}</div></td>
+            <td>
+              <input type="text" data-folder="${escapeHtml(folderName)}" value="${escapeHtml(aliases)}"
+                     placeholder="例如：FBA198KGBY12, FBA198KL62GV_ALT" />
+              <div class="small">提示：逗號分隔；留空代表只用資料夾名匹配</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    els.aliasBody.innerHTML = rows;
+
+    // attach listeners
+    els.aliasBody.querySelectorAll('input[data-folder]').forEach(inp=>{
+      inp.addEventListener('input', (e)=>{
+        const folder = e.target.getAttribute('data-folder');
+        const meta = folders.get(folder);
+        const raw = e.target.value.trim();
+        meta.ids = new Set([folder]);
+        if(raw){
+          raw.split(',')
+            .map(s=>s.trim())
+            .filter(Boolean)
+            .forEach(id=>meta.ids.add(id));
+        }
+        refreshAliasTable(); // keep “識別碼” line updated
+      }, { passive:true });
+    });
+  }
+
+  function escapeHtml(s){
+    return (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  }
+
+  // ====== Drop zone wiring ======
+  function wireDrop(dropEl, inputEl, acceptFn, handlerFn){
+    const prevent = (e)=>{ e.preventDefault(); e.stopPropagation(); };
+    ['dragenter','dragover'].forEach(ev=>{
+      dropEl.addEventListener(ev, (e)=>{ prevent(e); dropEl.classList.add('dragover'); });
+    });
+    ['dragleave','drop'].forEach(ev=>{
+      dropEl.addEventListener(ev, (e)=>{ prevent(e); dropEl.classList.remove('dragover'); });
+    });
+    dropEl.addEventListener('drop', async (e)=>{
+      const files = [...(e.dataTransfer?.files || [])];
+      const good = files.filter(acceptFn);
+      await handlerFn(good);
+    });
+    inputEl.addEventListener('change', async ()=>{
+      const files = [...(inputEl.files || [])];
+      const good = files.filter(acceptFn);
+      await handlerFn(good);
+      inputEl.value = "";
+    });
+  }
+
+  // ====== Handlers per zone ======
+  async function handleCsv(files){
+    if(files.length === 0){
+      log('csv', `<span class="warn">（沒有偵測到 CSV）</span>`);
+      return;
+    }
+    let ok = 0;
+    for(const f of files){
+      const name = f.name;
+      if(!name.toLowerCase().endsWith('.csv')) continue;
+      const folder = baseName(name);
+      ensureFolder(folder);
+      const finalName = addFileToFolder(folder, name, f);
+      ok++;
+      log('csv', `<span class="ok">✓</span> 建立/更新資料夾 <b>${escapeHtml(folder)}</b>，加入 <b>${escapeHtml(finalName)}</b>`);
+    }
+    refreshTree(); refreshExportState();
+    if(ok === 0) log('csv', `<span class="warn">（沒有可用的 CSV）</span>`);
+  }
+
+  async function handlePack(files){
+    if(files.length === 0){
+      log('pack', `<span class="warn">（沒有偵測到 PDF）</span>`);
+      return;
+    }
+    for(const f of files){
+      const key = inferFolderKey(f.name);
+      const folder = resolveFolderByKey(key);
+      const finalName = addFileToFolder(folder, f.name, f); // keep original
+      log('pack', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+    }
+    refreshTree(); refreshExportState();
+  }
+
+  async function handlePallet(files){
+    if(files.length === 0){
+      log('pallet', `<span class="warn">（沒有偵測到 PDF）</span>`);
+      return;
+    }
+    for(const f of files){
+      const key = inferFolderKey(f.name);
+      const folder = resolveFolderByKey(key);
+      const newName = `Pallet-${f.name}`;
+      const finalName = addFileToFolder(folder, newName, f);
+      log('pallet', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+    }
+    refreshTree(); refreshExportState();
+  }
+
+  async function handleBol(files){
+    if(files.length === 0){
+      log('bol', `<span class="warn">（沒有偵測到 PDF）</span>`);
+      return;
+    }
+    for(const f of files){
+      const key = inferFolderKey(f.name);
+      const folder = resolveFolderByKey(key);
+      const newName = `BOL-${f.name}`;
+      const finalName = addFileToFolder(folder, newName, f);
+      log('bol', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+    }
+    refreshTree(); refreshExportState();
+  }
+
+  // ====== Export ZIP ======
+  async function exportZip(){
+    const zip = new JSZip();
+    const sortedFolders = [...folders.keys()].sort((a,b)=>a.localeCompare(b));
+    for(const folderName of sortedFolders){
+      const meta = folders.get(folderName);
+      const dir = zip.folder(folderName);
+      const files = [...meta.files.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+      for(const [fname, file] of files){
+        const buf = await file.arrayBuffer();
+        dir.file(fname, buf);
+      }
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    const stamp = new Date();
+    const yyyy = stamp.getFullYear();
+    const mm = String(stamp.getMonth()+1).padStart(2,'0');
+    const dd = String(stamp.getDate()).padStart(2,'0');
+    saveAs(blob, `FBA_Sorted_${yyyy}${mm}${dd}.zip`);
+  }
+
+  function clearAll(){
+    folders.clear();
+    for(const k of Object.keys(els.logs)) els.logs[k].innerHTML = "";
+    refreshAliasTable(); refreshTree(); refreshExportState();
+  }
+
+  // ====== Wire up ======
+  wireDrop(
+    document.getElementById('dropCsv'),
+    document.getElementById('inCsv'),
+    (f)=>f.name.toLowerCase().endsWith('.csv'),
+    handleCsv
+  );
+  wireDrop(
+    document.getElementById('dropPack'),
+    document.getElementById('inPack'),
+    (f)=>f.name.toLowerCase().endsWith('.pdf'),
+    handlePack
+  );
+  wireDrop(
+    document.getElementById('dropPallet'),
+    document.getElementById('inPallet'),
+    (f)=>f.name.toLowerCase().endsWith('.pdf'),
+    handlePallet
+  );
+  wireDrop(
+    document.getElementById('dropBol'),
+    document.getElementById('inBol'),
+    (f)=>f.name.toLowerCase().endsWith('.pdf'),
+    handleBol
+  );
+
+  els.btnExport.addEventListener('click', exportZip);
+  els.btnClear.addEventListener('click', clearAll);
+</script>
+</body>
+</html>
