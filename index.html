@@ -294,8 +294,24 @@
       .replace(/\s+/g, ' ')
       .toUpperCase();
     const compact = normalized.replace(/[^A-Z0-9#]/g, '');
+
     if(normalized.includes('BILL OF LADING') || compact.includes('BILLOFLADING')) return 'bol';
-    if(normalized.includes('PALLET#') || normalized.includes('PALLET #') || compact.includes('PALLET#') || compact.includes('PALLET')) return 'pallet';
+
+    const hasPalletKeyword =
+      /\bPALLET\b/.test(normalized) ||
+      /PALLET\s*#\s*:?\s*\d+\s*\/\s*\d+/.test(normalized) ||
+      compact.includes('PALLET#') ||
+      compact.includes('PALLETNO') ||
+      compact.includes('PALLETNUMBER');
+    if(hasPalletKeyword) return 'pallet';
+
+    const hasCartonLabelSignals =
+      normalized.includes('SINGLE SKU') ||
+      normalized.includes('QTY ') ||
+      normalized.includes('SHIP FROM:') ||
+      normalized.includes('PLEASE LEAVE THIS LABEL UNCOVERED');
+    if(hasCartonLabelSignals) return 'pack';
+
     return 'pack';
   }
 
