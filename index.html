@@ -425,13 +425,6 @@
 
   // ====== Handlers per zone ======
 
-  async function fileHash(file){
-    const buf = await file.arrayBuffer();
-    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-    const bytes = new Uint8Array(hashBuf);
-    return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
   async function handleCsv(files){
     if(files.length === 0){
       log('csv', `<span class="warn">（沒有偵測到 CSV）</span>`);
@@ -480,23 +473,36 @@
     refreshTree(); refreshExportState();
   }
 
+  function bolPrefixFromName(filename){
+    const raw = filename.startsWith('BOL-') ? filename.slice(4) : filename;
+    return inferFolderKey(raw);
+  }
+
   async function handleBol(files){
     if(files.length === 0){
       log('bol', `<span class="warn">（沒有偵測到 PDF）</span>`);
       return;
     }
-    const seenHashes = new Set();
+
+    const seenPrefixes = new Set();
+    for(const [, meta] of folders.entries()){
+      for(const fname of meta.files.keys()){
+        if(fname.startsWith('BOL-')) seenPrefixes.add(bolPrefixFromName(fname));
+      }
+    }
+
     const deduped = [];
     const removed = [];
     for(const f of files){
-      const hash = await fileHash(f);
-      if(seenHashes.has(hash)){
+      const prefix = inferFolderKey(f.name);
+      if(seenPrefixes.has(prefix)){
         removed.push(f.name);
         continue;
       }
-      seenHashes.add(hash);
+      seenPrefixes.add(prefix);
       deduped.push(f);
     }
+
     for(const f of deduped){
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
@@ -504,9 +510,10 @@
       const finalName = addFileToFolder(folder, newName, f);
       log('bol', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
     }
+
     if(removed.length > 0){
-      els.bolDedupNotice.innerHTML = `<span class="check warn">已自動剔除重複提單 ${removed.length} 份（依檔案內容）</span>`;
-      log('bol', `<span class="warn">⚠ 已依內容自動剔除重複提單：${escapeHtml(removed.join(', '))}</span>`);
+      els.bolDedupNotice.innerHTML = `<span class="check warn">已自動剔除重複提單 ${removed.length} 份（依 FBA 前綴）</span>`;
+      log('bol', `<span class="warn">⚠ 已依 FBA 前綴自動剔除重複提單：${escapeHtml(removed.join(', '))}</span>`);
     } else {
       els.bolDedupNotice.innerHTML = '';
     }
