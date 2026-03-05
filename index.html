@@ -83,7 +83,7 @@
 <header>
   <h1>FBA 檔案整理器</h1>
   <div class="sub">
-    規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>。<br/>
+    規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>；<b>非 FBA 開頭</b>檔案會略過。<br/>
   </div>
 </header>
 
@@ -92,7 +92,24 @@
 <main>
   <div class="stack">
     <div class="card">
-      <h2>① CSV 區 <span class="pill">拖曳或選檔</span></h2>
+      <h2>① 綜合檔案區 <span class="pill">自動分類（CSV / PDF）</span></h2>
+      <div class="drop" id="dropMixed">
+        <div class="row">
+          <div>
+            <div><b>所有檔案都可丟進來</b></div>
+            <div class="hint">CSV 直接進 CSV；PDF 自動辨識：BILL OF LADING=提單、Pallet#=棧板，其餘當包裝箱標籤。</div>
+          </div>
+          <div>
+            <label class="btn" for="inMixed">選擇檔案</label>
+            <input id="inMixed" type="file" accept=".csv,application/pdf" multiple />
+          </div>
+        </div>
+        <div class="row"><div class="log" id="logMixed" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearMixed" type="button">清除此區紀錄</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>② CSV 區 <span class="pill">拖曳或選檔</span></h2>
       <div class="drop" id="dropCsv">
         <div class="row">
           <div>
@@ -109,7 +126,7 @@
     </div>
 
     <div class="card">
-      <h2>② 包裝箱標籤 <span class="pill">PDF</span></h2>
+      <h2>③ 包裝箱標籤 <span class="pill">PDF</span></h2>
       <div class="row" style="margin-bottom:10px;">
         <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
       </div>
@@ -129,7 +146,7 @@
     </div>
 
     <div class="card">
-      <h2>③ 棧板標籤 <span class="pill">PDF（自動加 Pallet-）</span></h2>
+      <h2>④ 棧板標籤 <span class="pill">PDF（自動加 Pallet-）</span></h2>
       <div class="row" style="margin-bottom:10px;">
         <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
       </div>
@@ -149,7 +166,7 @@
     </div>
 
     <div class="card">
-      <h2>④ 下載提單 <span class="pill">PDF（自動加 BOL-）</span></h2>
+      <h2>⑤ 下載提單 <span class="pill">PDF（自動加 BOL-）</span></h2>
       <div class="row" style="margin-bottom:10px;">
         <div class="hint">注意提單檔案需下載6次，然後提供5個。</div>
       </div>
@@ -229,6 +246,7 @@
 <!-- JSZip + FileSaver -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.js"></script>
 
 <script>
   // ====== In-memory "virtual file system" ======
@@ -243,10 +261,12 @@
     aliasBody: document.getElementById('aliasBody'),
     btnExport: document.getElementById('btnExport'),
     btnClearCsv: document.getElementById('btnClearCsv'),
+    btnClearMixed: document.getElementById('btnClearMixed'),
     btnClearPack: document.getElementById('btnClearPack'),
     btnClearPallet: document.getElementById('btnClearPallet'),
     btnClearBol: document.getElementById('btnClearBol'),
     logs: {
+      mixed: document.getElementById('logMixed'),
       csv: document.getElementById('logCsv'),
       pack: document.getElementById('logPack'),
       pallet: document.getElementById('logPallet'),
@@ -262,6 +282,42 @@
   function baseName(filename){
     const idx = filename.lastIndexOf('.');
     return idx >= 0 ? filename.slice(0, idx) : filename;
+  }
+
+  function hasFbaPrefix(filename){
+    return baseName(filename).toUpperCase().startsWith('FBA');
+  }
+
+  function classifyTextToPdfCategory(rawText){
+    const normalized = (rawText || '')
+      .replaceAll('＃', '#')
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+    if(normalized.includes('BILL OF LADING')) return 'bol';
+    if(normalized.includes('PALLET#') || normalized.includes('PALLET #')) return 'pallet';
+    return 'pack';
+  }
+
+  async function detectPdfCategory(file){
+    try{
+      if(!window.pdfjsLib) return 'pack';
+      const buf = await file.arrayBuffer();
+      const loadingTask = window.pdfjsLib.getDocument({
+        data: buf,
+        disableWorker: true
+      });
+      const pdf = await loadingTask.promise;
+      const pageCount = Math.min(pdf.numPages, 2);
+      let textBlob = '';
+      for(let i = 1; i <= pageCount; i++){
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        textBlob += ' ' + text.items.map(x=>x.str || '').join(' ');
+      }
+      return classifyTextToPdfCategory(textBlob);
+    } catch {
+      return 'pack';
+    }
   }
 
   // For pdf: folder key defaults to text before first '-'
@@ -434,6 +490,10 @@
     for(const f of files){
       const name = f.name;
       if(!name.toLowerCase().endsWith('.csv')) continue;
+      if(!hasFbaPrefix(name)){
+        log('csv', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(name)}</b>`);
+        continue;
+      }
       const folder = baseName(name);
       ensureFolder(folder);
       const finalName = addFileToFolder(folder, name, f);
@@ -450,6 +510,10 @@
       return;
     }
     for(const f of files){
+      if(!hasFbaPrefix(f.name)){
+        log('pack', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
       const finalName = addFileToFolder(folder, f.name, f); // keep original
@@ -464,6 +528,10 @@
       return;
     }
     for(const f of files){
+      if(!hasFbaPrefix(f.name)){
+        log('pallet', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
       const newName = `Pallet-${f.name}`;
@@ -494,6 +562,10 @@
     const deduped = [];
     const removed = [];
     for(const f of files){
+      if(!hasFbaPrefix(f.name)){
+        log('bol', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
       const prefix = inferFolderKey(f.name);
       if(seenPrefixes.has(prefix)){
         removed.push(f.name);
@@ -518,6 +590,45 @@
       els.bolDedupNotice.innerHTML = '';
     }
     refreshTree(); refreshExportState();
+  }
+
+  async function handleMixed(files){
+    if(files.length === 0){
+      log('mixed', `<span class="warn">（沒有偵測到可用檔案）</span>`);
+      return;
+    }
+
+    for(const f of files){
+      const lower = f.name.toLowerCase();
+      const isCsv = lower.endsWith('.csv');
+      const isPdf = lower.endsWith('.pdf');
+      if(!isCsv && !isPdf){
+        log('mixed', `<span class="warn">⚠</span> 略過（僅接受 CSV/PDF）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
+      if(!hasFbaPrefix(f.name)){
+        log('mixed', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
+
+      if(isCsv){
+        await handleCsv([f]);
+        log('mixed', `<span class="ok">✓</span> 已分類為 CSV：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
+
+      const category = await detectPdfCategory(f);
+      if(category === 'bol'){
+        await handleBol([f]);
+        log('mixed', `<span class="ok">✓</span> 已分類為提單（BOL）：<b>${escapeHtml(f.name)}</b>`);
+      } else if(category === 'pallet'){
+        await handlePallet([f]);
+        log('mixed', `<span class="ok">✓</span> 已分類為棧板標籤：<b>${escapeHtml(f.name)}</b>`);
+      } else {
+        await handlePack([f]);
+        log('mixed', `<span class="ok">✓</span> 已分類為包裝箱標籤：<b>${escapeHtml(f.name)}</b>`);
+      }
+    }
   }
 
 
@@ -570,6 +681,12 @@
 
   // ====== Wire up ======
   wireDrop(
+    document.getElementById('dropMixed'),
+    document.getElementById('inMixed'),
+    (f)=>f.name.toLowerCase().endsWith('.csv') || f.name.toLowerCase().endsWith('.pdf'),
+    handleMixed
+  );
+  wireDrop(
     document.getElementById('dropCsv'),
     document.getElementById('inCsv'),
     (f)=>f.name.toLowerCase().endsWith('.csv'),
@@ -595,6 +712,7 @@
   );
 
   els.btnExport.addEventListener('click', exportZip);
+  els.btnClearMixed.addEventListener('click', ()=>{ els.logs.mixed.innerHTML = ''; });
   els.btnClearCsv.addEventListener('click', ()=>clearByType('csv'));
   els.btnClearPack.addEventListener('click', ()=>clearByType('pack'));
   els.btnClearPallet.addEventListener('click', ()=>clearByType('pallet'));
