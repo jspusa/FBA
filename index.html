@@ -77,12 +77,38 @@
     .alias-panel { display:none; margin-top:12px; }
     .alias-panel.open { display:block; }
     .small { font-size:12px; color:var(--muted); }
+
+    .top-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .top-tab{appearance:none;border:1px solid var(--line);background:#eef3ff;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700}
+    .top-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .page{display:none}
+    .page.active{display:block}
+
+    .tool-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 28px rgba(36,54,91,.08)}
+    .is-hidden{display:none !important}
+    .tool-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:12px}
+    .tool-grid-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+    .tool-status{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;font-size:13px}
+    .tool-status.ok{color:var(--ok);border-color:#b7ebc7;background:#f1fcf4}
+    .tool-status.bad{color:var(--err);border-color:#f3c1c1;background:#fff5f5}
+    .tool-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .tool-table-wrap table{width:100%;border-collapse:collapse}
+    .tool-table-wrap th,.tool-table-wrap td{padding:8px 10px;border-bottom:1px solid #edf1f5;text-align:left;white-space:nowrap}
+    .tool-pills{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+    .tool-pill{background:#eff6ff;color:#1d4ed8;border:1px solid #c7dcff;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .inner-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .inner-tab{background:#eef2f7;color:var(--text);border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+    .inner-tab.active{background:var(--accent);color:#fff}
+    .email-preview{border:1px solid var(--line);background:#fcfcfd;border-radius:12px;padding:14px;line-height:1.6}
+    .email-table{border-collapse:collapse;width:100%;margin:10px 0 0;background:#fff}
+    .email-table th,.email-table td{border:1px solid #cfd8e3;padding:8px 10px;text-align:left;vertical-align:top}
+    @media (max-width:980px){.tool-grid,.tool-grid-3{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <header>
-  <h1>FBA 檔案整理器</h1>
-  <div class="sub">
+  <h1 id="pageTitle">FBA 檔案整理器</h1>
+  <div class="sub" id="pageSubtitle">
     規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>；<b>非 FBA 開頭</b>檔案會略過。<br/>
   </div>
 </header>
@@ -90,6 +116,14 @@
 <button class="btn floating-alias" id="btnAliasToggle" type="button">對應規則（Aliases）</button>
 
 <main>
+  <div class="top-tabs" id="topTabs">
+    <button class="top-tab active" data-page="page-sorter" type="button">① FBA 檔案整理器</button>
+    <button class="top-tab" data-page="page-restock" type="button">② 補貨 Excel 整合</button>
+    <button class="top-tab" data-page="page-shipment" type="button">③ Amazon 棧板擷取</button>
+    <button class="top-tab" data-page="page-email" type="button">④ 出貨通知 Email</button>
+  </div>
+
+  <section class="page active" id="page-sorter">
   <div class="stack">
     <div class="card">
       <h2>① 包裝箱標籤 <span class="pill">PDF</span></h2>
@@ -241,12 +275,93 @@
       <div class="hint">注意：別名只影響「分到哪個資料夾」，不會改變檔案改名規則。</div>
     </div>
   </div>
+  </section>
+
+  <section class="page" id="page-restock">
+    <div class="stack">
+      <div class="card">
+        <h2>① Helium 建議檔 <span class="pill">CSV</span></h2>
+        <div class="drop" id="dropHelium">
+          <div class="row">
+            <div>
+              <div><b>提供 Helium_10_Restock_Suggestions</b></div>
+              <div class="hint">可拖曳或點按「選擇 CSV」</div>
+            </div>
+            <div>
+              <label class="btn" for="heliumFile">選擇 CSV</label>
+              <input id="heliumFile" type="file" accept=".csv,.txt" />
+            </div>
+          </div>
+          <div class="row"><div class="log" id="logHelium" style="flex:1 1 auto;">尚未選擇檔案。</div><button class="btn danger" id="btnClearHelium" type="button">清除此區</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>② Inventory Update <span class="pill">Excel</span></h2>
+        <div class="drop" id="dropInventory">
+          <div class="row">
+            <div>
+              <div><b>提供 Inventory update</b></div>
+              <div class="hint">可拖曳或點按「選擇 Excel」</div>
+            </div>
+            <div>
+              <label class="btn" for="inventoryFile">選擇 Excel</label>
+              <input id="inventoryFile" type="file" accept=".xlsx,.xls" />
+            </div>
+          </div>
+          <div class="row"><div class="log" id="logInventory" style="flex:1 1 auto;">尚未選擇檔案。</div><button class="btn danger" id="btnClearInventory" type="button">清除此區</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>③ 產生補貨結果 <span class="pill">預覽 + 下載</span></h2>
+        <div class="row" style="margin-top:4px"><div><button id="runBtn" class="btn primary" type="button">產生補貨結果</button> <button id="downloadBtn" class="btn" type="button" disabled>下載 Excel</button></div></div>
+        <div id="status" class="tool-status">請先上傳兩個檔案。</div>
+        <div id="resultCard" style="display:none; margin-top:12px;">
+          <div id="summary" class="tool-pills"></div>
+          <div id="tabs" class="inner-tabs"></div>
+          <div class="tool-table-wrap"><table id="previewTable"></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-shipment">
+    <div class="tool-card">
+      <h2>Amazon 貨件棧板資訊擷取</h2>
+      <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
+      <label for="shipmentText">貼上文字</label>
+      <textarea id="shipmentText" style="width:100%;min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
+      <div class="row" style="margin-top:12px"><button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button></div>
+      <div id="shipmentCard" style="display:none;margin-top:12px;">
+        <div id="shipmentSummary" class="tool-pill" style="display:inline-block;margin-bottom:8px">已擷取 0 筆</div>
+        <div class="tool-table-wrap"><table id="shipmentTable"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-email">
+    <div class="tool-card">
+      <h2>出貨通知信件產生器</h2>
+      <label for="emailData">貼上 SKU 資料</label>
+      <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU	入庫	EXPIRE"></textarea>
+      <div class="tool-grid-3" style="margin-top:12px">
+        <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /></div>
+        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /></div>
+        <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" /></div>
+      </div>
+      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
+      <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
+      <div id="emailPreview" class="email-preview" style="margin-top:8px"></div>
+    </div>
+  </section>
 </main>
 
 <!-- JSZip + FileSaver -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
   // ====== In-memory "virtual file system" ======
@@ -775,6 +890,157 @@
   els.btnAliasToggle.addEventListener('click', ()=>{
     els.aliasPanel.classList.toggle('open');
   });
+
+
+  // ====== Top 4 Tabs ======
+  (function(){
+    const tabWrap = document.getElementById('topTabs');
+    if(!tabWrap) return;
+    const tabBtns = Array.from(tabWrap.querySelectorAll('.top-tab'));
+    const pages = Array.from(document.querySelectorAll('.page'));
+    const titleEl = document.getElementById('pageTitle');
+    const subtitleEl = document.getElementById('pageSubtitle');
+    const aliasBtn = document.getElementById('btnAliasToggle');
+
+    const pageMeta = {
+      'page-sorter': {
+        title: 'FBA 檔案整理器',
+        subtitle: '規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>；<b>非 FBA 開頭</b>檔案會略過。',
+        showAlias: true
+      },
+      'page-restock': {
+        title: '補貨 Excel 整合',
+        subtitle: '上傳 Helium 建議檔與 Inventory update，可整合補貨欄位、預覽分頁並下載 Excel。',
+        showAlias: false
+      },
+      'page-shipment': {
+        title: 'Amazon 貨件棧板資訊擷取',
+        subtitle: '貼上 Amazon 貨件頁文字，自動擷取包裝箱 / 重量並計算棧板與平均重量。',
+        showAlias: false
+      },
+      'page-email': {
+        title: '出貨通知 Email 產生器',
+        subtitle: '貼上 SKU / 數量 / EXPIRE，一鍵產生 Email 表格內容並可複製貼上。',
+        showAlias: false
+      }
+    };
+
+    function switchPage(id){
+      tabBtns.forEach(btn=>btn.classList.toggle('active', btn.dataset.page===id));
+      pages.forEach(page=>page.classList.toggle('active', page.id===id));
+      const meta = pageMeta[id] || pageMeta['page-sorter'];
+      if(titleEl) titleEl.textContent = meta.title;
+      if(subtitleEl) subtitleEl.innerHTML = meta.subtitle;
+      if(aliasBtn) aliasBtn.classList.toggle('is-hidden', !meta.showAlias);
+    }
+
+    tabWrap.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.top-tab');
+      if(!btn) return;
+      switchPage(btn.dataset.page);
+    });
+
+    switchPage('page-sorter');
+  })();
+
+  // ====== Restock / Shipment / Email ======
+  (function(){
+    const $ = (id) => document.getElementById(id);
+    if(!$('runBtn')) return;
+    const SKU_FIX_MAP = {"EZD021":"EZD021AM","EZD011":"EZD011AM","EZD041":"EZD041AM","EPD020":"EPD020AM","EZD061":"EZD061AM","EPD011":"EPD011AM","EPD050":"EPD050AM","EPD060":"EPD060AM","EZD010-3":"EZD010AM-3","EZD060-3":"EZD060AM-3","EZD020-3":"EZD020AM-3","EZD040-3":"EZD040AM-3","EZD050-3":"EZD050AM-3","EZD051":"EZD051AM","EPD040":"EPD040AM","EPD021":"EPD021AM","EPD041":"EPD041AM"};
+    const REQUIRED_HELIUM_COLS = {"SKU":["SKU"],"供货天数":["供货天数","Days of Supply"],"补货数量":["补货数量","Reorder Units"],"可售库存":["可售库存","Sellable Inventory"],"补货状态":["补货状态","Reorder Status"],"入项":["入项","Inbound"]};
+    const state = { workbook:null, filename:"", sheets:null, activeSheet:"主工作表", shipmentRows:[], emailHtml:"" };
+    const toIsoDate=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const nextFridayStr=()=>{ const n=new Date(); const day=n.getDay(); let off=(5-day+7)%7; if(off===0||off===1) off+=7; const t=new Date(n); t.setDate(n.getDate()+off); return toIsoDate(t); };
+    const todayStr=()=>toIsoDate(new Date());
+    $('pickupDate').value = nextFridayStr();
+    const normalizeHeader=(s)=>String(s??"").trim().replace(/\s+/g,' ').toLowerCase();
+    const trimTrailingEmpty=(arr)=>{ let end=arr.length; while(end>0&&(arr[end-1]===''||arr[end-1]==null)) end--; return arr.slice(0,end);} ;
+    const toNumber=(v)=>{ if(v==null||v==='') return 0; const n=Number(String(v).replace(/,/g,'').trim()); return Number.isFinite(n)?n:0; };
+    const isNumericLike=(v)=>!(v==null||v==='') && Number.isFinite(Number(String(v).replace(/,/g,'').trim()));
+    const fixSku=(sku)=>{ const k=String(sku??'').trim(); return SKU_FIX_MAP[k]||k; };
+    function setStatus(msg, err=false){ const el=$('status'); el.textContent=msg; el.className='tool-status '+(err?'bad':'ok'); }
+    async function readCsvAsRows(file){ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array',raw:true,codepage:65001}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
+    async function readWorkbookFirstSheetAsRows(file){ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array',raw:true,cellDates:false}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
+    function findHeaderIndex(headers, aliases){ const n=headers.map(normalizeHeader); for(const a of aliases){ const i=n.indexOf(normalizeHeader(a)); if(i!==-1) return i;} return -1; }
+    function parseHelium(rows){ if(!rows.length) throw new Error('Helium 檔案是空的。'); const headers=trimTrailingEmpty(rows[0]).map(v=>String(v??'')); const idx={}; for(const k of Object.keys(REQUIRED_HELIUM_COLS)){ const i=findHeaderIndex(headers, REQUIRED_HELIUM_COLS[k]); if(i===-1) throw new Error(`Helium 檔案缺少欄位：${k}`); idx[k]=i; } const records=[]; const map=new Map(); for(let i=1;i<rows.length;i++){ const row=rows[i]||[]; const sku=fixSku(row[idx['SKU']]); if(!sku) continue; const r={SKU:sku,'供货天数':row[idx['供货天数']]??'','补货数量':row[idx['补货数量']]??'','可售库存':row[idx['可售库存']]??'','补货状态':row[idx['补货状态']]??'','入项':row[idx['入项']]??''}; records.push(r); map.set(r.SKU,r);} return {records,map}; }
+    function detectInventoryColumns(headers){ const skuIdx=findHeaderIndex(headers,['SKU']); const packIdx=findHeaderIndex(headers,['箱入數','箱入数','每箱數量','每箱数量','Pack','Case Pack']); let totalCartonsIdx=findHeaderIndex(headers,['總箱數','总箱数','Total Cartons']); if(skuIdx===-1||packIdx===-1) throw new Error('Inventory update 檔案缺欄位。'); if(totalCartonsIdx===-1){ const c=skuIdx+1; if(c<headers.length) totalCartonsIdx=c; } if(totalCartonsIdx===-1) throw new Error('Inventory update 檔案找不到 總箱數 欄位。'); return {skuIdx,packIdx,totalCartonsIdx}; }
+    const computeSuggestion=(reorder, pack)=>{ const p=toNumber(pack); if(!p) return ''; return Math.round((toNumber(reorder)/p)*10)/10; };
+    function processInventory(heliumData, inventoryRows){ if(inventoryRows.length<2) throw new Error('Inventory update 檔案格式不足。'); let headers=trimTrailingEmpty(inventoryRows[1]).map(h=>String(h??'')); const cols=detectInventoryColumns(headers); headers[cols.totalCartonsIdx]='總箱數'; const insertAt=cols.totalCartonsIdx+1; const add=['供货天数','补货数量','入项','可售库存','补货状态','補貨箱數建議']; const finalHeaders=[...headers.slice(0,insertAt),...add,...headers.slice(insertAt)]; const matched=new Set(), main=[], shortage=[], unlisted=[];
+      for(let r=2;r<inventoryRows.length;r++){ const src=inventoryRows[r]||[]; const raw=[]; for(let i=0;i<headers.length;i++) raw.push(src[i]??''); const rawSku=raw[cols.skuIdx]; if(!String(rawSku??'').trim()) continue; const helium=heliumData.map.get(fixSku(rawSku)); let sd='',rq='',inb='',sell='',st=''; if(helium){ matched.add(fixSku(rawSku)); sd=helium['供货天数'];rq=helium['补货数量'];inb=helium['入项'];sell=helium['可售库存'];st=helium['补货状态']; } else if(toNumber(raw[cols.totalCartonsIdx])!==0){ st='未上架'; }
+        const row=[...raw.slice(0,insertAt),sd,rq,inb,sell,st,computeSuggestion(rq,raw[cols.packIdx]),...raw.slice(insertAt)];
+        if(toNumber(row[cols.totalCartonsIdx])===0) shortage.push(row); else if(String(row[insertAt+4]??'').trim()==='未上架') unlisted.push(row); else main.push(row);
+      }
+      const unusedHeaders=['SKU','供货天数','补货数量','入项','可售库存','补货状态']; const unusedRows=heliumData.records.filter(r=>!matched.has(r.SKU)).map(r=>[r['SKU'],r['供货天数'],r['补货数量'],r['入项'],r['可售库存'],r['补货状态']]);
+      return {sheets:{'主工作表':{headers:finalHeaders,rows:main},'缺貨':{headers:finalHeaders,rows:shortage},'未上架':{headers:finalHeaders,rows:unlisted},'未使用SKU':{headers:unusedHeaders,rows:unusedRows}}};
+    }
+    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='补货状态'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if(h==='補貨箱數建議'&&isNumericLike(v)) return {v:Number(v),t:'n',z:'0.0'}; if(isNumericLike(v)) return {v:Number(String(v).replace(/,/g,'')),t:'n'}; return {v:String(v),t:'s'}; }
+    function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
+    function createSheet(headers, rows){ const ws={}; headers.forEach((h,c)=>ws[XLSX.utils.encode_cell({r:0,c})]={v:h,t:'s'}); const p=headers.indexOf('箱入數'), rIdx=headers.indexOf('补货数量'), sIdx=headers.indexOf('補貨箱數建議'); rows.forEach((row,r0)=>{ const r=r0+1; headers.forEach((h,c)=>{ const a=XLSX.utils.encode_cell({r,c}); if(c===sIdx&&p!==-1&&rIdx!==-1){ ws[a]={f:`ROUND(${colLetter(rIdx)}${r+1}/${colLetter(p)}${r+1},1)`,t:'n',z:'0.0'}; } else ws[a]=coerceCellValue(h,row[c]); });}); ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}}); ws['!autofilter']={ref:ws['!ref']}; return ws; }
+    function createWorkbookFromState(){ const wb=XLSX.utils.book_new(); ['主工作表','缺貨','未上架','未使用SKU'].forEach(n=>XLSX.utils.book_append_sheet(wb, createSheet(state.sheets[n].headers,state.sheets[n].rows), n)); state.workbook=wb; state.filename=`Restock_Check_${todayStr()}.xlsx`; }
+    function renderSummary(){ const summary=$('summary'); summary.innerHTML=''; [['主工作表',state.sheets['主工作表'].rows.length],['缺貨',state.sheets['缺貨'].rows.length],['未上架',state.sheets['未上架'].rows.length],['未使用SKU',state.sheets['未使用SKU'].rows.length]].forEach(([l,c])=>{ const d=document.createElement('div'); d.className='tool-pill'; d.textContent=`${l}：${c} 筆`; summary.appendChild(d);}); }
+    function displayValue(h,v){ if(v===''||v==null) return ''; if(h==='補貨箱數建議'&&isNumericLike(v)) return Number(v).toFixed(1); return String(v); }
+    function renderTable(name){ const table=$('previewTable'), sheet=state.sheets[name]; table.innerHTML=''; const thead=document.createElement('thead'); const tr=document.createElement('tr'); sheet.headers.forEach(h=>{ const th=document.createElement('th'); th.textContent=h; tr.appendChild(th);}); thead.appendChild(tr); table.appendChild(thead); const tbody=document.createElement('tbody'); sheet.rows.forEach(row=>{ const tr=document.createElement('tr'); sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); tr.appendChild(td);}); tbody.appendChild(tr);}); table.appendChild(tbody); }
+    function renderTabs(){ const tabs=$('tabs'); tabs.innerHTML=''; ['主工作表','缺貨','未上架','未使用SKU'].forEach(name=>{ const b=document.createElement('button'); b.className='inner-tab'+(state.activeSheet===name?' active':''); b.type='button'; b.textContent=name; b.onclick=()=>{ state.activeSheet=name; renderTabs(); renderTable(name);}; tabs.appendChild(b);}); }
+    const escapeHtml=(t)=>String(t??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+    function extractShipmentPalletRows(text){ const cleaned=String(text||'').replace(/\r/g,''); const regex=/貨件編號\s*#\s*(\d+)[\s\S]*?包裝箱：\s*([\d,]+)[\s\S]*?重量：\s*([\d,]+)\s*磅/g; const rows=[]; let m; while((m=regex.exec(cleaned))!==null){ const ctn=Number(m[2].replace(/,/g,'')); const w=Number(m[3].replace(/,/g,'')); const pallets=Math.ceil(ctn/30); const avg=pallets?Math.round((w/pallets)*10)/10:0; rows.push([`貨件編號 #${m[1]}`,String(ctn),String(w),`${ctn} ÷ 30 = ${(ctn/30).toFixed(2)} → 無條件進位`,String(pallets),avg.toFixed(1)]);} return rows; }
+    function renderShipmentTable(){ const card=$('shipmentCard'), table=$('shipmentTable'), rows=state.shipmentRows||[]; if(!rows.length){ card.style.display='none'; table.innerHTML=''; $('shipmentSummary').textContent='已擷取 0 筆'; return; } card.style.display='block'; $('shipmentSummary').textContent=`已擷取 ${rows.length} 筆`; const headers=['貨件','包裝箱(CTN)','重量(lb)','棧板數計算過程','棧板數','平均每棧板重量(lb/棧板)']; table.innerHTML='<thead><tr>'+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>`<td>${escapeHtml(c)}</td>`).join('')+'</tr>').join('')+'</tbody>'; }
+    function parseShipmentText(){ const rows=extractShipmentPalletRows($('shipmentText').value); state.shipmentRows=rows; renderShipmentTable(); setStatus(rows.length?`已擷取 ${rows.length} 筆貨件棧板資料。`:'沒有擷取到貨件資料，請確認文字。', !rows.length); }
+    function parseEmailData(text){ const lines=String(text||'').replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(lines.length<2) throw new Error('至少需要標題列與一筆資料。'); const split=(line)=>line.includes('\t')?line.split('\t').map(s=>s.trim()):line.split(/\s{2,}/).map(s=>s.trim()); const headers=split(lines[0]); const skuIdx=headers.findIndex(h=>normalizeHeader(h)==='sku'); const expireIdx=headers.findIndex(h=>normalizeHeader(h)==='expire'); if(skuIdx===-1||expireIdx===-1) throw new Error('資料需要包含 SKU 與 EXPIRE。'); const qtyIdx=headers.findIndex((_,i)=>i!==skuIdx&&i!==expireIdx); if(qtyIdx===-1) throw new Error('找不到數量欄位。'); const rows=[]; let total=0; for(let i=1;i<lines.length;i++){ const p=split(lines[i]); const sku=p[skuIdx]??''; if(!sku) continue; const qty=toNumber(p[qtyIdx]); rows.push({sku,qty,expire:p[expireIdx]??''}); total+=qty; } if(!rows.length) throw new Error('沒有成功解析到任何 SKU 資料。'); return {rows, skuCount:rows.length, totalCartons:total}; }
+    const formatPickupDate=(iso)=>{ const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d); return `${new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(dt)}, ${new Intl.DateTimeFormat('en-US',{month:'long'}).format(dt)} ${d}, ${y}`; };
+    const formatShortDate=(iso)=>{ const [_,m,d]=iso.split('-').map(Number); return `${m}/${d}`; };
+    function buildEmailHtml(subject, recipient, trucks, parsed, pickupDate){ const rows=parsed.rows.map(r=>`<tr><td>${escapeHtml(r.sku)}</td><td>${escapeHtml(r.qty)}</td><td>${escapeHtml(r.expire)}</td></tr>`).join(''); return `<div><p><strong>Subject:</strong> ${escapeHtml(subject)}</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${escapeHtml(trucks)} trucks (${escapeHtml(parsed.skuCount)} SKUs / ${escapeHtml(parsed.totalCartons)} cartons).</p><p>Pickup Date: ${escapeHtml(formatPickupDate(pickupDate))}</p><p>SKU / CTN / Expiry Date:</p><table class="email-table"><thead><tr><th>SKU</th><th>CTN</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
+    function buildEmail(){ try{ const parsed=parseEmailData($('emailData').value); const pickupDate=$('pickupDate').value; if(!pickupDate) throw new Error('請先選擇日期。'); const trucks=Math.max(1, Math.floor(toNumber($('truckCount').value)||5)); $('truckCount').value=trucks; const recipient=$('recipientName').value.trim()||'Tiffany'; const subject=`${formatShortDate(pickupDate)} Pickup – Shipment Details`; state.emailHtml=buildEmailHtml(subject,recipient,trucks,parsed,pickupDate); $('emailPreview').innerHTML=state.emailHtml; $('emailMeta').textContent=`已產生信件：${parsed.skuCount} SKUs / ${parsed.totalCartons} cartons / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false; }catch(err){ state.emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=err.message||'產生失敗。'; $('copyRichEmailBtn').disabled=true; }}
+    async function copyRichEmail(){ if(!state.emailHtml) return; const div=document.createElement('div'); div.innerHTML=state.emailHtml; const plain=div.textContent||div.innerText||''; if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([plain],{type:'text/plain'}),'text/html':new Blob([state.emailHtml],{type:'text/html'})})]); $('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; } }
+    async function run(){ try{ const heliumFile=restockFiles.helium || $('heliumFile').files[0], inventoryFile=restockFiles.inventory || $('inventoryFile').files[0]; if(!heliumFile||!inventoryFile) throw new Error('請先上傳兩個檔案。'); if(typeof XLSX==='undefined') throw new Error('無法載入 Excel 函式庫。'); $('runBtn').disabled=true; $('downloadBtn').disabled=true; setStatus('處理中…'); const heliumRows=await readCsvAsRows(heliumFile); const inventoryRows=await readWorkbookFirstSheetAsRows(inventoryFile); state.sheets=processInventory(parseHelium(heliumRows), inventoryRows).sheets; state.activeSheet='主工作表'; createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表'); $('resultCard').style.display=''; $('downloadBtn').disabled=false; setStatus(`完成：已產生 ${state.filename}`);}catch(e){ setStatus(e.message||'處理失敗。', true);} finally{ $('runBtn').disabled=false; }}
+
+
+    const restockFiles = { helium:null, inventory:null };
+    function setRestockLog(which, msg, cls=''){
+      const el = $(which === 'helium' ? 'logHelium' : 'logInventory');
+      if(!el) return;
+      el.innerHTML = cls ? `<span class="${cls}">${msg}</span>` : msg;
+    }
+    function assignRestockFile(which, file){
+      if(!file) return;
+      if(which === 'helium'){
+        restockFiles.helium = file;
+        setRestockLog('helium', `已選擇：<b>${escapeHtml(file.name)}</b>（${Math.round(file.size/1024)} KB）`, 'ok');
+      } else {
+        restockFiles.inventory = file;
+        setRestockLog('inventory', `已選擇：<b>${escapeHtml(file.name)}</b>（${Math.round(file.size/1024)} KB）`, 'ok');
+      }
+    }
+    function bindRestockDrop(dropId, inputId, which, acceptFn){
+      const drop = $(dropId), input = $(inputId);
+      if(!drop || !input) return;
+      ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,(e)=>{ e.preventDefault(); drop.classList.add('dragover'); }));
+      ['dragleave','dragend','drop'].forEach(evt=>drop.addEventListener(evt,()=>drop.classList.remove('dragover')));
+      drop.addEventListener('drop',(e)=>{
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer?.files || []);
+        const file = files.find(acceptFn);
+        if(!file){ setStatus('拖曳的檔案格式不正確。', true); return; }
+        assignRestockFile(which, file);
+      });
+      input.addEventListener('change',(e)=>{
+        const file = Array.from(e.target.files || [])[0];
+        if(!file) return;
+        if(!acceptFn(file)){ setStatus('選擇的檔案格式不正確。', true); return; }
+        assignRestockFile(which, file);
+      });
+    }
+    bindRestockDrop('dropHelium','heliumFile','helium', f=>f.name.toLowerCase().endsWith('.csv')||f.name.toLowerCase().endsWith('.txt'));
+    bindRestockDrop('dropInventory','inventoryFile','inventory', f=>f.name.toLowerCase().endsWith('.xlsx')||f.name.toLowerCase().endsWith('.xls'));
+    $('btnClearHelium').addEventListener('click', ()=>{ restockFiles.helium=null; $('heliumFile').value=''; setRestockLog('helium','尚未選擇檔案。'); });
+    $('btnClearInventory').addEventListener('click', ()=>{ restockFiles.inventory=null; $('inventoryFile').value=''; setRestockLog('inventory','尚未選擇檔案。'); });
+    $('runBtn').addEventListener('click', run);
+    $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook) XLSX.writeFile(state.workbook, state.filename, {compression:true}); });
+    $('parseShipmentBtn').addEventListener('click', parseShipmentText);
+    $('buildEmailBtn').addEventListener('click', buildEmail);
+    $('copyRichEmailBtn').addEventListener('click', copyRichEmail);
+  })();
+
 </script>
 </body>
 </html>
