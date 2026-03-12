@@ -85,6 +85,7 @@
     .page.active{display:block}
 
     .tool-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 28px rgba(36,54,91,.08)}
+    .is-hidden{display:none !important}
     .tool-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:12px}
     .tool-grid-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
     .tool-status{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;font-size:13px}
@@ -106,8 +107,8 @@
 </head>
 <body>
 <header>
-  <h1>FBA 檔案整理器</h1>
-  <div class="sub">
+  <h1 id="pageTitle">FBA 檔案整理器</h1>
+  <div class="sub" id="pageSubtitle">
     規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>；<b>非 FBA 開頭</b>檔案會略過。<br/>
   </div>
 </header>
@@ -277,18 +278,50 @@
   </section>
 
   <section class="page" id="page-restock">
-    <div class="tool-card">
-      <h2>補貨 Excel 整合</h2>
-      <div class="tool-grid">
-        <div><label for="heliumFile">Helium_10_Restock_Suggestions（CSV）</label><input id="heliumFile" type="file" accept=".csv,.txt" /></div>
-        <div><label for="inventoryFile">Inventory update（Excel）</label><input id="inventoryFile" type="file" accept=".xlsx,.xls" /></div>
+    <div class="stack">
+      <div class="card">
+        <h2>① Helium 建議檔 <span class="pill">CSV</span></h2>
+        <div class="drop" id="dropHelium">
+          <div class="row">
+            <div>
+              <div><b>提供 Helium_10_Restock_Suggestions</b></div>
+              <div class="hint">可拖曳或點按「選擇 CSV」</div>
+            </div>
+            <div>
+              <label class="btn" for="heliumFile">選擇 CSV</label>
+              <input id="heliumFile" type="file" accept=".csv,.txt" />
+            </div>
+          </div>
+          <div class="row"><div class="log" id="logHelium" style="flex:1 1 auto;">尚未選擇檔案。</div><button class="btn danger" id="btnClearHelium" type="button">清除此區</button></div>
+        </div>
       </div>
-      <div class="row" style="margin-top:12px"><div><button id="runBtn" class="btn primary" type="button">產生補貨結果</button> <button id="downloadBtn" class="btn" type="button" disabled>下載 Excel</button></div></div>
-      <div id="status" class="tool-status">請先上傳兩個檔案。</div>
-      <div id="resultCard" style="display:none; margin-top:12px;">
-        <div id="summary" class="tool-pills"></div>
-        <div id="tabs" class="inner-tabs"></div>
-        <div class="tool-table-wrap"><table id="previewTable"></table></div>
+
+      <div class="card">
+        <h2>② Inventory Update <span class="pill">Excel</span></h2>
+        <div class="drop" id="dropInventory">
+          <div class="row">
+            <div>
+              <div><b>提供 Inventory update</b></div>
+              <div class="hint">可拖曳或點按「選擇 Excel」</div>
+            </div>
+            <div>
+              <label class="btn" for="inventoryFile">選擇 Excel</label>
+              <input id="inventoryFile" type="file" accept=".xlsx,.xls" />
+            </div>
+          </div>
+          <div class="row"><div class="log" id="logInventory" style="flex:1 1 auto;">尚未選擇檔案。</div><button class="btn danger" id="btnClearInventory" type="button">清除此區</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>③ 產生補貨結果 <span class="pill">預覽 + 下載</span></h2>
+        <div class="row" style="margin-top:4px"><div><button id="runBtn" class="btn primary" type="button">產生補貨結果</button> <button id="downloadBtn" class="btn" type="button" disabled>下載 Excel</button></div></div>
+        <div id="status" class="tool-status">請先上傳兩個檔案。</div>
+        <div id="resultCard" style="display:none; margin-top:12px;">
+          <div id="summary" class="tool-pills"></div>
+          <div id="tabs" class="inner-tabs"></div>
+          <div class="tool-table-wrap"><table id="previewTable"></table></div>
+        </div>
       </div>
     </div>
   </section>
@@ -865,15 +898,49 @@
     if(!tabWrap) return;
     const tabBtns = Array.from(tabWrap.querySelectorAll('.top-tab'));
     const pages = Array.from(document.querySelectorAll('.page'));
+    const titleEl = document.getElementById('pageTitle');
+    const subtitleEl = document.getElementById('pageSubtitle');
+    const aliasBtn = document.getElementById('btnAliasToggle');
+
+    const pageMeta = {
+      'page-sorter': {
+        title: 'FBA 檔案整理器',
+        subtitle: '規則：分類資料夾；棧板標籤加 <b>Pallet-</b>；提單加 <b>BOL-</b>；<b>非 FBA 開頭</b>檔案會略過。',
+        showAlias: true
+      },
+      'page-restock': {
+        title: '補貨 Excel 整合',
+        subtitle: '上傳 Helium 建議檔與 Inventory update，可整合補貨欄位、預覽分頁並下載 Excel。',
+        showAlias: false
+      },
+      'page-shipment': {
+        title: 'Amazon 貨件棧板資訊擷取',
+        subtitle: '貼上 Amazon 貨件頁文字，自動擷取包裝箱 / 重量並計算棧板與平均重量。',
+        showAlias: false
+      },
+      'page-email': {
+        title: '出貨通知 Email 產生器',
+        subtitle: '貼上 SKU / 數量 / EXPIRE，一鍵產生 Email 表格內容並可複製貼上。',
+        showAlias: false
+      }
+    };
+
     function switchPage(id){
       tabBtns.forEach(btn=>btn.classList.toggle('active', btn.dataset.page===id));
       pages.forEach(page=>page.classList.toggle('active', page.id===id));
+      const meta = pageMeta[id] || pageMeta['page-sorter'];
+      if(titleEl) titleEl.textContent = meta.title;
+      if(subtitleEl) subtitleEl.innerHTML = meta.subtitle;
+      if(aliasBtn) aliasBtn.classList.toggle('is-hidden', !meta.showAlias);
     }
+
     tabWrap.addEventListener('click', (e)=>{
       const btn = e.target.closest('.top-tab');
       if(!btn) return;
       switchPage(btn.dataset.page);
     });
+
+    switchPage('page-sorter');
   })();
 
   // ====== Restock / Shipment / Email ======
@@ -925,7 +992,48 @@
     function buildEmailHtml(subject, recipient, trucks, parsed, pickupDate){ const rows=parsed.rows.map(r=>`<tr><td>${escapeHtml(r.sku)}</td><td>${escapeHtml(r.qty)}</td><td>${escapeHtml(r.expire)}</td></tr>`).join(''); return `<div><p><strong>Subject:</strong> ${escapeHtml(subject)}</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${escapeHtml(trucks)} trucks (${escapeHtml(parsed.skuCount)} SKUs / ${escapeHtml(parsed.totalCartons)} cartons).</p><p>Pickup Date: ${escapeHtml(formatPickupDate(pickupDate))}</p><p>SKU / CTN / Expiry Date:</p><table class="email-table"><thead><tr><th>SKU</th><th>CTN</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
     function buildEmail(){ try{ const parsed=parseEmailData($('emailData').value); const pickupDate=$('pickupDate').value; if(!pickupDate) throw new Error('請先選擇日期。'); const trucks=Math.max(1, Math.floor(toNumber($('truckCount').value)||5)); $('truckCount').value=trucks; const recipient=$('recipientName').value.trim()||'Tiffany'; const subject=`${formatShortDate(pickupDate)} Pickup – Shipment Details`; state.emailHtml=buildEmailHtml(subject,recipient,trucks,parsed,pickupDate); $('emailPreview').innerHTML=state.emailHtml; $('emailMeta').textContent=`已產生信件：${parsed.skuCount} SKUs / ${parsed.totalCartons} cartons / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false; }catch(err){ state.emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=err.message||'產生失敗。'; $('copyRichEmailBtn').disabled=true; }}
     async function copyRichEmail(){ if(!state.emailHtml) return; const div=document.createElement('div'); div.innerHTML=state.emailHtml; const plain=div.textContent||div.innerText||''; if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([plain],{type:'text/plain'}),'text/html':new Blob([state.emailHtml],{type:'text/html'})})]); $('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; } }
-    async function run(){ try{ const heliumFile=$('heliumFile').files[0], inventoryFile=$('inventoryFile').files[0]; if(!heliumFile||!inventoryFile) throw new Error('請先上傳兩個檔案。'); if(typeof XLSX==='undefined') throw new Error('無法載入 Excel 函式庫。'); $('runBtn').disabled=true; $('downloadBtn').disabled=true; setStatus('處理中…'); const heliumRows=await readCsvAsRows(heliumFile); const inventoryRows=await readWorkbookFirstSheetAsRows(inventoryFile); state.sheets=processInventory(parseHelium(heliumRows), inventoryRows).sheets; state.activeSheet='主工作表'; createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表'); $('resultCard').style.display=''; $('downloadBtn').disabled=false; setStatus(`完成：已產生 ${state.filename}`);}catch(e){ setStatus(e.message||'處理失敗。', true);} finally{ $('runBtn').disabled=false; }}
+    async function run(){ try{ const heliumFile=restockFiles.helium || $('heliumFile').files[0], inventoryFile=restockFiles.inventory || $('inventoryFile').files[0]; if(!heliumFile||!inventoryFile) throw new Error('請先上傳兩個檔案。'); if(typeof XLSX==='undefined') throw new Error('無法載入 Excel 函式庫。'); $('runBtn').disabled=true; $('downloadBtn').disabled=true; setStatus('處理中…'); const heliumRows=await readCsvAsRows(heliumFile); const inventoryRows=await readWorkbookFirstSheetAsRows(inventoryFile); state.sheets=processInventory(parseHelium(heliumRows), inventoryRows).sheets; state.activeSheet='主工作表'; createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表'); $('resultCard').style.display=''; $('downloadBtn').disabled=false; setStatus(`完成：已產生 ${state.filename}`);}catch(e){ setStatus(e.message||'處理失敗。', true);} finally{ $('runBtn').disabled=false; }}
+
+
+    const restockFiles = { helium:null, inventory:null };
+    function setRestockLog(which, msg, cls=''){
+      const el = $(which === 'helium' ? 'logHelium' : 'logInventory');
+      if(!el) return;
+      el.innerHTML = cls ? `<span class="${cls}">${msg}</span>` : msg;
+    }
+    function assignRestockFile(which, file){
+      if(!file) return;
+      if(which === 'helium'){
+        restockFiles.helium = file;
+        setRestockLog('helium', `已選擇：<b>${escapeHtml(file.name)}</b>（${Math.round(file.size/1024)} KB）`, 'ok');
+      } else {
+        restockFiles.inventory = file;
+        setRestockLog('inventory', `已選擇：<b>${escapeHtml(file.name)}</b>（${Math.round(file.size/1024)} KB）`, 'ok');
+      }
+    }
+    function bindRestockDrop(dropId, inputId, which, acceptFn){
+      const drop = $(dropId), input = $(inputId);
+      if(!drop || !input) return;
+      ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,(e)=>{ e.preventDefault(); drop.classList.add('dragover'); }));
+      ['dragleave','dragend','drop'].forEach(evt=>drop.addEventListener(evt,()=>drop.classList.remove('dragover')));
+      drop.addEventListener('drop',(e)=>{
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer?.files || []);
+        const file = files.find(acceptFn);
+        if(!file){ setStatus('拖曳的檔案格式不正確。', true); return; }
+        assignRestockFile(which, file);
+      });
+      input.addEventListener('change',(e)=>{
+        const file = Array.from(e.target.files || [])[0];
+        if(!file) return;
+        if(!acceptFn(file)){ setStatus('選擇的檔案格式不正確。', true); return; }
+        assignRestockFile(which, file);
+      });
+    }
+    bindRestockDrop('dropHelium','heliumFile','helium', f=>f.name.toLowerCase().endsWith('.csv')||f.name.toLowerCase().endsWith('.txt'));
+    bindRestockDrop('dropInventory','inventoryFile','inventory', f=>f.name.toLowerCase().endsWith('.xlsx')||f.name.toLowerCase().endsWith('.xls'));
+    $('btnClearHelium').addEventListener('click', ()=>{ restockFiles.helium=null; $('heliumFile').value=''; setRestockLog('helium','尚未選擇檔案。'); });
+    $('btnClearInventory').addEventListener('click', ()=>{ restockFiles.inventory=null; $('inventoryFile').value=''; setRestockLog('inventory','尚未選擇檔案。'); });
     $('runBtn').addEventListener('click', run);
     $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook) XLSX.writeFile(state.workbook, state.filename, {compression:true}); });
     $('parseShipmentBtn').addEventListener('click', parseShipmentText);
