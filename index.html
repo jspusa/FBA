@@ -52,12 +52,13 @@
     .btn.danger { border-color: rgba(225,29,72,.35); background:rgba(225,29,72,.05); }
     .btn:disabled { opacity:.45; cursor:not-allowed; }
     input[type="file"]{ display:none; }
-    select, input[type="text"]{
+    select, input[type="text"], input[type="date"], input[type="number"], textarea{
       border-radius:12px; padding:9px 10px; font-size:13px; color:var(--text);
       background:#fff; border:1px solid var(--line);
       outline:none; min-width:260px;
     }
-    select:focus, input[type="text"]:focus{ border-color: rgba(79,124,255,.7); }
+    textarea{min-width:100%; resize:vertical;}
+    select:focus, input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, textarea:focus{ border-color: rgba(79,124,255,.7); }
     .hint { color:var(--muted); font-size:12px; line-height:1.45; }
     .log { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; max-height:120px; overflow:auto; padding-right:6px; }
     .log b { color:var(--text); }
@@ -74,9 +75,17 @@
     .check.warn { color:var(--warn); }
     .summary-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
     .floating-alias { position:fixed; right:18px; top:14px; z-index:11; }
-    .alias-panel { display:none; margin-top:12px; }
-    .alias-panel.open { display:block; }
+    .alias-modal { position:fixed; inset:0; background:rgba(19,31,53,.35); display:none; align-items:center; justify-content:center; z-index:20; padding:20px; }
+    .alias-modal.open { display:flex; }
+    .alias-panel { width:min(860px,100%); max-height:86vh; overflow:auto; }
     .small { font-size:12px; color:var(--muted); }
+    .collapse-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:transparent;padding:0;cursor:pointer}
+    .collapse-toggle h2{margin:0}
+    .collapse-icon{font-size:18px;color:var(--muted);line-height:1;transition:.15s ease}
+    .collapse-toggle[aria-expanded="true"] .collapse-icon{transform:rotate(90deg);color:var(--accent)}
+    .collapse-body{margin-top:10px}
+    .collapse-body.is-collapsed{display:none}
+    .tool-section-title{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:10px}
 
     .top-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
     .top-tab{appearance:none;border:1px solid var(--line);background:#eef3ff;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700}
@@ -163,8 +172,11 @@
     </div>
 
     <div class="card">
-      <h2>③ CSV 區 <span class="pill">拖曳或選檔</span></h2>
-      <div class="drop" id="dropCsv">
+      <button class="collapse-toggle" type="button" data-target="collapseCsv" aria-expanded="false">
+        <h2>③ CSV 區 <span class="pill">拖曳或選檔</span></h2>
+        <span class="collapse-icon">›</span>
+      </button>
+      <div class="drop collapse-body is-collapsed" id="collapseCsv">
         <div class="row">
           <div>
             <div><b>提供CSV</b></div>
@@ -180,7 +192,11 @@
     </div>
 
     <div class="card">
-      <h2>④ 棧板標籤 <span class="pill">PDF（自動加 Pallet-）</span></h2>
+      <button class="collapse-toggle" type="button" data-target="collapsePallet" aria-expanded="false">
+        <h2>④ 棧板標籤 <span class="pill">PDF（自動加 Pallet-）</span></h2>
+        <span class="collapse-icon">›</span>
+      </button>
+      <div class="collapse-body is-collapsed" id="collapsePallet">
       <div class="row" style="margin-bottom:10px;">
         <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
       </div>
@@ -197,10 +213,15 @@
         </div>
         <div class="row"><div class="log" id="logPallet" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPallet" type="button">清除此區</button></div>
       </div>
+      </div>
     </div>
 
     <div class="card">
-      <h2>⑤ 下載提單 <span class="pill">PDF（自動加 BOL-）</span></h2>
+      <button class="collapse-toggle" type="button" data-target="collapseBol" aria-expanded="false">
+        <h2>⑤ 下載提單 <span class="pill">PDF（自動加 BOL-）</span></h2>
+        <span class="collapse-icon">›</span>
+      </button>
+      <div class="collapse-body is-collapsed" id="collapseBol">
       <div class="row" style="margin-bottom:10px;">
         <div class="hint">注意提單檔案需下載6次，然後提供5個。</div>
       </div>
@@ -216,6 +237,7 @@
           </div>
         </div>
         <div class="row"><div class="log" id="logBol" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearBol" type="button">清除此區</button></div>
+      </div>
       </div>
     </div>
   </div>
@@ -253,27 +275,6 @@
       </div>
     </div>
 
-    <div class="card alias-panel" id="aliasPanel">
-      <h2>對應規則（Aliases）<span class="pill">解決 CSV 名稱 ≠ PDF 前綴</span></h2>
-      <div class="hint">
-        每個資料夾會有「識別碼清單」。預設包含資料夾本名；你可以額外新增別名（用逗號分隔）。<br/>
-        例：想把 <b>FBA198KGBY12-xxxx.pdf</b> 放進 <b>FBA198KL62GV/</b>，就把 <b>FBA198KGBY12</b> 填在 <b>FBA198KL62GV</b> 的別名欄位。
-      </div>
-      <div style="margin-top:10px; overflow:auto; max-height:420px;">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:38%;">資料夾</th>
-              <th>別名（逗號分隔）</th>
-            </tr>
-          </thead>
-          <tbody id="aliasBody">
-            <tr><td colspan="2" class="small">（尚未建立任何資料夾）</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="hint">注意：別名只影響「分到哪個資料夾」，不會改變檔案改名規則。</div>
-    </div>
   </div>
   </section>
 
@@ -327,35 +328,79 @@
   </section>
 
   <section class="page" id="page-shipment">
-    <div class="tool-card">
-      <h2>Amazon 貨件棧板資訊擷取</h2>
-      <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
-      <label for="shipmentText">貼上文字</label>
-      <textarea id="shipmentText" style="width:100%;min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
-      <div class="row" style="margin-top:12px"><button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button></div>
-      <div id="shipmentCard" style="display:none;margin-top:12px;">
-        <div id="shipmentSummary" class="tool-pill" style="display:inline-block;margin-bottom:8px">已擷取 0 筆</div>
-        <div class="tool-table-wrap"><table id="shipmentTable"></table></div>
+    <div class="stack">
+      <div class="card">
+        <h2 class="tool-section-title">① 貼上 Amazon 貨件內容 <span class="pill">文字擷取</span></h2>
+        <div class="drop">
+          <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
+          <label for="shipmentText">貼上文字</label>
+          <textarea id="shipmentText" style="min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
+          <div class="row" style="margin-top:12px"><button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="tool-section-title">② 擷取結果 <span class="pill">預覽表格</span></h2>
+        <div id="shipmentCard" style="display:none;">
+          <div id="shipmentSummary" class="tool-pill" style="display:inline-block;margin-bottom:8px">已擷取 0 筆</div>
+          <div class="tool-table-wrap"><table id="shipmentTable"></table></div>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="page" id="page-email">
-    <div class="tool-card">
-      <h2>出貨通知信件產生器</h2>
-      <label for="emailData">貼上 SKU 資料</label>
-      <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU	入庫	EXPIRE"></textarea>
-      <div class="tool-grid-3" style="margin-top:12px">
-        <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /></div>
-        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /></div>
-        <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" /></div>
+    <div class="stack">
+      <div class="card">
+        <h2 class="tool-section-title">① SKU 資料 <span class="pill">文字貼上</span></h2>
+        <div class="drop">
+          <label for="emailData">貼上 SKU 資料</label>
+          <textarea id="emailData" style="min-height:220px" placeholder="SKU	入庫	EXPIRE"></textarea>
+        </div>
       </div>
-      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
-      <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
-      <div id="emailPreview" class="email-preview" style="margin-top:8px"></div>
+      <div class="card">
+        <h2 class="tool-section-title">② Email 參數 <span class="pill">日期 / 車次 / 稱呼</span></h2>
+        <div class="tool-grid-3" style="margin-top:12px">
+          <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /></div>
+          <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /></div>
+          <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" /></div>
+        </div>
+        <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
+      </div>
+      <div class="card">
+        <h2 class="tool-section-title">③ 信件預覽 <span class="pill">可直接複製</span></h2>
+        <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
+        <div id="emailPreview" class="email-preview" style="margin-top:8px"></div>
+      </div>
     </div>
   </section>
 </main>
+
+<div class="alias-modal" id="aliasModal">
+  <div class="card alias-panel" id="aliasPanel">
+    <div class="row" style="margin-bottom:8px">
+      <h2 style="margin:0">對應規則（Aliases）<span class="pill">解決 CSV 名稱 ≠ PDF 前綴</span></h2>
+      <button class="btn" id="btnAliasClose" type="button">關閉</button>
+    </div>
+    <div class="hint">
+      每個資料夾會有「識別碼清單」。預設包含資料夾本名；你可以額外新增別名（用逗號分隔）。<br/>
+      例：想把 <b>FBA198KGBY12-xxxx.pdf</b> 放進 <b>FBA198KL62GV/</b>，就把 <b>FBA198KGBY12</b> 填在 <b>FBA198KL62GV</b> 的別名欄位。
+    </div>
+    <div style="margin-top:10px; overflow:auto; max-height:420px;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:38%;">資料夾</th>
+            <th>別名（逗號分隔）</th>
+          </tr>
+        </thead>
+        <tbody id="aliasBody">
+          <tr><td colspan="2" class="small">（尚未建立任何資料夾）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hint">注意：別名只影響「分到哪個資料夾」，不會改變檔案改名規則。</div>
+  </div>
+</div>
 
 <!-- JSZip + FileSaver -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -369,11 +414,14 @@
   const folders = new Map();
   // Track filenames that were explicitly added in ① 包裝箱標籤區
   const packZoneOriginalNames = new Set();
+  const aliasSuggestionKeys = new Set();
 
   const els = {
     previewBody: document.getElementById('previewBody'),
     aliasPanel: document.getElementById('aliasPanel'),
+    aliasModal: document.getElementById('aliasModal'),
     btnAliasToggle: document.getElementById('btnAliasToggle'),
+    btnAliasClose: document.getElementById('btnAliasClose'),
     bolDedupNotice: document.getElementById('bolDedupNotice'),
     aliasBody: document.getElementById('aliasBody'),
     btnExport: document.getElementById('btnExport'),
@@ -403,6 +451,16 @@
 
   function hasFbaPrefix(filename){
     return baseName(filename).toUpperCase().startsWith('FBA');
+  }
+
+  function openAliasModal(){
+    if(!els.aliasModal) return;
+    els.aliasModal.classList.add('open');
+  }
+
+  function closeAliasModal(){
+    if(!els.aliasModal) return;
+    els.aliasModal.classList.remove('open');
   }
 
   function classifyTextToPdfCategory(rawText){
@@ -507,6 +565,11 @@
     }
 
     // 3) not found -> create new folder by key
+    if(folders.size > 0 && !aliasSuggestionKeys.has(key)){
+      aliasSuggestionKeys.add(key);
+      log('mixed', `<span class="warn">⚠ 偵測到新前綴 <b>${escapeHtml(key)}</b>，若這是既有 CSV 的別名，請在「對應規則（Aliases）」設定。</span>`);
+      openAliasModal();
+    }
     ensureFolder(key);
     return key;
   }
@@ -887,8 +950,20 @@
   els.btnClearPack.addEventListener('click', ()=>clearByType('pack'));
   els.btnClearPallet.addEventListener('click', ()=>clearByType('pallet'));
   els.btnClearBol.addEventListener('click', ()=>clearByType('bol'));
-  els.btnAliasToggle.addEventListener('click', ()=>{
-    els.aliasPanel.classList.toggle('open');
+  els.btnAliasToggle.addEventListener('click', openAliasModal);
+  els.btnAliasClose?.addEventListener('click', closeAliasModal);
+  els.aliasModal?.addEventListener('click', (e)=>{
+    if(e.target === els.aliasModal) closeAliasModal();
+  });
+
+  document.querySelectorAll('.collapse-toggle[data-target]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const body = document.getElementById(btn.dataset.target);
+      if(!body) return;
+      const willExpand = body.classList.contains('is-collapsed');
+      body.classList.toggle('is-collapsed');
+      btn.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+    });
   });
 
 
