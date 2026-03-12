@@ -252,6 +252,8 @@
   // ====== In-memory "virtual file system" ======
   // folders: Map<folderName, { ids:Set<string>, files: Map<filename, File> }>
   const folders = new Map();
+  // Track filenames that were explicitly added in ① 包裝箱標籤區
+  const packZoneOriginalNames = new Set();
 
   const els = {
     previewBody: document.getElementById('previewBody'),
@@ -560,6 +562,7 @@
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
       const finalName = addFileToFolder(folder, f.name, f); // keep original
+      packZoneOriginalNames.add(f.name);
       log('pack', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
     }
     refreshTree(); refreshExportState();
@@ -641,6 +644,7 @@
       return;
     }
 
+    const removedAsDuplicatePack = [];
     for(const f of files){
       const lower = f.name.toLowerCase();
       const isCsv = lower.endsWith('.csv');
@@ -651,6 +655,12 @@
       }
       if(!hasFbaPrefix(f.name)){
         log('mixed', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        continue;
+      }
+
+      if(isPdf && packZoneOriginalNames.has(f.name)){
+        removedAsDuplicatePack.push(f.name);
+        log('mixed', `<span class="warn">⚠</span> 防呆：<b>${escapeHtml(f.name)}</b> 與①包裝箱標籤檔名完全一致，已自動剔除不認列。`);
         continue;
       }
 
@@ -668,6 +678,10 @@
         await handlePallet([f]);
         log('mixed', `<span class="ok">✓</span> 已分類為棧板標籤（非 BOL PDF）：<b>${escapeHtml(f.name)}</b>`);
       }
+    }
+
+    if(removedAsDuplicatePack.length > 0){
+      log('mixed', `<span class="warn">⚠ 已剔除重複檔案 ${removedAsDuplicatePack.length} 份（與①包裝箱標籤全名一致）：${escapeHtml(removedAsDuplicatePack.join(', '))}</span>`);
     }
   }
 
@@ -714,6 +728,7 @@
     }
     for(const folderName of toDeleteFolder) folders.delete(folderName);
     if(type === 'bol') els.bolDedupNotice.innerHTML = '';
+    if(type === 'pack') packZoneOriginalNames.clear();
     if(els.logs[type]) els.logs[type].innerHTML = '';
     refreshAliasTable(); refreshTree(); refreshExportState();
   }
