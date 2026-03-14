@@ -991,6 +991,8 @@
       }
       card.appendChild(body);
 
+      const baseTitle = titleEl.childNodes.length ? (titleEl.childNodes[0].textContent || '').trim() : titleEl.textContent.trim();
+
       const indicator = document.createElement('span');
       indicator.className = 'collapse-indicator';
       titleEl.appendChild(indicator);
@@ -1008,8 +1010,7 @@
         }
       });
 
-      const title = titleEl.textContent.trim();
-      setCollapsed(card, defaultCollapsedTitles.has(title));
+      setCollapsed(card, defaultCollapsedTitles.has(baseTitle));
     }
   })();
 
