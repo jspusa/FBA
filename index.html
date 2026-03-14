@@ -78,6 +78,10 @@
     .alias-modal.open{display:flex}
     .alias-panel{width:min(980px,100%);max-height:85vh;overflow:auto}
     .alias-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .card.collapsible .card-collapse-body{display:block}
+    .card.collapsible.collapsed .card-collapse-body{display:none}
+    .collapse-trigger{cursor:pointer;user-select:none}
+    .collapse-indicator{font-size:12px;color:var(--muted);margin-left:8px}
     .small { font-size:12px; color:var(--muted); }
 
     .top-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -955,6 +959,58 @@
     });
 
     switchPage('page-restock');
+  })();
+
+  // ====== Collapsible sections (Sorter) ======
+  (function(){
+    const sorter = document.getElementById('page-sorter');
+    if(!sorter) return;
+
+    const defaultCollapsedTitles = new Set(['③ CSV 區', '④ 棧板標籤', '⑤ 下載提單']);
+    const cards = Array.from(sorter.querySelectorAll(':scope > .stack > .card, :scope > .split > .card:not(.alias-panel)'));
+
+    function setCollapsed(card, collapsed){
+      card.classList.add('collapsible');
+      card.classList.toggle('collapsed', collapsed);
+      const trigger = card.querySelector('.collapse-trigger');
+      const indicator = card.querySelector('.collapse-indicator');
+      if(trigger) trigger.setAttribute('aria-expanded', String(!collapsed));
+      if(indicator) indicator.textContent = collapsed ? '▶ 展開' : '▼ 收折';
+    }
+
+    for(const card of cards){
+      const directH2 = card.querySelector(':scope > h2');
+      const headWrap = directH2 ? directH2 : card.querySelector(':scope > .summary-head');
+      const titleEl = directH2 || card.querySelector(':scope > .summary-head h2');
+      if(!headWrap || !titleEl) continue;
+
+      const body = document.createElement('div');
+      body.className = 'card-collapse-body';
+      while(headWrap.nextSibling){
+        body.appendChild(headWrap.nextSibling);
+      }
+      card.appendChild(body);
+
+      const indicator = document.createElement('span');
+      indicator.className = 'collapse-indicator';
+      titleEl.appendChild(indicator);
+
+      headWrap.classList.add('collapse-trigger');
+      headWrap.setAttribute('role', 'button');
+      headWrap.setAttribute('tabindex', '0');
+
+      const toggle = ()=>setCollapsed(card, !card.classList.contains('collapsed'));
+      headWrap.addEventListener('click', toggle);
+      headWrap.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          toggle();
+        }
+      });
+
+      const title = titleEl.textContent.trim();
+      setCollapsed(card, defaultCollapsedTitles.has(title));
+    }
   })();
 
   // ====== Restock / Shipment / Email ======
