@@ -74,8 +74,10 @@
     .check.warn { color:var(--warn); }
     .summary-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
     .floating-alias { position:fixed; right:18px; top:14px; z-index:11; }
-    .alias-panel { display:none; margin-top:12px; }
-    .alias-panel.open { display:block; }
+    .alias-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:30;padding:24px;align-items:center;justify-content:center}
+    .alias-modal.open{display:flex}
+    .alias-panel{width:min(980px,100%);max-height:85vh;overflow:auto}
+    .alias-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .small { font-size:12px; color:var(--muted); }
 
     .top-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -117,9 +119,9 @@
 
 <main>
   <div class="top-tabs" id="topTabs">
-    <button class="top-tab active" data-page="page-sorter" type="button">① FBA 檔案整理器</button>
-    <button class="top-tab" data-page="page-restock" type="button">② 補貨 Excel 整合</button>
-    <button class="top-tab" data-page="page-shipment" type="button">③ Amazon 棧板擷取</button>
+    <button class="top-tab active" data-page="page-restock" type="button">① 補貨 Excel 整合</button>
+    <button class="top-tab" data-page="page-shipment" type="button">② Amazon 棧板擷取</button>
+    <button class="top-tab" data-page="page-sorter" type="button">③ FBA 檔案整理器</button>
     <button class="top-tab" data-page="page-email" type="button">④ 出貨通知 Email</button>
   </div>
 
@@ -253,8 +255,12 @@
       </div>
     </div>
 
+  <div class="alias-modal" id="aliasModal">
     <div class="card alias-panel" id="aliasPanel">
-      <h2>對應規則（Aliases）<span class="pill">解決 CSV 名稱 ≠ PDF 前綴</span></h2>
+      <div class="alias-head">
+        <h2>對應規則（Aliases）<span class="pill">解決 CSV 名稱 ≠ PDF 前綴</span></h2>
+        <button class="btn" id="btnAliasClose" type="button">關閉</button>
+      </div>
       <div class="hint">
         每個資料夾會有「識別碼清單」。預設包含資料夾本名；你可以額外新增別名（用逗號分隔）。<br/>
         例：想把 <b>FBA198KGBY12-xxxx.pdf</b> 放進 <b>FBA198KL62GV/</b>，就把 <b>FBA198KGBY12</b> 填在 <b>FBA198KL62GV</b> 的別名欄位。
@@ -274,6 +280,7 @@
       </div>
       <div class="hint">注意：別名只影響「分到哪個資料夾」，不會改變檔案改名規則。</div>
     </div>
+  </div>
   </div>
   </section>
 
@@ -373,6 +380,8 @@
   const els = {
     previewBody: document.getElementById('previewBody'),
     aliasPanel: document.getElementById('aliasPanel'),
+    aliasModal: document.getElementById('aliasModal'),
+    btnAliasClose: document.getElementById('btnAliasClose'),
     btnAliasToggle: document.getElementById('btnAliasToggle'),
     bolDedupNotice: document.getElementById('bolDedupNotice'),
     aliasBody: document.getElementById('aliasBody'),
@@ -888,7 +897,11 @@
   els.btnClearPallet.addEventListener('click', ()=>clearByType('pallet'));
   els.btnClearBol.addEventListener('click', ()=>clearByType('bol'));
   els.btnAliasToggle.addEventListener('click', ()=>{
-    els.aliasPanel.classList.toggle('open');
+    els.aliasModal.classList.add('open');
+  });
+  els.btnAliasClose.addEventListener('click', ()=>els.aliasModal.classList.remove('open'));
+  els.aliasModal.addEventListener('click', (e)=>{
+    if(e.target === els.aliasModal) els.aliasModal.classList.remove('open');
   });
 
 
@@ -932,6 +945,7 @@
       if(titleEl) titleEl.textContent = meta.title;
       if(subtitleEl) subtitleEl.innerHTML = meta.subtitle;
       if(aliasBtn) aliasBtn.classList.toggle('is-hidden', !meta.showAlias);
+      if(!meta.showAlias) els.aliasModal.classList.remove('open');
     }
 
     tabWrap.addEventListener('click', (e)=>{
@@ -940,7 +954,7 @@
       switchPage(btn.dataset.page);
     });
 
-    switchPage('page-sorter');
+    switchPage('page-restock');
   })();
 
   // ====== Restock / Shipment / Email ======
