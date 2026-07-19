@@ -104,11 +104,10 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    .clear-workspace{appearance:none;border:0;cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#fff0f1;color:#d70015;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
-    .clear-workspace:hover{background:#ffe3e5;transform:translateY(-1px)}
+    .clear-workspace{appearance:none;border:1px solid rgba(36,138,61,.2);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#e8f7ed;color:#176b2c;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
+    .clear-workspace:hover{background:#d9f1e1;transform:translateY(-1px)}
     .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
     .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
-    @media(max-width:860px){.header-inner{position:relative}.clear-workspace{position:absolute;right:18px;top:15px}.top-tabs{padding-right:0}}
   `;
   document.head.appendChild(style);
   ensureResetButton()?.addEventListener('click', startNewBatch);
