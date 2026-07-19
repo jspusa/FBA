@@ -129,6 +129,7 @@ main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!i
 .btn,button{border-radius:999px!important}.btn.primary,.primary{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}.btn.primary:hover,.primary:hover{background:#0077ed!important}
 textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:14px!important;background:var(--surface-soft)!important;padding:12px!important;font:inherit}textarea:focus,input:focus,select:focus{outline:3px solid rgba(0,113,227,.16)!important;border-color:var(--blue)!important}
 .tool-table-wrap,.preview{border-radius:16px}.confirm-panel{margin-top:14px;padding:14px 16px;border-radius:16px;background:#f5faff;border:1px solid #d6eaff}.confirm-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.45}.confirm-check+.confirm-check{margin-top:10px}.confirm-check input{margin-top:2px;min-width:auto}.field-help{display:block;margin-top:5px;color:var(--muted);font-size:11px}
+.pallet-action{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}.pallet-capacity{display:flex;align-items:center;gap:10px;padding:9px 12px 9px 16px;border:1px solid rgba(0,0,0,.09);border-radius:18px;background:#f7f7f9;color:#3a3a3c;font-size:14px;font-weight:700}.pallet-capacity input{width:82px!important;padding:9px 8px!important;text-align:center;background:#fff!important;font-weight:800}.pallet-help{flex-basis:100%;margin-top:-5px;color:var(--muted);font-size:11px}
 @media(max-width:860px){.header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}main{padding:38px 16px 56px!important}.brand-copy span{display:none}.tool-grid-3{grid-template-columns:1fr!important}}
 </style>
 <link rel="stylesheet" href="workspace-shell.css" />
@@ -142,9 +143,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <h2>Amazon 貨件棧板資訊擷取</h2>
       <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
       <textarea id="shipmentText" aria-label="Amazon 貨件頁面完整文字" style="width:100%;min-height:220px" placeholder="Amazon 貨件頁面完整內容"></textarea>
-      <div class="row" style="margin-top:12px;align-items:end">
-        <div style="max-width:220px"><label for="cartonsPerPallet">每棧板箱數</label><input id="cartonsPerPallet" type="number" min="1" max="999" step="1" value="30" data-preserve-on-new-batch /><span class="field-help">預設 30 箱；若本批次規則不同，可直接修改。</span></div>
+      <div class="pallet-action">
+        <label class="pallet-capacity" for="cartonsPerPallet"><span>每</span><input id="cartonsPerPallet" aria-label="每棧板箱數" type="number" min="1" max="999" step="1" value="30" data-preserve-on-new-batch /><span>箱／棧板</span></label>
         <button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button>
+        <span class="pallet-help">預設每 30 箱一個棧板；本批次規則不同時可直接修改。</span>
       </div>
       <div id="shipmentStatus" class="workspace-source" aria-live="assertive">請先貼上 Amazon 貨件頁完整文字。</div>
       <div id="shipmentCard" style="display:none;margin-top:12px;">

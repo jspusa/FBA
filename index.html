@@ -182,6 +182,11 @@
     .issue-handling{display:inline-block;margin-top:7px;padding:4px 7px;border-radius:8px;background:#f2f2f4;color:#5d5d62;font-size:9px;font-weight:700}
     .issue-handling.default{background:#eef9f1;color:#176d31}.issue-handling.manual{background:#eef6ff;color:#175d9c}.issue-handling.warning{background:#fff2d8;color:#8a5200}
     .diagnostic-detail{color:#3a3a3c;line-height:1.55}.diagnostic-detail code{padding:2px 5px;border-radius:6px;background:#f2f2f4;color:#3a3a3c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px}
+    .preflight-notes{margin-top:14px;padding:0;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.045)}
+    .preflight-notes[hidden]{display:none}.preflight-notes summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;cursor:pointer;list-style:none;color:#3a3a3c;font-size:13px;font-weight:750;background:#fafafa}.preflight-notes summary::-webkit-details-marker{display:none}
+    .preflight-notes summary::before{content:'›';font-size:19px;color:var(--muted);transition:.16s transform}.preflight-notes[open] summary::before{transform:rotate(90deg)}.preflight-notes summary span:first-of-type{flex:1}
+    .notes-count{padding:5px 9px;border-radius:999px;background:#ededf0;color:#5d5d62;font-size:10px;font-weight:750}.notes-body{padding:0 20px 18px}.notes-intro{margin:0 0 11px;color:var(--muted);font-size:11px;line-height:1.55}
+    .auto-note-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}.auto-note-table{min-width:680px}.auto-note-table th,.auto-note-table td{text-align:left;padding:10px 12px;font-size:11px}.auto-note-table td:first-child{font-weight:750}.file-note{margin-top:10px;padding:11px 13px;border-radius:12px;background:#f5f5f7;color:#5d5d62;font-size:11px;line-height:1.5}
     @keyframes pulse{50%{opacity:.28}}
     #resultCard{margin-top:22px;padding:0;overflow:hidden}
     .result-hero{padding:25px 28px;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line)}
@@ -325,7 +330,7 @@
     <div class="issue-head">
       <div class="issue-title">
         <span class="step-number">4</span>
-        <div><h2>問題確認</h2><p>問題列、原始值與系統預選都列在表格中。點選左右候選即可切換；目前採用值會直接套用到輸出 Excel。</p></div>
+        <div><h2>問題確認</h2><p>只有系統無法明確判斷的資料會列在這裡。點選候選即可切換，採用值會直接套用到輸出 Excel。</p></div>
       </div>
       <span id="issueCount" class="issue-count">0 項</span>
     </div>
@@ -339,6 +344,11 @@
       </div>
     </div>
   </section>
+
+  <details id="preflightNotes" class="card preflight-notes" hidden>
+    <summary><span>自動判斷與檔案備註</span><span id="preflightNotesCount" class="notes-count">0 項</span></summary>
+    <div id="preflightNotesBody" class="notes-body"></div>
+  </details>
 
   <section id="resultCard" class="card" style="display:none;">
     <div class="result-hero">
@@ -422,7 +432,7 @@
         if(!grouped.has(sku)) grouped.set(sku,[]);
         grouped.get(sku).push(record);
       }
-      const records=[], map=new Map(), duplicates=[];
+      const records=[], map=new Map(), duplicates=[], autoResolved=[];
       grouped.forEach((options,sku)=>{
         const ranked=[...options].sort((a,b)=>{
           if(b._estimatedDailySales!==a._estimatedDailySales) return b._estimatedDailySales-a._estimatedDailySales;
@@ -430,13 +440,20 @@
           if(reorderDiff!==0) return reorderDiff;
           return a._sourceIndex-b._sourceIndex;
         });
-        const defaultChoice=ranked[0]._choiceId;
+        const dominant=options.find(candidate=>options.every(other=>other===candidate||(
+          candidate._estimatedDailySales>other._estimatedDailySales&&toNumber(candidate['可售庫存'])>toNumber(other['可售庫存'])
+        )));
+        const defaultChoice=(dominant||ranked[0])._choiceId;
         const requested=String(selections[sku]??defaultChoice);
         const selected=options.find(option=>option._choiceId===requested)||ranked[0];
         records.push(selected); map.set(sku,selected);
-        if(options.length>1) duplicates.push({id:`helium-${sku}`,kind:'helium-duplicate',source:'Helium 10',sku,options,defaultChoice});
+        if(options.length>1){
+          const item={id:`helium-${sku}`,kind:'helium-duplicate',source:'Helium 10',sku,options,defaultChoice};
+          if(dominant) autoResolved.push({...item,kind:'helium-auto',selected:dominant});
+          else duplicates.push(item);
+        }
       });
-      return {records,map,duplicates,rawRecordCount};
+      return {records,map,duplicates,autoResolved,rawRecordCount};
     }
     function isExpiryHeader(h){ const n=normalizeHeader(h); return n==='expire'||n==='expiry'||n==='expiration'||n==='效期'||n==='有效期限'||n==='到期日'||n.includes('expire'); }
     function isQtyHeader(h){ const n=normalizeHeader(h); return n==='qty'||n==='quantity'||n==='數量'||n==='数量'; }
@@ -836,17 +853,14 @@ async function run(){
         button.appendChild(top);
         const metrics=createIssueElement('div','option-metrics');
         appendMetric(metrics,'估算日銷',`${formatDailySales(option._estimatedDailySales)}／天`);
-        appendMetric(metrics,'供貨天數',option['供貨天數']);
-        appendMetric(metrics,'補貨數量',option['補貨數量']);
         appendMetric(metrics,'可售庫存',option['可售庫存']);
         appendMetric(metrics,'Inbound',option['入項']);
-        appendMetric(metrics,'狀態',option._status||'—');
         button.appendChild(metrics); options.appendChild(button);
       });
       choiceCell.appendChild(options);
       const selected=decision.options.find(option=>option._choiceId===selectedId)||decision.options.find(option=>option._choiceId===decision.defaultChoice)||decision.options[0];
       currentCell.appendChild(createIssueElement('strong','',`CSV 第 ${selected._sourceRow} 列`));
-      currentCell.appendChild(createIssueElement('span','',`估算日銷 ${formatDailySales(selected._estimatedDailySales)}／天 · 補貨 ${compactValue(selected['補貨數量'])}`));
+      currentCell.appendChild(createIssueElement('span','',`估算日銷 ${formatDailySales(selected._estimatedDailySales)}／天 · 可售 ${compactValue(selected['可售庫存'])} · Inbound ${compactValue(selected['入項'])}`));
       currentCell.appendChild(createIssueElement('span',`issue-handling ${selected._choiceId===decision.defaultChoice?'default':'manual'}`,selected._choiceId===decision.defaultChoice?'系統速度預選':'手動選擇'));
     }
     function renderInventoryOption(decision,option,selected){
@@ -888,7 +902,7 @@ async function run(){
       $('issueCount').textContent=`${items.length} 項`;
       if(decisionCount) summary.appendChild(createIssueElement('span','issue-summary-pill choice',`${decisionCount} 項已套用預選，可點選切換`));
       if(diagnosticCount) summary.appendChild(createIssueElement('span','issue-summary-pill warning',`${diagnosticCount} 項資料提醒`));
-      if(items.some(item=>item.kind==='helium-duplicate')) summary.appendChild(createIssueElement('span','issue-summary-pill','H10 速度＝可售庫存 ÷ 供貨天數'));
+      if(items.some(item=>item.kind==='helium-duplicate')) summary.appendChild(createIssueElement('span','issue-summary-pill','日銷與可售庫存無法同時判定較優者'));
       items.forEach(item=>{
         const row=document.createElement('tr'), typeCell=document.createElement('td'), locationCell=createIssueElement('td','issue-location'), choiceCell=document.createElement('td'), currentCell=createIssueElement('td','issue-current');
         const isDiagnostic=item.kind==='diagnostic';
@@ -896,7 +910,6 @@ async function run(){
         locationCell.appendChild(createIssueElement('strong','',item.sku||'—'));
         locationCell.appendChild(createIssueElement('span','',item.location||(item.kind==='helium-duplicate'?'Helium CSV · 同 SKU 多列':'Inventory Excel · 同 SKU 多列')));
         if(item.kind==='helium-duplicate'){
-          const product=item.options[0]?._product; if(product) locationCell.appendChild(createIssueElement('span','',product));
           renderHeliumDecision(item,choiceCell,currentCell);
         }else if(item.kind==='inventory-duplicate') renderInventoryDecision(item,choiceCell,currentCell);
         else{
@@ -906,6 +919,26 @@ async function run(){
         }
         row.append(typeCell,locationCell,choiceCell,currentCell); body.appendChild(row);
       });
+    }
+    function renderPreflightNotes(){
+      const notes=[...(preflightChecks.helium.notes||[]),...(preflightChecks.inventory.notes||[])];
+      const details=$('preflightNotes'), body=$('preflightNotesBody');
+      details.hidden=notes.length===0; body.innerHTML=''; $('preflightNotesCount').textContent=`${notes.length} 項`;
+      if(!notes.length){ details.open=false; return; }
+      const autoItems=notes.filter(note=>note.kind==='helium-auto'), fileItems=notes.filter(note=>note.kind!=='helium-auto');
+      if(autoItems.length){
+        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷與可售庫存都明確較高，系統已直接採用，不需要人工選擇。'));
+        const wrap=createIssueElement('div','auto-note-table-wrap'), table=createIssueElement('table','auto-note-table');
+        table.innerHTML='<thead><tr><th>SKU</th><th>自動採用</th><th>估算日銷</th><th>可售庫存</th><th>Inbound</th></tr></thead>';
+        const tbody=document.createElement('tbody');
+        autoItems.forEach(note=>{
+          const selected=note.selected, row=document.createElement('tr');
+          [note.sku,`CSV 第 ${selected._sourceRow} 列`,`${formatDailySales(selected._estimatedDailySales)}／天`,compactValue(selected['可售庫存']),compactValue(selected['入項'])].forEach(value=>row.appendChild(createIssueElement('td','',value)));
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody); wrap.appendChild(table); body.appendChild(wrap);
+      }
+      fileItems.forEach(note=>body.appendChild(createIssueElement('div','file-note',note.text)));
     }
     function renderPreflight(){
       const helium=preflightChecks.helium, inventory=preflightChecks.inventory;
@@ -944,6 +977,7 @@ async function run(){
       }
       const warningBox=$('preflightWarnings'); warningBox.innerHTML=''; warningBox.classList.add('hidden');
       renderIssueCard(issues);
+      renderPreflightNotes();
       return {ready,issues,pair,decisionCount,diagnosticCount};
     }
     async function validateHeliumFile(file){
@@ -953,7 +987,7 @@ async function run(){
       const diagnostics=[];
       const stale=freshnessWarning(file,'Helium 建議檔',3);
       if(stale) diagnostics.push({id:'helium-file-age',kind:'diagnostic',label:'檔案日期',source:'Helium 10',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      return {rows,skus,warnings:[],decisions:parsed.duplicates,diagnostics,detail:`${skus.size} 個 SKU · ${parsed.rawRecordCount} 筆建議${parsed.duplicates.length?` · ${parsed.duplicates.length} 組待選`:''}`};
+      return {rows,skus,warnings:[],decisions:parsed.duplicates,diagnostics,notes:parsed.autoResolved,detail:`${skus.size} 個 SKU · ${parsed.rawRecordCount} 筆建議${parsed.duplicates.length?` · ${parsed.duplicates.length} 組待選`:''}`};
     }
     async function validateInventoryFile(file){
       const rows=await readWorkbookFirstSheetAsRows(file);
@@ -996,7 +1030,7 @@ async function run(){
       groups.forEach((options,sku)=>{ if(options.length>1) decisions.push({id:`inventory-${sku}`,kind:'inventory-duplicate',source:'Inventory',sku,options,defaultChoice:'all',location:`Excel 第 ${options.map(option=>option._sourceRow).join('、')} 列`}); });
       const stale=freshnessWarning(file,'Inventory Excel',7);
       if(stale) diagnostics.push({id:'inventory-file-age',kind:'diagnostic',label:'檔案日期',source:'Inventory',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      return {rows,skus,warnings:[],decisions,diagnostics,detail:`${skus.size} 個 SKU · ${cols.expiryPairs.length} 組效期欄位${decisions.length?` · ${decisions.length} 組待選`:''}`};
+      return {rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',text:`Inventory 已辨識 ${cols.expiryPairs.length} 組 EXPIRE／QTY 效期欄位。`}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}`};
     }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
