@@ -143,12 +143,13 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU&#9;CTN&#9;Quantity&#9;EXPIRE&#10;ATS01&#9;94&#9;8460&#9;9/27"></textarea><span class="field-help">會自動帶入「入庫計畫」的四欄資料；仍可在這裡修改，Quantity 會顯示在 CTN 右側。</span>
       <div class="tool-grid-3" style="margin-top:12px">
         <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /><span class="field-help">會優先帶入「FBA 整理」讀到的日期，仍需在下方勾選確認。</span></div>
-        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /><span class="field-help">會帶入「FBA 整理」的車數；僅接受 1–99 的正整數。</span></div>
-        <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" /></div>
+        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" max="99" step="1" placeholder="例如：5" /><span class="field-help">只有本批次 FBA 整理完成後才會自動帶入；僅接受 1–99 的正整數。</span></div>
+        <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" data-preserve-on-new-batch /></div>
       </div>
+      <div id="workspaceSource" class="workspace-source warn" aria-live="polite">正在確認本批次資料來源…</div>
       <div class="confirm-panel">
         <label class="confirm-check"><input id="confirmPickup" type="checkbox" /> <span>我已確認 Pickup Date 是正確日期：<strong id="pickupConfirmText">尚未選擇</strong></span></label>
-        <label class="confirm-check"><input id="confirmTrucks" type="checkbox" /> <span>我已確認本次貨件分成 <strong id="truckConfirmText">5</strong> 車。</span></label>
+        <label class="confirm-check"><input id="confirmTrucks" type="checkbox" /> <span>我已確認本次貨件分成 <strong id="truckConfirmText">尚未填寫</strong> 車。</span></label>
       </div>
       <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
@@ -161,8 +162,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   const $ = id => document.getElementById(id);
   const escapeHtml = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
   const parsePositiveInteger = (value, label) => { const raw=String(value??'').trim(); const number=Number(raw); if(!/^\d+$/.test(raw)||!Number.isInteger(number)||number<1) throw new Error(`${label}必須是正整數。`); return number; };
-  const toIsoDate = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-  const now = new Date(); let offset = (5-now.getDay()+7)%7; if(offset===0||offset===1) offset+=7; now.setDate(now.getDate()+offset); $('pickupDate').value=toIsoDate(now);
   let emailHtml = '';
   function resetConfirmation(kind) { if(kind==='date') $('confirmPickup').checked=false; else $('confirmTrucks').checked=false; updateConfirmationLabels(); }
   function updateConfirmationLabels() { $('pickupConfirmText').textContent=$('pickupDate').value||'尚未選擇'; $('truckConfirmText').textContent=$('truckCount').value||'尚未填寫'; }

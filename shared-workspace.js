@@ -2,29 +2,71 @@
   const PAGE = location.pathname.split('/').pop() || 'index.html';
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
+  const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
+  const SORTER_DB = 'fba-workspace';
   let isClearing = false;
+
+  const makeId = () => globalThis.crypto?.randomUUID?.()
+    || `batch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const readJson = (key, fallback = null) => {
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
+    catch { return fallback; }
+  };
+
+  const ensureBatchMeta = () => {
+    const existing = readJson(BATCH_META_KEY);
+    if (existing?.id) return existing;
+    const meta = { id: makeId(), createdAt: Date.now(), updatedAt: Date.now() };
+    localStorage.setItem(BATCH_META_KEY, JSON.stringify(meta));
+    return meta;
+  };
+
+  const batchMeta = ensureBatchMeta();
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
     .filter(el => el.id && !el.matches('[data-no-persist]'));
   const read = el => (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
   const write = (el, value) => {
-    if(el.type === 'checkbox' || el.type === 'radio') el.checked = Boolean(value);
+    if (el.type === 'checkbox' || el.type === 'radio') el.checked = Boolean(value);
     else el.value = value ?? '';
   };
+
   const save = () => {
     const state = {};
     fields().forEach(el => { state[el.id] = read(el); });
-    localStorage.setItem(FORM_KEY, JSON.stringify(state));
+    localStorage.setItem(FORM_KEY, JSON.stringify({ batchId: batchMeta.id, state, updatedAt: Date.now() }));
     const inbound = document.getElementById('pasteInput');
-    if(inbound) localStorage.setItem(SHARED_INBOUND_KEY, inbound.value);
+    if (inbound) {
+      localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({
+        batchId: batchMeta.id,
+        value: inbound.value,
+        updatedAt: Date.now()
+      }));
+    }
+    batchMeta.updatedAt = Date.now();
+    localStorage.setItem(BATCH_META_KEY, JSON.stringify(batchMeta));
   };
 
   const clearCurrentPage = () => {
-    fields().forEach(el => write(el, el.type === 'checkbox' || el.type === 'radio' ? false : ''));
+    fields().forEach(el => {
+      if (!el.matches('[data-preserve-on-new-batch]')) {
+        write(el, el.type === 'checkbox' || el.type === 'radio' ? false : '');
+      }
+    });
     document.querySelectorAll('input[type="file"]').forEach(el => { el.value = ''; });
   };
+
+  const deleteSorterDatabase = () => new Promise(resolve => {
+    if (!globalThis.indexedDB) return resolve();
+    const request = indexedDB.deleteDatabase(SORTER_DB);
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    request.onblocked = () => resolve();
+  });
 
   const reloadAfterClear = () => {
     isClearing = true;
@@ -32,50 +74,96 @@
     location.reload();
   };
 
-  const clearWorkspace = () => {
-    if(!window.confirm('確定要清除所有已儲存的入庫計畫資料嗎？此動作無法復原。')) return;
+  const startNewBatch = async () => {
+    if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
+    isClearing = true;
     Object.keys(localStorage)
       .filter(key => key.startsWith('fba-workspace:'))
       .forEach(key => localStorage.removeItem(key));
-    const clearAt = String(Date.now());
-    localStorage.setItem(CLEAR_KEY, clearAt);
+    await deleteSorterDatabase();
+    localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
   };
 
-  document.getElementById('clearWorkspaceBtn')?.addEventListener('click', clearWorkspace);
+  const ensureResetButton = () => {
+    let button = document.getElementById('clearWorkspaceBtn');
+    if (!button) {
+      const header = document.querySelector('.header-inner');
+      if (!header) return null;
+      button = document.createElement('button');
+      button.id = 'clearWorkspaceBtn';
+      button.className = 'clear-workspace';
+      button.type = 'button';
+      button.textContent = '開始新批次';
+      header.appendChild(button);
+    } else {
+      button.textContent = '開始新批次';
+    }
+    return button;
+  };
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .clear-workspace{appearance:none;border:0;cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#fff0f1;color:#d70015;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
+    .clear-workspace:hover{background:#ffe3e5;transform:translateY(-1px)}
+    .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
+    .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
+    @media(max-width:860px){.header-inner{position:relative}.clear-workspace{position:absolute;right:18px;top:15px}.top-tabs{padding-right:0}}
+  `;
+  document.head.appendChild(style);
+  ensureResetButton()?.addEventListener('click', startNewBatch);
+
   window.addEventListener('storage', event => {
-    if(event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
+    if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
   });
 
   const latestClear = localStorage.getItem(CLEAR_KEY);
-  if(latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear){
+  if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
     sessionStorage.setItem(SEEN_CLEAR_KEY, latestClear);
     clearCurrentPage();
   }
 
-  let state = {};
-  try { state = JSON.parse(localStorage.getItem(FORM_KEY) || '{}'); } catch {}
+  const savedForm = readJson(FORM_KEY, {});
+  const savedState = savedForm?.batchId
+    ? (savedForm.batchId === batchMeta.id ? savedForm.state || {} : {})
+    : savedForm; // 舊版本資料只在首次升級時沿用，之後會存成有 batchId 的格式。
   fields().forEach(el => {
-    if(Object.prototype.hasOwnProperty.call(state, el.id)) write(el, state[el.id]);
+    if (Object.prototype.hasOwnProperty.call(savedState || {}, el.id)) write(el, savedState[el.id]);
   });
 
-  // 入庫計畫是出貨通知的共同資料來源；第一次開啟通知時直接帶入。
   const emailData = document.getElementById('emailData');
-  const sharedInbound = localStorage.getItem(SHARED_INBOUND_KEY);
-  if(emailData && sharedInbound?.trim()) emailData.value = sharedInbound;
-  if(emailData){
-    try {
-      const summary = JSON.parse(localStorage.getItem('fba-workspace:sorter-summary') || 'null');
-      if(summary?.pickupDate) document.getElementById('pickupDate').value = summary.pickupDate;
-      if(Number.isInteger(summary?.truckCount) && summary.truckCount > 0) document.getElementById('truckCount').value = summary.truckCount;
-    } catch {}
+  const sharedInbound = readJson(SHARED_INBOUND_KEY);
+  if (emailData && sharedInbound?.batchId === batchMeta.id && sharedInbound.value?.trim()) {
+    emailData.value = sharedInbound.value;
+  } else if (emailData && typeof localStorage.getItem(SHARED_INBOUND_KEY) === 'string') {
+    const legacy = localStorage.getItem(SHARED_INBOUND_KEY) || '';
+    if (legacy.trim() && !legacy.trim().startsWith('{')) emailData.value = legacy;
+  }
+
+  if (emailData) {
+    const source = document.getElementById('workspaceSource');
+    const summary = readJson(SORTER_SUMMARY_KEY);
+    const current = summary?.batchId === batchMeta.id;
+    if (current && summary?.pickupDate && Number.isInteger(summary?.truckCount) && summary.truckCount > 0) {
+      document.getElementById('pickupDate').value = summary.pickupDate;
+      document.getElementById('truckCount').value = summary.truckCount;
+      if (source) {
+        const time = summary.updatedAt ? new Date(summary.updatedAt).toLocaleString('zh-TW', { hour12: false }) : '時間不明';
+        const ids = Array.isArray(summary.shipmentIds) && summary.shipmentIds.length ? ` · ${summary.shipmentIds.join('、')}` : '';
+        source.className = 'workspace-source ok';
+        source.textContent = `已帶入本批次 FBA 整理摘要：${summary.pickupDate} · ${summary.truckCount} 車${ids} · 更新 ${time}`;
+      }
+    } else if (source) {
+      source.className = 'workspace-source warn';
+      source.textContent = '尚未取得本批次的 FBA 整理摘要；請先完成 FBA 整理，或手動填寫日期與車數後再次確認。';
+    }
   }
 
   fields().forEach(el => {
     el.addEventListener('input', save);
     el.addEventListener('change', save);
   });
-  // 讓各頁既有的預覽/確認狀態依還原後的內容重新計算。
-  fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles:true })));
-  window.addEventListener('pagehide', () => { if(!isClearing) save(); });
+  fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+  window.addEventListener('pagehide', () => { if (!isClearing) save(); });
+  window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
 })();
