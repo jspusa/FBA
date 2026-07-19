@@ -1,4 +1,23 @@
-/* Shared header layout for every FBA workflow page. */
+/* Shared typography and header layout for every FBA workflow page. */
+:root{
+  --workspace-font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Noto Sans TC",Arial,sans-serif;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--workspace-font)!important;
+  font-size:14px!important;
+  line-height:1.5;
+}
+button,input,textarea,select{
+  font-family:var(--workspace-font)!important;
+  font-size:14px!important;
+  line-height:1.35;
+}
+.page-hero h1,.hero h1{font-family:var(--workspace-font)!important}
+.card>h2,.tool-card>h2{font-family:var(--workspace-font)!important;font-size:22px!important;line-height:1.25!important;letter-spacing:-.02em}
+.tool-table-wrap th,.tool-table-wrap td,.preview th,.preview td{font-family:var(--workspace-font)!important;font-size:12px}
+.field-help,.hint,.note{line-height:1.5}
+
 .app-header .header-inner{
   display:grid!important;
   grid-template-columns:minmax(210px,1fr) auto minmax(210px,1fr)!important;
