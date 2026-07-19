@@ -2,6 +2,9 @@
   const PAGE = location.pathname.split('/').pop() || 'index.html';
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
+  const CLEAR_KEY = 'fba-workspace:clear-at';
+  const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
+  let isClearing = false;
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
     .filter(el => el.id && !el.matches('[data-no-persist]'));
@@ -17,6 +20,38 @@
     const inbound = document.getElementById('pasteInput');
     if(inbound) localStorage.setItem(SHARED_INBOUND_KEY, inbound.value);
   };
+
+  const clearCurrentPage = () => {
+    fields().forEach(el => write(el, el.type === 'checkbox' || el.type === 'radio' ? false : ''));
+    document.querySelectorAll('input[type="file"]').forEach(el => { el.value = ''; });
+  };
+
+  const reloadAfterClear = () => {
+    isClearing = true;
+    clearCurrentPage();
+    location.reload();
+  };
+
+  const clearWorkspace = () => {
+    if(!window.confirm('確定要清除所有已儲存的入庫計畫資料嗎？此動作無法復原。')) return;
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('fba-workspace:'))
+      .forEach(key => localStorage.removeItem(key));
+    const clearAt = String(Date.now());
+    localStorage.setItem(CLEAR_KEY, clearAt);
+    reloadAfterClear();
+  };
+
+  document.getElementById('clearWorkspaceBtn')?.addEventListener('click', clearWorkspace);
+  window.addEventListener('storage', event => {
+    if(event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
+  });
+
+  const latestClear = localStorage.getItem(CLEAR_KEY);
+  if(latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear){
+    sessionStorage.setItem(SEEN_CLEAR_KEY, latestClear);
+    clearCurrentPage();
+  }
 
   let state = {};
   try { state = JSON.parse(localStorage.getItem(FORM_KEY) || '{}'); } catch {}
@@ -42,5 +77,5 @@
   });
   // 讓各頁既有的預覽/確認狀態依還原後的內容重新計算。
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles:true })));
-  window.addEventListener('pagehide', save);
+  window.addEventListener('pagehide', () => { if(!isClearing) save(); });
 })();
