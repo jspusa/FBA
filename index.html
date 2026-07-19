@@ -440,10 +440,15 @@
           if(reorderDiff!==0) return reorderDiff;
           return a._sourceIndex-b._sourceIndex;
         });
-        const dominant=options.find(candidate=>options.every(other=>other===candidate||(
-          candidate._estimatedDailySales>other._estimatedDailySales&&toNumber(candidate['可售庫存'])>toNumber(other['可售庫存'])
-        )));
-        const defaultChoice=(dominant||ranked[0])._choiceId;
+        const comparisonValues=option=>[option._estimatedDailySales,toNumber(option['可售庫存']),toNumber(option['入項'])];
+        options.forEach(candidate=>{
+          const values=comparisonValues(candidate);
+          candidate._comparisonWins=values.reduce((wins,value,metricIndex)=>wins+(options.every(other=>other===candidate||value>comparisonValues(other)[metricIndex])?1:0),0);
+        });
+        const dominant=options.find(candidate=>candidate._comparisonWins===3);
+        const maxWins=Math.max(...options.map(option=>option._comparisonWins));
+        const defaultOption=dominant||ranked.find(option=>option._comparisonWins===maxWins)||ranked[0];
+        const defaultChoice=defaultOption._choiceId;
         const requested=String(selections[sku]??defaultChoice);
         const selected=options.find(option=>option._choiceId===requested)||ranked[0];
         records.push(selected); map.set(sku,selected);
@@ -849,7 +854,7 @@ async function run(){
         const button=makeChoiceButton('helium',decision.sku,option._choiceId,selected,`${decision.sku} 採用 CSV 第 ${option._sourceRow} 列`);
         const top=createIssueElement('div','option-top'), title=createIssueElement('strong','',`CSV 第 ${option._sourceRow} 列`);
         top.appendChild(title);
-        if(option._choiceId===decision.defaultChoice) top.appendChild(createIssueElement('span','recommended-tag','速度預選'));
+        if(option._choiceId===decision.defaultChoice) top.appendChild(createIssueElement('span','recommended-tag',`${option._comparisonWins}/3 項預選`));
         button.appendChild(top);
         const metrics=createIssueElement('div','option-metrics');
         appendMetric(metrics,'估算日銷',`${formatDailySales(option._estimatedDailySales)}／天`);
@@ -861,7 +866,7 @@ async function run(){
       const selected=decision.options.find(option=>option._choiceId===selectedId)||decision.options.find(option=>option._choiceId===decision.defaultChoice)||decision.options[0];
       currentCell.appendChild(createIssueElement('strong','',`CSV 第 ${selected._sourceRow} 列`));
       currentCell.appendChild(createIssueElement('span','',`估算日銷 ${formatDailySales(selected._estimatedDailySales)}／天 · 可售 ${compactValue(selected['可售庫存'])} · Inbound ${compactValue(selected['入項'])}`));
-      currentCell.appendChild(createIssueElement('span',`issue-handling ${selected._choiceId===decision.defaultChoice?'default':'manual'}`,selected._choiceId===decision.defaultChoice?'系統速度預選':'手動選擇'));
+      currentCell.appendChild(createIssueElement('span',`issue-handling ${selected._choiceId===decision.defaultChoice?'default':'manual'}`,selected._choiceId===decision.defaultChoice?'系統多數預選':'手動選擇'));
     }
     function renderInventoryOption(decision,option,selected){
       const button=makeChoiceButton('inventory',decision.sku,option._choiceId,selected,`${decision.sku} 只採用 Excel 第 ${option._sourceRow} 列`);
@@ -902,7 +907,7 @@ async function run(){
       $('issueCount').textContent=`${items.length} 項`;
       if(decisionCount) summary.appendChild(createIssueElement('span','issue-summary-pill choice',`${decisionCount} 項已套用預選，可點選切換`));
       if(diagnosticCount) summary.appendChild(createIssueElement('span','issue-summary-pill warning',`${diagnosticCount} 項資料提醒`));
-      if(items.some(item=>item.kind==='helium-duplicate')) summary.appendChild(createIssueElement('span','issue-summary-pill','日銷與可售庫存無法同時判定較優者'));
+      if(items.some(item=>item.kind==='helium-duplicate')) summary.appendChild(createIssueElement('span','issue-summary-pill','三項未全勝，依勝出較多項預選'));
       items.forEach(item=>{
         const row=document.createElement('tr'), typeCell=document.createElement('td'), locationCell=createIssueElement('td','issue-location'), choiceCell=document.createElement('td'), currentCell=createIssueElement('td','issue-current');
         const isDiagnostic=item.kind==='diagnostic';
@@ -927,7 +932,7 @@ async function run(){
       if(!notes.length){ details.open=false; return; }
       const autoItems=notes.filter(note=>note.kind==='helium-auto'), fileItems=notes.filter(note=>note.kind!=='helium-auto');
       if(autoItems.length){
-        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷與可售庫存都明確較高，系統已直接採用，不需要人工選擇。'));
+        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷、可售庫存與 Inbound 三項都明確較高，系統已直接採用，不需要人工選擇。'));
         const wrap=createIssueElement('div','auto-note-table-wrap'), table=createIssueElement('table','auto-note-table');
         table.innerHTML='<thead><tr><th>SKU</th><th>自動採用</th><th>估算日銷</th><th>可售庫存</th><th>Inbound</th></tr></thead>';
         const tbody=document.createElement('tbody');
@@ -987,7 +992,7 @@ async function run(){
       const diagnostics=[];
       const stale=freshnessWarning(file,'Helium 建議檔',3);
       if(stale) diagnostics.push({id:'helium-file-age',kind:'diagnostic',label:'檔案日期',source:'Helium 10',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      return {rows,skus,warnings:[],decisions:parsed.duplicates,diagnostics,notes:parsed.autoResolved,detail:`${skus.size} 個 SKU · ${parsed.rawRecordCount} 筆建議${parsed.duplicates.length?` · ${parsed.duplicates.length} 組待選`:''}`};
+      return {rows,skus,warnings:[],decisions:parsed.duplicates,diagnostics,notes:parsed.autoResolved,detail:`${skus.size} 個 SKU${parsed.duplicates.length?` · ${parsed.duplicates.length} 組待選`:''}`};
     }
     async function validateInventoryFile(file){
       const rows=await readWorkbookFirstSheetAsRows(file);
