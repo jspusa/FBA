@@ -9,9 +9,24 @@ const htmlFiles = ['index.html', 'inbound-plan.html', 'shipment.html', 'sorter.h
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('all workflow pages load shared workspace behavior', () => {
+  const expectedTabs = ['補貨整合', '入庫計畫', '棧板擷取', 'FBA 整理', '出貨通知'];
   for (const file of htmlFiles) {
-    assert.match(read(file), /<script src="shared-workspace\.js"><\/script>/, file);
+    const source = read(file);
+    assert.match(source, /<script src="shared-workspace\.js"><\/script>/, file);
+    assert.match(source, /<link rel="stylesheet" href="workspace-shell\.css"\s*\/>/, file);
+    assert.match(source, /id="clearWorkspaceBtn"/, file);
+    assert.equal((source.match(/aria-current="page"/g) || []).length, 1, file);
+    const nav = source.match(/<nav class="top-tabs"[\s\S]*?<\/nav>/)?.[0] || '';
+    assert.deepEqual([...nav.matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map(match => match[1]), expectedTabs, file);
   }
+});
+
+test('shared header keeps navigation centered and reset action green', () => {
+  const source = read('workspace-shell.css');
+  assert.match(source, /grid-template-columns:minmax\(210px,1fr\) auto minmax\(210px,1fr\)/);
+  assert.match(source, /justify-self:center/);
+  assert.match(source, /background:#e8f7ed!important/);
+  assert.match(source, /color:#176b2c!important/);
 });
 
 test('workspace reset clears localStorage and IndexedDB', () => {

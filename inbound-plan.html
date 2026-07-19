@@ -47,8 +47,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 @media(max-width:860px){.header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}main{padding:38px 16px 56px!important}.brand-copy span{display:none}.tool-grid-3{grid-template-columns:1fr!important}}
 
 .extra-trigger{top:82px}
-</style></head>
-<body><header class="app-header"><div class="header-inner"><div class="brand"><div class="brand-mark">J</div><div class="brand-copy"><strong>補貨工作台</strong><span>Jasper Pet Care Products, Inc.</span></div></div><nav class="top-tabs" aria-label="功能選單"><a class="top-tab" href="index.html">補貨整合</a><a class="top-tab active" href="inbound-plan.html">入庫計畫</a><a class="top-tab" href="shipment.html">棧板擷取</a><a class="top-tab" href="sorter.html">FBA 整理</a><a class="top-tab" href="email.html">出貨通知</a></nav></div></header>
+</style><link rel="stylesheet" href="workspace-shell.css" /></head>
+<body><header class="app-header"><div class="header-inner"><div class="brand"><div class="brand-mark">J</div><div class="brand-copy"><strong>補貨工作台</strong><span>Jasper Pet Care Products, Inc.</span></div></div><nav class="top-tabs" aria-label="功能選單"><a class="top-tab" href="index.html">補貨整合</a><a class="top-tab active" href="inbound-plan.html" aria-current="page">入庫計畫</a><a class="top-tab" href="shipment.html">棧板擷取</a><a class="top-tab" href="sorter.html">FBA 整理</a><a class="top-tab" href="email.html">出貨通知</a></nav><button id="clearWorkspaceBtn" class="clear-workspace" type="button">開始新批次</button></div></header>
 <button class="extra-trigger" type="button" onclick="toggleExtraDrawer(true)">⚙ 額外功能</button>
 <div id="drawerBackdrop" class="drawer-backdrop" onclick="toggleExtraDrawer(false)"></div>
 <aside id="extraDrawer" class="extra-drawer" aria-hidden="true">
