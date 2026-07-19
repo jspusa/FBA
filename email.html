@@ -140,10 +140,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     <div class="tool-card">
       <h2>出貨通知信件產生器</h2>
       <label for="emailData">貼上 SKU 資料</label>
-      <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU&#9;CTN&#9;Quantity&#9;EXPIRE&#10;ATS01&#9;94&#9;8460&#9;9/27"></textarea><span class="field-help">可直接貼上「② 入庫計畫模板」使用的四欄資料；Quantity 會顯示在 CTN 右側。</span>
+      <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU&#9;CTN&#9;Quantity&#9;EXPIRE&#10;ATS01&#9;94&#9;8460&#9;9/27"></textarea><span class="field-help">會自動帶入「入庫計畫」的四欄資料；仍可在這裡修改，Quantity 會顯示在 CTN 右側。</span>
       <div class="tool-grid-3" style="margin-top:12px">
-        <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /><span class="field-help">選好後仍需在下方勾選確認。</span></div>
-        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /><span class="field-help">僅接受 1–99 的正整數。</span></div>
+        <div><label for="pickupDate">Pickup Date</label><input id="pickupDate" type="date" /><span class="field-help">會優先帶入「FBA 整理」讀到的日期，仍需在下方勾選確認。</span></div>
+        <div><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" step="1" value="5" /><span class="field-help">會帶入「FBA 整理」的車數；僅接受 1–99 的正整數。</span></div>
         <div><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" /></div>
       </div>
       <div class="confirm-panel">
@@ -188,5 +188,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('copyRichEmailBtn').addEventListener('click', async()=>{ if(!emailHtml)return; const div=document.createElement('div');div.innerHTML=emailHtml; await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([div.textContent],{type:'text/plain'}),'text/html':new Blob([emailHtml],{type:'text/html'})})]);$('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; });
 })();
 </script>
+<script src="shared-workspace.js"></script>
 </body>
 </html>

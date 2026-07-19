@@ -359,6 +359,25 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <script>
 // folders: Map<folderName, { ids:Set<string>, files, hashes, analyses }>
   const folders = new Map();
+  const SORTER_DB = 'fba-workspace';
+  let restoringWorkspace = true;
+  let persistTimer = 0;
+  function openWorkspaceDb(){
+    return new Promise((resolve,reject)=>{const request=indexedDB.open(SORTER_DB,1);request.onupgradeneeded=()=>request.result.createObjectStore('sorter');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});
+  }
+  async function persistWorkspace(){
+    if(restoringWorkspace) return;
+    const records=[...folders.entries()].map(([folderName,meta])=>({folderName,ids:[...meta.ids],files:[...meta.files],hashes:[...meta.hashes],analyses:[...meta.analyses]}));
+    const db=await openWorkspaceDb();const tx=db.transaction('sorter','readwrite');tx.objectStore('sorter').put({records,batchStats},'current');
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();
+  }
+  function scheduleWorkspaceSave(){clearTimeout(persistTimer);persistTimer=setTimeout(()=>persistWorkspace().catch(console.error),150)}
+  async function restoreWorkspace(){
+    try{const db=await openWorkspaceDb();const tx=db.transaction('sorter');const request=tx.objectStore('sorter').get('current');const saved=await new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close();
+      if(saved?.records?.length){folders.clear();saved.records.forEach(r=>folders.set(r.folderName,{ids:new Set(r.ids),files:new Map(r.files),hashes:new Map(r.hashes),analyses:new Map(r.analyses)}));batchStats=saved.batchStats||batchStats;}
+    }catch(error){console.warn('無法還原 FBA 整理工作階段',error)}
+    restoringWorkspace=false;refreshAliasTable();refreshTree();refreshExportState();
+  }
   let batchStats = { input:0, added:0, duplicate:0, unknown:0 };
   const els = {
     pageSorter: document.getElementById('page-sorter'),
@@ -955,6 +974,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const dateText = allDatesRead ? dates[0].replaceAll('-','/') : (dates.length > 1 ? `不一致：${dates.join('、')}` : '—');
     const totalCartons = audits.reduce((sum,a)=>sum + (Number.isFinite(a.preferredCartons) ? a.preferredCartons : 0),0);
     els.shipmentSummaryBody.innerHTML = `<tr><td>${escapeHtml(dateText)}</td><td>${audits.length} 車</td><td>${totalCartons.toLocaleString('en-US')} 箱</td></tr>`;
+    if(allDatesRead) localStorage.setItem('fba-workspace:sorter-summary',JSON.stringify({pickupDate:dates[0],truckCount:audits.length,totalCartons,updatedAt:Date.now()}));
   }
 
   function hideExportWarningPanel(){
@@ -970,6 +990,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     els.btnExport.classList.remove('export-ready','export-warning');
     hideExportWarningPanel();
     renderOperationalSummary();
+    scheduleWorkspaceSave();
 
     if(count === 0){
       els.btnExport.textContent = '匯出 ZIP';
@@ -1534,6 +1555,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       setCollapsed(card, defaultCollapsedTitles.has(baseTitle));
     }
   })();
+  restoreWorkspace();
 </script>
+<script src="shared-workspace.js"></script>
 </body>
 </html>

@@ -649,5 +649,6 @@ async function run(){
     $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook){ XLSX.writeFile(state.workbook, state.filename, {compression:true}); setStatus(`已下載 ${state.filename}`,false,'ok'); } });
   })();
 </script>
+<script src="shared-workspace.js"></script>
 </body>
 </html>
