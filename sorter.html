@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FBA 檔案整理器</title>
+  <title>FBA 檔案整理器 - 自動辨識版</title>
   <style>
 :root {
       --bg:#f3f6fc;
@@ -126,6 +126,9 @@ body{margin:0!important;color:var(--text)!important;background:var(--page)!impor
 .top-tab:hover{background:rgba(255,255,255,.7)!important}.top-tab.active{color:#000!important;background:#fff!important;box-shadow:0 1px 4px rgba(0,0,0,.10)!important}
 main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!important}.page-hero{max-width:790px;margin:0 auto 34px;text-align:center}.page-hero h1{margin:0;font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-.045em}.page-hero p{margin:15px auto 0;color:var(--muted);font-size:17px;line-height:1.55}
 .card,.tool-card{background:var(--surface)!important;border:1px solid rgba(0,0,0,.06)!important;border-radius:28px!important;box-shadow:var(--shadow)!important;padding:26px!important}
+.auto-detect-card{background:linear-gradient(145deg,#e8f8ed 0%,#f3fbf5 100%)!important;border:2px solid rgba(36,138,61,.38)!important;box-shadow:0 20px 60px rgba(36,138,61,.14)!important}
+.auto-detect-card h2{color:#176f32}.auto-detect-card .pill{color:#176f32;background:#d8f1df;border-color:#9fd3ae;font-weight:700}
+.auto-detect-card .drop{background:rgba(255,255,255,.68);border-color:rgba(36,138,61,.55)}
 .btn,button{border-radius:999px!important}.btn.primary,.primary{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}.btn.primary:hover,.primary:hover{background:#0077ed!important}
 textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:14px!important;background:var(--surface-soft)!important;padding:12px!important;font:inherit}textarea:focus,input:focus,select:focus{outline:3px solid rgba(0,113,227,.16)!important;border-color:var(--blue)!important}
 .tool-table-wrap,.preview{border-radius:16px}.confirm-panel{margin-top:14px;padding:14px 16px;border-radius:16px;background:#f5faff;border:1px solid #d6eaff}.confirm-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.45}.confirm-check+.confirm-check{margin-top:10px}.confirm-check input{margin-top:2px;min-width:auto}.field-help{display:block;margin-top:5px;color:var(--muted);font-size:11px}
@@ -134,37 +137,17 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 </head>
 <body><header class="app-header"><div class="header-inner"><div class="brand"><div class="brand-mark">J</div><div class="brand-copy"><strong>補貨工作台</strong><span>Jasper Pet Care Products, Inc.</span></div></div><nav class="top-tabs" aria-label="功能選單"><a class="top-tab" href="index.html">補貨整合</a><a class="top-tab" href="inbound-plan.html">入庫計畫</a><a class="top-tab" href="shipment.html">棧板擷取</a><a class="top-tab active" href="sorter.html">FBA 整理</a><a class="top-tab" href="email.html">出貨通知</a></nav></div></header>
 <main>
-<section class="page-hero"><h1>FBA 檔案整理</h1><p>集中整理標籤、提單與 CSV，快速輸出完整資料夾。</p></section>
+<section class="page-hero"><h1>FBA 檔案整理</h1><p>所有檔案一次丟入，自動分辨包裝箱標籤、棧板標籤、提單與 CSV。</p></section>
 
-<section>
+<section id="page-sorter">
   <div class="stack">
-    <div class="card">
-      <h2>① 包裝箱標籤 <span class="pill">PDF</span></h2>
-      <div class="row" style="margin-bottom:10px;">
-        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
-      </div>
-      <div class="drop" id="dropPack">
-        <div class="row">
-          <div>
-            <div><b>提供「包裝箱標籤」PDF</b></div>
-            <div class="hint">這區請手動放包裝箱標籤；亦可按「選擇PDF大量選取」</div>
-          </div>
-          <div>
-            <label class="btn" for="inPack">選擇 PDF</label>
-            <input id="inPack" type="file" accept="application/pdf" multiple />
-          </div>
-        </div>
-        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>② 綜合檔案區 <span class="pill">自動分類（CSV / BOL / 其餘→Pallet）</span></h2>
+    <div class="card auto-detect-card">
+      <h2>① 全自動辨識區 <span class="pill">建議使用 · CSV / 包裝箱 / Pallet / BOL</span></h2>
       <div class="drop" id="dropMixed">
         <div class="row">
           <div>
-            <div><b>請丟 CSV、BOL、Pallet 檔案</b></div>
-            <div class="hint">CSV 進 CSV；PDF 若為 BILL OF LADING 進提單，其餘 PDF 一律進棧板標籤。</div>
+            <div><b>把同一批的 CSV 與全部 PDF 一次丟進來</b></div>
+            <div class="hint">程式會讀取 PDF 內容，自動分辨包裝箱標籤、棧板標籤與 BOL；無法確定的檔案會停止匯入並提醒你。</div>
           </div>
           <div>
             <label class="btn" for="inMixed">選擇檔案</label>
@@ -172,6 +155,26 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
           </div>
         </div>
         <div class="row"><div class="log" id="logMixed" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearMixed" type="button">清除此區紀錄</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>② 包裝箱標籤 <span class="pill">PDF</span></h2>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="hint">選「熱敏印刷 - 4x6英吋」</div>
+      </div>
+      <div class="drop" id="dropPack">
+        <div class="row">
+          <div>
+            <div><b>提供「包裝箱標籤」PDF</b></div>
+            <div class="hint">手動指定區：只有自動辨識無法確認時才需要使用。</div>
+          </div>
+          <div>
+            <label class="btn" for="inPack">選擇 PDF</label>
+            <input id="inPack" type="file" accept="application/pdf" multiple />
+          </div>
+        </div>
+        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
       </div>
     </div>
 
@@ -201,7 +204,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <div class="row">
           <div>
             <div><b>提供「棧板標籤」PDF</b></div>
-            <div class="hint">亦可按「選擇PDF大量選取」</div>
+            <div class="hint">手動指定區：只有自動辨識無法確認時才需要使用。</div>
           </div>
           <div>
             <label class="btn" for="inPallet">選擇 PDF</label>
@@ -221,7 +224,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <div class="row">
           <div>
             <div><b>提供「提單」PDF</b></div>
-            <div class="hint">亦可按「選擇PDF大量選取」</div>
+            <div class="hint">手動指定區：只有自動辨識無法確認時才需要使用。</div>
           </div>
           <div>
             <label class="btn" for="inBol">選擇 PDF</label>
@@ -262,7 +265,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         </div>
       </div>
       <div class="hint" style="margin-top:8px;">
-        建議：先丟 CSV 建好資料夾，再丟各種 PDF。若你先丟 PDF，也會自動建立資料夾（以 FBA 前綴命名）。
+        建議：把同一批的 CSV 與全部 PDF 一次丟進「① 全自動辨識區」。②、③、④、⑤保留作為手動指定區。
       </div>
     </div>
 
@@ -297,13 +300,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 </main>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
 // folders: Map<folderName, { ids:Set<string>, files: Map<filename, File> }>
   const folders = new Map();
-  // Track filenames that were explicitly added in ① 包裝箱標籤區
-  const packZoneOriginalNames = new Set();
-
   const els = {
     previewBody: document.getElementById('previewBody'),
     aliasPanel: document.getElementById('aliasPanel'),
@@ -341,79 +341,181 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     return baseName(filename).toUpperCase().startsWith('FBA');
   }
 
-  function classifyTextToPdfCategory(rawText){
-    const normalized = (rawText || '')
+  const PDF_CATEGORY_LABELS = {
+    pack: '包裝箱標籤',
+    pallet: '棧板標籤',
+    bol: '提單（BOL）',
+    unknown: '無法判定'
+  };
+
+  function normalizePdfText(rawText){
+    return (rawText || '')
       .replaceAll('＃', '#')
       .replace(/\s+/g, ' ')
+      .trim()
       .toUpperCase();
-    const compact = normalized.replace(/[^A-Z0-9#]/g, '');
-
-    if(normalized.includes('BILL OF LADING') || compact.includes('BILLOFLADING')) return 'bol';
-
-    const hasPalletKeyword =
-      /\bPALLET\b/.test(normalized) ||
-      /PALLET\s*#\s*:?\s*\d+\s*\/\s*\d+/.test(normalized) ||
-      /PALLET\s*#\s*:?\s*\d+\s*OF\s*\d+/.test(normalized) ||
-      /PALLET\s*(NO\.?|NUMBER)?\s*:?\s*\d+\s*(\/|OF)\s*\d+/.test(normalized) ||
-      normalized.includes('FBA-NEW / STICKERLESS') ||
-      normalized.includes('STICKERLESS') ||
-      compact.includes('PALLET#') ||
-      compact.includes('PALLETNO') ||
-      compact.includes('PALLETNUMBER');
-    if(hasPalletKeyword) return 'pallet';
-
-    const hasCartonLabelSignals =
-      normalized.includes('SINGLE SKU') ||
-      /\bQTY\b\s*\d+/.test(normalized) ||
-      /\bEXP\b\s*[A-Z]{3}/.test(normalized) ||
-      /FBA[A-Z0-9]+U\d{6}/.test(normalized);
-    if(hasCartonLabelSignals) return 'pack';
-
-    return 'pack';
   }
 
-  function classifyFilenameToPdfCategory(filename){
-    const upper = (filename || '').toUpperCase();
-    if(upper.includes('BOL') || upper.includes('BILL OF LADING')) return 'bol';
-    if(upper.includes('PALLET')) return 'pallet';
-    return 'pack';
+  function classifyTextToPdfCategory(rawText, filename = ''){
+    const normalized = normalizePdfText(rawText);
+    const compact = normalized.replace(/[^A-Z0-9#]/g, '');
+    const upperName = (filename || '').toUpperCase();
+    const scores = { bol: 0, pallet: 0, pack: 0 };
+    const reasons = { bol: [], pallet: [], pack: [] };
+
+    const add = (category, points, reason)=>{
+      scores[category] += points;
+      reasons[category].push(reason);
+    };
+
+    // BOL：使用文件抬頭與貨運欄位，避免被內文中的 Pallets 誤判。
+    if(/\bBILL\s+OF\s+LADING\b/.test(normalized) || compact.includes('BILLOFLADING')){
+      add('bol', 100, '出現 BILL OF LADING');
+    }
+    if(/\bBILL\s+OF\s+LADING\s+NUMBER\b/.test(normalized)) add('bol', 20, '出現 Bill of Lading Number');
+    if(/\bSCAC\b/.test(normalized)) add('bol', 8, '出現 SCAC');
+    if(/\bFREIGHT\s+CHARGE\s+TERMS\b/.test(normalized)) add('bol', 8, '出現 Freight Charge Terms');
+    if(/\bSHIPMENT\s+DETAILS\b/.test(normalized)) add('bol', 5, '出現 Shipment Details');
+
+    // 棧板標籤：Amazon 標籤會直接寫 Pallet #: 1/6，或 FBA-NEW / Stickerless。
+    const palletNumberPattern =
+      /PALLET\s*#?\s*:?\s*\d+\s*(?:\/|OF)\s*\d+/.test(normalized) ||
+      /PALLET#\d+(?:\/|OF)\d+/.test(compact);
+    if(palletNumberPattern) add('pallet', 100, '出現 Pallet 編號（例如 1/6）');
+    if(compact.includes('FBANEWSTICKERLESS')) add('pallet', 45, '出現 FBA-NEW / Stickerless');
+    else if(compact.includes('STICKERLESS')) add('pallet', 25, '出現 Stickerless');
+    if(/\bPALLET\s+(?:LABEL|NO\.?|NUMBER)\b/.test(normalized)) add('pallet', 20, '出現 Pallet Label/Number');
+
+    // 包裝箱標籤：Single SKU、箱號 U000001、數量與效期是最穩定組合。
+    if(/\bSINGLE\s+SKU\b/.test(normalized)) add('pack', 100, '出現 Single SKU');
+    if(/FBA[A-Z0-9]{6,}?U\d{6}/.test(compact)) add('pack', 45, '出現包裝箱 ID（U000001 格式）');
+    if(/\bQTY\s*\d+\b/.test(normalized)) add('pack', 12, '出現 Qty');
+    if(/\bEXP\s+[A-Z]{3}\s+\d{1,2},?\s+\d{4}\b/.test(normalized)) add('pack', 12, '出現 Exp 效期');
+
+    // 檔名只作輔助，不凌駕 PDF 內容。
+    if(/(?:^|[-_ ])BOL(?:[-_ .]|$)|BILL[ _-]*OF[ _-]*LADING/.test(upperName)){
+      add('bol', 35, '檔名含 BOL');
+    }
+    if(/(?:^|[-_ ])PALLET(?:[-_ .]|$)/.test(upperName)){
+      add('pallet', 35, '檔名含 Pallet');
+    }
+    if(/(?:^|[-_ ])(?:PACK|CARTON)(?:[-_ .]|$)/.test(upperName)){
+      add('pack', 25, '檔名含 Pack/Carton');
+    }
+
+    const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+    const [winner, topScore] = ranked[0];
+    const secondScore = ranked[1][1];
+    const ambiguous = topScore < 20 || (secondScore >= 20 && topScore - secondScore < 10);
+
+    if(ambiguous){
+      return {
+        category: 'unknown',
+        confidence: 'none',
+        score: topScore,
+        scores,
+        reasons: [],
+        textLength: normalized.length
+      };
+    }
+
+    return {
+      category: winner,
+      confidence: topScore >= 90 ? 'high' : (topScore >= 45 ? 'medium' : 'low'),
+      score: topScore,
+      scores,
+      reasons: reasons[winner],
+      textLength: normalized.length
+    };
   }
 
   async function detectPdfCategory(file){
-    const byName = classifyFilenameToPdfCategory(file.name);
-    if(byName !== 'pack') return byName;
-
     let buf;
     try{
       buf = await file.arrayBuffer();
     } catch {
-      return 'pack';
+      return {
+        category: 'unknown',
+        confidence: 'none',
+        reasons: ['無法讀取檔案'],
+        scores: { bol: 0, pallet: 0, pack: 0 }
+      };
     }
+
+    let extractedText = '';
+    let inspectedPages = 0;
+    let pdfReadError = '';
 
     if(window.pdfjsLib){
       try{
-        const loadingTask = window.pdfjsLib.getDocument({ data: buf, disableWorker: true });
+        // 使用穩定的 UMD 版 PDF.js；停用 Worker，讓 GitHub Pages 直接開啟也能辨識。
+        const loadingTask = window.pdfjsLib.getDocument({
+          data: new Uint8Array(buf.slice(0)),
+          disableWorker: true
+        });
         const pdf = await loadingTask.promise;
-        const pageCount = Math.min(pdf.numPages, 3);
-        let textBlob = '';
-        for(let i = 1; i <= pageCount; i++){
+        inspectedPages = Math.min(pdf.numPages, 3);
+
+        try{
+          const metadata = await pdf.getMetadata();
+          extractedText += ' ' + (metadata?.info?.Title || '');
+          extractedText += ' ' + (metadata?.info?.Subject || '');
+        } catch {
+          // Metadata 非必要。
+        }
+
+        for(let i = 1; i <= inspectedPages; i++){
           const page = await pdf.getPage(i);
           const text = await page.getTextContent({ normalizeWhitespace: true });
-          textBlob += ' ' + text.items.map(x=>x.str || '').join(' ');
+          extractedText += ' ' + text.items.map(x=>x.str || '').join(' ');
         }
-        const byText = classifyTextToPdfCategory(textBlob);
-        if(byText !== 'pack') return byText;
-      } catch {
-        // fall through to raw byte scan
+      } catch (err) {
+        pdfReadError = err?.message || 'PDF.js 無法解析';
       }
+    } else {
+      pdfReadError = 'PDF.js 尚未載入，請確認網路連線後重新整理';
     }
 
+    const byText = classifyTextToPdfCategory(extractedText, file.name);
+    if(byText.category !== 'unknown'){
+      return {
+        ...byText,
+        method: extractedText.trim() ? 'pdf-text' : 'filename',
+        inspectedPages
+      };
+    }
+
+    // 最後才嘗試掃描原始位元組；只接受明確訊號，無訊號就保持 unknown。
     try{
       const raw = new TextDecoder('latin1').decode(new Uint8Array(buf));
-      return classifyTextToPdfCategory(raw);
+      const byRaw = classifyTextToPdfCategory(raw, file.name);
+      if(byRaw.category !== 'unknown'){
+        return { ...byRaw, method: 'raw-bytes', inspectedPages };
+      }
     } catch {
-      return 'pack';
+      // 保持 unknown。
     }
+
+    return {
+      category: 'unknown',
+      confidence: 'none',
+      score: byText.score || 0,
+      scores: byText.scores,
+      reasons: [pdfReadError || '未找到足以安全分類的文字特徵'],
+      textLength: byText.textLength || 0,
+      inspectedPages
+    };
+  }
+
+  function detectionSummary(result){
+    if(result.category === 'unknown'){
+      return result.reasons?.[0] || '未找到足以安全分類的特徵';
+    }
+    const confidenceLabel =
+      result.confidence === 'high' ? '高信心' :
+      result.confidence === 'medium' ? '中信心' : '低信心';
+    const reason = (result.reasons || []).slice(0, 2).join('、') || '依 PDF 內容';
+    return confidenceLabel + '：' + reason;
   }
 
   // For pdf: folder key defaults to text before first '-'
@@ -447,24 +549,13 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     return key;
   }
 
-  function uniqueName(folderName, desired){
-    const meta = folders.get(folderName);
-    if(!meta.files.has(desired)) return desired;
-
-    // add (2), (3) before extension
-    const dot = desired.lastIndexOf('.');
-    const stem = dot >= 0 ? desired.slice(0, dot) : desired;
-    const ext = dot >= 0 ? desired.slice(dot) : '';
-    let i = 2;
-    while(meta.files.has(`${stem} (${i})${ext}`)) i++;
-    return `${stem} (${i})${ext}`;
-  }
-
   function addFileToFolder(folderName, filename, file){
     const meta = ensureFolder(folderName);
-    const finalName = uniqueName(folderName, filename);
-    meta.files.set(finalName, file);
-    return finalName;
+    if(meta.files.has(filename)){
+      return { added:false, duplicate:true, finalName:filename };
+    }
+    meta.files.set(filename, file);
+    return { added:true, duplicate:false, finalName:filename };
   }
 
   function refreshExportState(){
@@ -580,62 +671,88 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   async function handleCsv(files){
     if(files.length === 0){
       log('csv', `<span class="warn">（沒有偵測到 CSV）</span>`);
-      return;
+      return [];
     }
+    const results = [];
     let ok = 0;
     for(const f of files){
       const name = f.name;
       if(!name.toLowerCase().endsWith('.csv')) continue;
       if(!hasFbaPrefix(name)){
         log('csv', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(name)}</b>`);
+        results.push({ added:false, invalid:true, type:'csv', sourceName:name });
         continue;
       }
       const folder = baseName(name);
       ensureFolder(folder);
-      const finalName = addFileToFolder(folder, name, f);
-      ok++;
-      log('csv', `<span class="ok">✓</span> 建立/更新資料夾 <b>${escapeHtml(folder)}</b>，加入 <b>${escapeHtml(finalName)}</b>`);
+      const addition = addFileToFolder(folder, name, f);
+      const result = { ...addition, type:'csv', folder, sourceName:name };
+      results.push(result);
+      if(addition.added){
+        ok++;
+        log('csv', `<span class="ok">✓</span> 建立/更新資料夾 <b>${escapeHtml(folder)}</b>，加入 <b>${escapeHtml(addition.finalName)}</b>`);
+      } else {
+        log('csv', `<span class="warn">⚠ 已剔除重複 CSV：</span><b>${escapeHtml(name)}</b>`);
+      }
     }
     refreshTree(); refreshExportState();
-    if(ok === 0) log('csv', `<span class="warn">（沒有可用的 CSV）</span>`);
+    if(ok === 0 && results.every(x=>x.invalid)) log('csv', `<span class="warn">（沒有可用的 CSV）</span>`);
+    return results;
   }
 
   async function handlePack(files){
     if(files.length === 0){
       log('pack', `<span class="warn">（沒有偵測到 PDF）</span>`);
-      return;
+      return [];
     }
+    const results = [];
     for(const f of files){
       if(!hasFbaPrefix(f.name)){
         log('pack', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        results.push({ added:false, invalid:true, type:'pack', sourceName:f.name });
         continue;
       }
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
-      const finalName = addFileToFolder(folder, f.name, f); // keep original
-      packZoneOriginalNames.add(f.name);
-      log('pack', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+      const addition = addFileToFolder(folder, f.name, f); // keep original
+      const result = { ...addition, type:'pack', folder, sourceName:f.name };
+      results.push(result);
+      if(addition.added){
+        log('pack', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(addition.finalName)}</b>`);
+      } else {
+        log('pack', `<span class="warn">⚠ 已剔除重複包裝箱標籤：</span><b>${escapeHtml(f.name)}</b>`);
+      }
     }
     refreshTree(); refreshExportState();
+    return results;
   }
 
   async function handlePallet(files){
     if(files.length === 0){
       log('pallet', `<span class="warn">（沒有偵測到 PDF）</span>`);
-      return;
+      return [];
     }
+    const results = [];
     for(const f of files){
       if(!hasFbaPrefix(f.name)){
         log('pallet', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        results.push({ added:false, invalid:true, type:'pallet', sourceName:f.name });
         continue;
       }
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
       const newName = `Pallet-${f.name}`;
-      const finalName = addFileToFolder(folder, newName, f);
-      log('pallet', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+      const addition = addFileToFolder(folder, newName, f);
+      const result = { ...addition, type:'pallet', folder, sourceName:f.name };
+      results.push(result);
+      if(addition.added){
+        log('pallet', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(addition.finalName)}</b>`);
+      } else {
+        log('pallet', `<span class="warn">⚠ 已剔除重複棧板標籤：</span><b>${escapeHtml(f.name)}</b>`);
+      }
     }
     refreshTree(); refreshExportState();
+    return results;
   }
 
   function bolPrefixFromName(filename){
@@ -646,9 +763,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   async function handleBol(files){
     if(files.length === 0){
       log('bol', `<span class="warn">（沒有偵測到 PDF）</span>`);
-      return;
+      return [];
     }
 
+    const results = [];
     const seenPrefixes = new Set();
     for(const [, meta] of folders.entries()){
       for(const fname of meta.files.keys()){
@@ -661,11 +779,13 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     for(const f of files){
       if(!hasFbaPrefix(f.name)){
         log('bol', `<span class="warn">⚠</span> 略過（非 FBA 開頭）：<b>${escapeHtml(f.name)}</b>`);
+        results.push({ added:false, invalid:true, type:'bol', sourceName:f.name });
         continue;
       }
       const prefix = inferFolderKey(f.name);
       if(seenPrefixes.has(prefix)){
         removed.push(f.name);
+        results.push({ added:false, duplicate:true, type:'bol', sourceName:f.name, prefix });
         continue;
       }
       seenPrefixes.add(prefix);
@@ -676,8 +796,11 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       const key = inferFolderKey(f.name);
       const folder = resolveFolderByKey(key);
       const newName = `BOL-${f.name}`;
-      const finalName = addFileToFolder(folder, newName, f);
-      log('bol', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(finalName)}</b>`);
+      const addition = addFileToFolder(folder, newName, f);
+      results.push({ ...addition, type:'bol', folder, sourceName:f.name });
+      if(addition.added){
+        log('bol', `<span class="ok">✓</span> <b>${escapeHtml(f.name)}</b> → <b>${escapeHtml(folder)}/</b><b>${escapeHtml(addition.finalName)}</b>`);
+      }
     }
 
     if(removed.length > 0){
@@ -687,6 +810,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       els.bolDedupNotice.innerHTML = '';
     }
     refreshTree(); refreshExportState();
+    return results;
   }
 
   async function handleMixed(files){
@@ -695,7 +819,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       return;
     }
 
-    const removedAsDuplicatePack = [];
     for(const f of files){
       const lower = f.name.toLowerCase();
       const isCsv = lower.endsWith('.csv');
@@ -709,30 +832,43 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         continue;
       }
 
-      if(isPdf && packZoneOriginalNames.has(f.name)){
-        removedAsDuplicatePack.push(f.name);
-        log('mixed', `<span class="warn">⚠</span> 防呆：<b>${escapeHtml(f.name)}</b> 與①包裝箱標籤檔名完全一致，已自動剔除不認列。`);
-        continue;
-      }
-
       if(isCsv){
-        await handleCsv([f]);
-        log('mixed', `<span class="ok">✓</span> 已分類為 CSV：<b>${escapeHtml(f.name)}</b>`);
+        const [result] = await handleCsv([f]);
+        if(result?.added){
+          log('mixed', `<span class="ok">✓</span> 已分類為 CSV：<b>${escapeHtml(f.name)}</b>`);
+        } else if(result?.duplicate){
+          log('mixed', `<span class="warn">⚠ 已剔除重複 CSV：</span><b>${escapeHtml(f.name)}</b>`);
+        }
         continue;
       }
 
-      const category = await detectPdfCategory(f);
-      if(category === 'bol'){
-        await handleBol([f]);
-        log('mixed', `<span class="ok">✓</span> 已分類為提單（BOL）：<b>${escapeHtml(f.name)}</b>`);
-      } else {
-        await handlePallet([f]);
-        log('mixed', `<span class="ok">✓</span> 已分類為棧板標籤（非 BOL PDF）：<b>${escapeHtml(f.name)}</b>`);
-      }
-    }
+      const detection = await detectPdfCategory(f);
+      const summary = escapeHtml(detectionSummary(detection));
 
-    if(removedAsDuplicatePack.length > 0){
-      log('mixed', `<span class="warn">⚠ 已剔除重複檔案 ${removedAsDuplicatePack.length} 份（與①包裝箱標籤全名一致）：${escapeHtml(removedAsDuplicatePack.join(', '))}</span>`);
+      if(detection.category === 'bol'){
+        const [result] = await handleBol([f]);
+        if(result?.added){
+          log('mixed', '<span class="ok">✓</span> 已分類為提單（BOL）：<b>' + escapeHtml(f.name) + '</b><div class="small">' + summary + '</div>');
+        } else if(result?.duplicate){
+          log('mixed', '<span class="warn">⚠ 已剔除重複提單：</span><b>' + escapeHtml(f.name) + '</b>');
+        }
+      } else if(detection.category === 'pallet'){
+        const [result] = await handlePallet([f]);
+        if(result?.added){
+          log('mixed', '<span class="ok">✓</span> 已分類為棧板標籤並加上 Pallet-：<b>' + escapeHtml(f.name) + '</b><div class="small">' + summary + '</div>');
+        } else if(result?.duplicate){
+          log('mixed', '<span class="warn">⚠ 已剔除重複棧板標籤：</span><b>' + escapeHtml(f.name) + '</b>');
+        }
+      } else if(detection.category === 'pack'){
+        const [result] = await handlePack([f]);
+        if(result?.added){
+          log('mixed', '<span class="ok">✓</span> 已分類為包裝箱標籤並保留原檔名：<b>' + escapeHtml(f.name) + '</b><div class="small">' + summary + '</div>');
+        } else if(result?.duplicate){
+          log('mixed', '<span class="warn">⚠ 已剔除重複包裝箱標籤：</span><b>' + escapeHtml(f.name) + '</b>');
+        }
+      } else {
+        log('mixed', '<span class="err">✗ 無法安全判定，未匯入：</span><b>' + escapeHtml(f.name) + '</b><div class="small">' + summary + '；請改放至下方對應的手動指定區。</div>');
+      }
     }
   }
 
@@ -779,7 +915,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     }
     for(const folderName of toDeleteFolder) folders.delete(folderName);
     if(type === 'bol') els.bolDedupNotice.innerHTML = '';
-    if(type === 'pack') packZoneOriginalNames.clear();
     if(els.logs[type]) els.logs[type].innerHTML = '';
     refreshAliasTable(); refreshTree(); refreshExportState();
   }
@@ -837,7 +972,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const sorter = document.getElementById('page-sorter');
     if(!sorter) return;
 
-    const defaultCollapsedTitles = new Set(['③ CSV 區', '④ 棧板標籤', '⑤ 下載提單']);
+    const defaultCollapsedTitles = new Set(['② 包裝箱標籤', '③ CSV 區', '④ 棧板標籤', '⑤ 下載提單']);
     const cards = Array.from(sorter.querySelectorAll(':scope > .stack > .card, :scope > .split > .card:not(.alias-panel)'));
 
     function setCollapsed(card, collapsed){
