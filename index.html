@@ -66,6 +66,8 @@
     .upload-card{padding:24px;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
     .upload-card:hover{transform:translateY(-2px);box-shadow:0 23px 65px rgba(0,0,0,.09)}
     .upload-card.ready{border-color:rgba(36,138,61,.32);box-shadow:0 18px 55px rgba(36,138,61,.09)}
+    .upload-card.checking{border-color:rgba(255,159,10,.32);box-shadow:0 18px 55px rgba(255,159,10,.08)}
+    .upload-card.invalid{border-color:rgba(215,0,21,.28);box-shadow:0 18px 55px rgba(215,0,21,.07)}
     .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
     .title-group{display:flex;align-items:flex-start;gap:13px;min-width:0}
     .step-number{width:31px;height:31px;flex:0 0 31px;border-radius:50%;display:grid;place-items:center;background:#1d1d1f;color:#fff;font-size:14px;font-weight:700}
@@ -74,6 +76,9 @@
     .title-copy p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
     .source-link{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:var(--blue);text-decoration:none;font-size:13px;font-weight:600;padding:7px 0}
     .source-link:hover{text-decoration:underline}
+    .source-access{display:flex;flex:0 0 auto;flex-direction:column;align-items:flex-end}
+    .source-access .source-link{padding-bottom:2px}
+    .access-note{color:var(--muted);font-size:10px;line-height:1.35;white-space:nowrap}
     .drop{
       min-height:178px;padding:25px;border:1.5px dashed rgba(0,0,0,.16);border-radius:var(--radius-lg);
       background:var(--surface-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
@@ -98,9 +103,13 @@
     .btn.danger:hover{background:#f0f0f2;color:var(--red)}
     .btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none;transform:none}
     .file-state{width:100%;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
-    .log{min-width:0;color:var(--muted);font-size:12px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .log b{color:var(--text)}
-    .log .ok{color:var(--green);font-weight:650}
+    .log{min-width:0;color:var(--muted);font-size:12px;line-height:1.45;overflow:hidden}
+    .file-log-title,.file-log-meta{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .file-log-title{color:var(--text);font-weight:650}
+    .file-log-title.ok{color:var(--green)}
+    .file-log-title.checking{color:#9a5d00}
+    .file-log-title.bad{color:var(--red)}
+    .file-log-meta{margin-top:2px;color:var(--muted);font-size:11px}
     .action-card{margin-top:18px;padding:28px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px}
     .action-title{display:flex;align-items:flex-start;gap:13px}
     .action-title h2{margin:0;font-size:21px;letter-spacing:-.025em}
@@ -112,6 +121,27 @@
     .tool-status.working{background:#fff8e8;color:#7a4b00}.tool-status.working:before{background:#ff9f0a;animation:pulse 1s infinite}
     .tool-status.ok{background:var(--green-soft);color:#176d31}.tool-status.ok:before{background:var(--green)}
     .tool-status.bad{background:var(--red-soft);color:#a10c1a}.tool-status.bad:before{background:var(--red)}
+    .preflight-panel{grid-column:1/-1;padding:18px;border:1px solid var(--line);border-radius:18px;background:#fbfbfd}
+    .preflight-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:13px}
+    .preflight-heading strong{display:block;font-size:14px;letter-spacing:-.01em}
+    .preflight-heading p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
+    .preflight-badge{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:#ededf0;color:var(--muted);font-size:10px;font-weight:750}
+    .preflight-badge.checking{background:#fff2d8;color:#8a5200}
+    .preflight-badge.ready{background:var(--green-soft);color:#176d31}
+    .preflight-badge.warn{background:#fff2d8;color:#8a5200}
+    .preflight-badge.bad{background:var(--red-soft);color:#a10c1a}
+    .audit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+    .audit-item{min-width:0;padding:12px;border-radius:13px;background:#f0f0f3;display:flex;align-items:center;gap:10px}
+    .audit-icon{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#d8d8dd;color:#6e6e73;font-size:10px;font-weight:800}
+    .audit-copy{min-width:0}.audit-copy strong,.audit-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .audit-copy strong{font-size:11px}.audit-copy span{margin-top:2px;color:var(--muted);font-size:10px}
+    .audit-item[data-state="checking"]{background:#fff8e8}.audit-item[data-state="checking"] .audit-icon{background:#ff9f0a;color:#fff}
+    .audit-item[data-state="valid"]{background:#eef9f1}.audit-item[data-state="valid"] .audit-icon{background:var(--green);color:#fff}
+    .audit-item[data-state="warn"]{background:#fff8e8}.audit-item[data-state="warn"] .audit-icon{background:#ff9f0a;color:#fff}
+    .audit-item[data-state="bad"]{background:var(--red-soft)}.audit-item[data-state="bad"] .audit-icon{background:var(--red);color:#fff}
+    .preflight-warnings{margin-top:11px;padding:11px 13px;border-radius:12px;background:#fff8e8;color:#774900;font-size:11px;line-height:1.5}
+    .preflight-warnings div+div{margin-top:4px}
+    .preflight-warnings.hidden{display:none}
     @keyframes pulse{50%{opacity:.28}}
     #resultCard{margin-top:22px;padding:0;overflow:hidden}
     .result-hero{padding:25px 28px;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line)}
@@ -148,11 +178,13 @@
       .header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}.clear-workspace{position:absolute;right:18px;top:15px}
       main{padding:38px 16px 56px}.hero{margin-bottom:30px}.hero p{font-size:16px}
       .upload-grid{grid-template-columns:1fr}.action-card{grid-template-columns:1fr}.run-button{width:100%}
+      .audit-grid{grid-template-columns:1fr}
       .result-hero{align-items:stretch;flex-direction:column}.download-button{width:100%}
     }
     @media(max-width:520px){
-      .brand-copy span{display:none}.upload-card,.action-card{padding:20px;border-radius:22px}.card-head{flex-direction:column}.source-link{align-self:flex-end;margin-top:-46px}
+      .brand-copy span{display:none}.upload-card,.action-card{padding:20px;border-radius:22px}.card-head{flex-direction:column}.source-access{align-self:flex-end;margin-top:-46px}
       .file-state{align-items:flex-start}.hero h1{font-size:38px}
+      .preflight-heading{align-items:flex-start;flex-direction:column}.preflight-badge{align-self:flex-start}
     }
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
@@ -209,7 +241,10 @@
           <span class="step-number">2</span>
           <div class="title-copy"><h2>Inventory Update <span class="file-type">XLSX</span></h2><p>使用含效期與箱數的最新庫存檔。</p></div>
         </div>
-        <a class="source-link" href="https://24466647.sharepoint.com/:x:/r/sites/Cloud/Shared%2520Documents/%E7%8F%8D%E9%A3%9F%E5%A0%A1%2520-%2520%E5%85%B1%E7%94%A8/JSP%2520Amrica/Inventory%2520update%2520with%2520expiration%2520date%2520-%2520temporary%2520file.xlsx?d=wdb6b7635090543b0b4433ce8572b2c4a&amp;e=4%3a4f53ae0c86064211bffd905531f77147&amp;sharingv2=true&amp;fromShare=true&amp;at=9" target="_blank" rel="noopener noreferrer">開啟 Inventory Excel ↗</a>
+        <div class="source-access">
+          <a class="source-link" href="https://24466647.sharepoint.com/:x:/r/sites/Cloud/Shared%2520Documents/%E7%8F%8D%E9%A3%9F%E5%A0%A1%2520-%2520%E5%85%B1%E7%94%A8/JSP%2520Amrica/Inventory%2520update%2520with%2520expiration%2520date%2520-%2520temporary%2520file.xlsx?d=wdb6b7635090543b0b4433ce8572b2c4a&amp;e=4%3a4f53ae0c86064211bffd905531f77147&amp;sharingv2=true&amp;fromShare=true&amp;at=9" target="_blank" rel="noopener noreferrer">開啟 Inventory Excel ↗</a>
+          <span class="access-note">SharePoint 組織內直連</span>
+        </div>
       </div>
       <div class="drop" id="dropInventory">
         <div class="file-icon" data-label="XLSX"></div>
@@ -231,6 +266,18 @@
     </div>
     <button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button>
     <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1 與步驟 2。</div>
+    <div id="preflightPanel" class="preflight-panel">
+      <div class="preflight-heading">
+        <div><strong>上傳前自動檢查</strong><p id="preflightSummary">會先確認檔案格式、必要欄位、效期資料與 SKU 對應，再開放整理。</p></div>
+        <span id="preflightBadge" class="preflight-badge">等待檔案</span>
+      </div>
+      <div class="audit-grid">
+        <div id="auditHelium" class="audit-item" data-state="pending"><span class="audit-icon">1</span><div class="audit-copy"><strong>Helium 建議檔</strong><span id="auditHeliumText">等待上傳 CSV</span></div></div>
+        <div id="auditInventory" class="audit-item" data-state="pending"><span class="audit-icon">2</span><div class="audit-copy"><strong>Inventory Update</strong><span id="auditInventoryText">等待上傳 Excel</span></div></div>
+        <div id="auditCoverage" class="audit-item" data-state="pending"><span class="audit-icon">↔</span><div class="audit-copy"><strong>SKU 對照</strong><span id="auditCoverageText">等待兩份檔案</span></div></div>
+      </div>
+      <div id="preflightWarnings" class="preflight-warnings hidden" aria-live="polite"></div>
+    </div>
   </section>
 
   <section id="resultCard" class="card" style="display:none;">
@@ -576,8 +623,11 @@ async function run(){
         if(typeof XLSX==='undefined') throw new Error('無法載入 Excel 函式庫。');
         $('runBtn').disabled=true; $('downloadBtn').disabled=true;
         setStatus('正在讀取檔案並整理效期批次…',false,'working');
-        const heliumRows=await readCsvAsRows(heliumFile);
-        const inventoryRows=await readWorkbookFirstSheetAsRows(inventoryFile);
+        if(preflightChecks.helium.status!=='valid'||preflightChecks.inventory.status!=='valid') throw new Error('上傳前自動檢查尚未完成。');
+        const pairStats=getPairStats();
+        if(!pairStats||pairStats.matched===0) throw new Error('兩份檔案沒有可對應的 SKU，請確認是否選錯檔案。');
+        const heliumRows=preflightChecks.helium.rows||await readCsvAsRows(heliumFile);
+        const inventoryRows=preflightChecks.inventory.rows||await readWorkbookFirstSheetAsRows(inventoryFile);
         state.sheets=processInventory(parseHelium(heliumRows), inventoryRows).sheets;
         state.activeSheet='主工作表';
         createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
@@ -594,36 +644,181 @@ async function run(){
 
 
     const restockFiles = { helium:null, inventory:null };
+    const validationTokens = { helium:0, inventory:0 };
+    const emptyCheck = () => ({status:'empty',file:null,rows:null,skus:new Set(),detail:'',warnings:[],error:''});
+    const preflightChecks = { helium:emptyCheck(), inventory:emptyCheck() };
+    const isValidCheck = (check) => check?.status==='valid';
+    const formatFileSize = (bytes) => bytes>=1048576?`${(bytes/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(bytes/1024))} KB`;
+    const formatModifiedTime = (time) => time?new Intl.DateTimeFormat('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(time)):'時間不明';
+    const fileAgeDays = (file) => file?.lastModified?Math.floor((Date.now()-file.lastModified)/86400000):null;
+    function freshnessWarning(file,label,maxDays){
+      const age=fileAgeDays(file);
+      if(age==null) return '';
+      if(age<0) return `${label}的修改時間晚於目前時間，請確認電腦日期。`;
+      if(age>maxDays) return `${label}已超過 ${age} 天，建議確認是否為最新版。`;
+      return '';
+    }
+    function renderFileLog(which){
+      const check=preflightChecks[which], el=$(which==='helium'?'logHelium':'logInventory');
+      if(!el) return;
+      if(!check.file){ el.textContent='尚未選擇檔案'; return; }
+      const file=check.file;
+      const safeName=escapeHtml(file.name);
+      const meta=`${formatFileSize(file.size)} · 修改 ${formatModifiedTime(file.lastModified)}`;
+      if(check.status==='checking') el.innerHTML=`<span class="file-log-title checking">檢查中 · ${safeName}</span><span class="file-log-meta">${escapeHtml(meta)}</span>`;
+      else if(check.status==='invalid') el.innerHTML=`<span class="file-log-title bad">無法使用 · ${safeName}</span><span class="file-log-meta">${escapeHtml(check.error||'檔案格式不正確')}</span>`;
+      else el.innerHTML=`<span class="file-log-title ok">✓ ${safeName}</span><span class="file-log-meta">${escapeHtml(meta)}</span>`;
+    }
+    function getPairStats(){
+      const helium=preflightChecks.helium, inventory=preflightChecks.inventory;
+      if(!isValidCheck(helium)||!isValidCheck(inventory)) return null;
+      let matched=0;
+      helium.skus.forEach(sku=>{ if(inventory.skus.has(sku)) matched++; });
+      const ratio=helium.skus.size?matched/helium.skus.size:0;
+      return {matched,ratio,heliumTotal:helium.skus.size,inventoryTotal:inventory.skus.size};
+    }
+    function setAuditItem(itemId,textId,check,baseIcon,emptyText){
+      const item=$(itemId), textEl=$(textId), icon=item.querySelector('.audit-icon');
+      let stateName='pending', text=emptyText, iconText=baseIcon;
+      if(check.status==='checking'){ stateName='checking'; text='正在讀取並核對欄位…'; iconText='…'; }
+      else if(check.status==='invalid'){ stateName='bad'; text=check.error||'檢查未通過'; iconText='!'; }
+      else if(check.status==='valid'){ stateName=check.warnings.length?'warn':'valid'; text=check.detail; iconText=check.warnings.length?'!':'✓'; }
+      item.dataset.state=stateName; icon.textContent=iconText; textEl.textContent=text; textEl.title=text;
+    }
+    function renderPreflight(){
+      const helium=preflightChecks.helium, inventory=preflightChecks.inventory;
+      setAuditItem('auditHelium','auditHeliumText',helium,'1','等待上傳 CSV');
+      setAuditItem('auditInventory','auditInventoryText',inventory,'2','等待上傳 Excel');
+      const pair=getPairStats(), pairItem=$('auditCoverage'), pairText=$('auditCoverageText'), pairIcon=pairItem.querySelector('.audit-icon');
+      const warnings=[...(helium.warnings||[]),...(inventory.warnings||[])];
+      if(pair){
+        const pct=Math.round(pair.ratio*100);
+        const pairLabel=`共同 ${pair.matched} 個 SKU · Helium 對應率 ${pct}%`;
+        pairText.textContent=pairLabel; pairText.title=pairLabel;
+        if(pair.matched===0){ pairItem.dataset.state='bad'; pairIcon.textContent='!'; }
+        else if(pair.ratio<.5){ pairItem.dataset.state='warn'; pairIcon.textContent='!'; warnings.push(`兩份檔案的 SKU 對應率只有 ${pct}%，請確認是否為同一批資料。`); }
+        else { pairItem.dataset.state='valid'; pairIcon.textContent='✓'; }
+      }else{
+        pairItem.dataset.state=(helium.status==='invalid'||inventory.status==='invalid')?'bad':'pending';
+        pairText.textContent='等待兩份檔案'; pairText.title='等待兩份檔案'; pairIcon.textContent=pairItem.dataset.state==='bad'?'!':'↔';
+      }
+      const bothValid=isValidCheck(helium)&&isValidCheck(inventory);
+      const ready=bothValid&&pair&&pair.matched>0;
+      const badge=$('preflightBadge'), summary=$('preflightSummary');
+      badge.className='preflight-badge';
+      if(helium.status==='checking'||inventory.status==='checking'){
+        badge.textContent='檢查中'; badge.classList.add('checking'); summary.textContent='正在確認檔案內容，完成前不會開放整理。';
+      }else if(helium.status==='invalid'||inventory.status==='invalid'||(pair&&pair.matched===0)){
+        badge.textContent='需要修正'; badge.classList.add('bad'); summary.textContent=pair&&pair.matched===0?'兩份檔案沒有共同 SKU，可能選到不同批次或錯誤檔案。':'至少一份檔案未通過必要格式檢查。';
+      }else if(ready){
+        badge.textContent=warnings.length?`${warnings.length} 項提醒`:'檢查通過'; badge.classList.add(warnings.length?'warn':'ready');
+        summary.textContent=`Helium ${pair.heliumTotal} 個 SKU、Inventory ${pair.inventoryTotal} 個 SKU，共同對應 ${pair.matched} 個。`;
+      }else{
+        badge.textContent='等待檔案'; summary.textContent='會先確認檔案格式、必要欄位、效期資料與 SKU 對應，再開放整理。';
+      }
+      const warningBox=$('preflightWarnings'); warningBox.innerHTML='';
+      warnings.forEach(message=>{ const row=document.createElement('div'); row.textContent=`⚠ ${message}`; warningBox.appendChild(row); });
+      warningBox.classList.toggle('hidden',warnings.length===0);
+      return {ready,warnings,pair};
+    }
+    async function validateHeliumFile(file){
+      const rows=await readCsvAsRows(file), parsed=parseHelium(rows);
+      if(!parsed.records.length) throw new Error('Helium 檔案沒有可使用的 SKU 資料。');
+      const skus=new Set(parsed.records.map(row=>row.SKU));
+      const warnings=[];
+      const duplicateCount=parsed.records.length-skus.size;
+      if(duplicateCount) warnings.push(`Helium 有 ${duplicateCount} 筆重複 SKU；整理時會採用最後一筆。`);
+      const stale=freshnessWarning(file,'Helium 建議檔',3); if(stale) warnings.push(stale);
+      return {rows,skus,warnings,detail:`${skus.size} 個 SKU · ${parsed.records.length} 筆建議`};
+    }
+    async function validateInventoryFile(file){
+      const rows=await readWorkbookFirstSheetAsRows(file);
+      if(rows.length<3) throw new Error('Inventory Excel 沒有足夠的資料列。');
+      const headers=trimTrailingEmpty(rows[1]).map(h=>String(h??''));
+      const cols=detectInventoryColumns(headers);
+      if(!cols.expiryPairs.length) throw new Error('Inventory Excel 找不到成對的 EXPIRE／QTY 欄位。');
+      const skus=new Set(), seen=new Set();
+      let duplicateCount=0, mismatchCount=0, invalidExpiryCount=0, qtyWithoutExpiryCount=0, expiryWithoutQtyCount=0, invalidPackCount=0, invalidTotalCount=0, negativeQtyCount=0;
+      for(let r=2;r<rows.length;r++){
+        const row=rows[r]||[], rawSku=String(row[cols.skuIdx]??'').trim();
+        if(!rawSku) continue;
+        const sku=fixSku(rawSku); if(seen.has(sku)) duplicateCount++; seen.add(sku); skus.add(sku);
+        const totalRaw=row[cols.totalCartonsIdx], totalText=String(totalRaw??'').trim();
+        if(totalText&&!isNumericLike(totalRaw)) invalidTotalCount++;
+        const total=Math.max(0,Math.round(toNumber(totalRaw)));
+        const packRaw=row[cols.packIdx];
+        if(total>0&&(!isNumericLike(packRaw)||toNumber(packRaw)<=0)) invalidPackCount++;
+        let lotTotal=0, hasLotValue=false;
+        cols.expiryPairs.forEach(pair=>{
+          const expiryRaw=row[pair.expiryIdx], qtyRaw=pair.qtyIdx===-1?'':row[pair.qtyIdx];
+          const expiryText=String(expiryRaw??'').trim(), qtyText=String(qtyRaw??'').trim();
+          if(expiryText||qtyText) hasLotValue=true;
+          if(expiryText&&!parseExpiryDate(expiryRaw)) invalidExpiryCount++;
+          if(qtyText&&isNumericLike(qtyRaw)&&toNumber(qtyRaw)<0) negativeQtyCount++;
+          const qty=isNumericLike(qtyRaw)?Math.max(0,Math.round(toNumber(qtyRaw))):0;
+          if(qty>0&&!expiryText) qtyWithoutExpiryCount++;
+          if(expiryText&&!qtyText) expiryWithoutQtyCount++;
+          lotTotal+=qty;
+        });
+        if(total!==lotTotal&&(total>0||hasLotValue)) mismatchCount++;
+      }
+      if(!skus.size) throw new Error('Inventory Excel 沒有可使用的 SKU 資料。');
+      const warnings=[];
+      if(duplicateCount) warnings.push(`Inventory 有 ${duplicateCount} 筆重複 SKU，請確認是否為重複列。`);
+      if(mismatchCount) warnings.push(`Inventory 有 ${mismatchCount} 個 SKU 的總箱數與效期 QTY 加總不一致。`);
+      if(invalidExpiryCount) warnings.push(`Inventory 有 ${invalidExpiryCount} 格效期無法辨識，請修正日期格式。`);
+      if(qtyWithoutExpiryCount) warnings.push(`Inventory 有 ${qtyWithoutExpiryCount} 格 QTY 有數量但未填效期。`);
+      if(expiryWithoutQtyCount) warnings.push(`Inventory 有 ${expiryWithoutQtyCount} 格已填效期但未填 QTY。`);
+      if(invalidPackCount) warnings.push(`Inventory 有 ${invalidPackCount} 個有庫存的 SKU 缺少有效箱入數。`);
+      if(invalidTotalCount) warnings.push(`Inventory 有 ${invalidTotalCount} 個 SKU 的總箱數不是有效數字。`);
+      if(negativeQtyCount) warnings.push(`Inventory 有 ${negativeQtyCount} 格 QTY 為負數，整理時會按 0 計算。`);
+      const stale=freshnessWarning(file,'Inventory Excel',7); if(stale) warnings.push(stale);
+      return {rows,skus,warnings,detail:`${skus.size} 個 SKU · ${cols.expiryPairs.length} 組效期欄位`};
+    }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
       $('downloadBtn').disabled=true; $('resultCard').style.display='none';
     }
     function updateWorkflowState(resetMessage=true){
-      const heliumReady=!!restockFiles.helium, inventoryReady=!!restockFiles.inventory;
+      const heliumCheck=preflightChecks.helium, inventoryCheck=preflightChecks.inventory;
+      const heliumReady=isValidCheck(heliumCheck), inventoryReady=isValidCheck(inventoryCheck);
       $('heliumCard').classList.toggle('ready',heliumReady);
       $('inventoryCard').classList.toggle('ready',inventoryReady);
-      $('runBtn').disabled=!(heliumReady&&inventoryReady);
+      $('heliumCard').classList.toggle('checking',heliumCheck.status==='checking');
+      $('inventoryCard').classList.toggle('checking',inventoryCheck.status==='checking');
+      $('heliumCard').classList.toggle('invalid',heliumCheck.status==='invalid');
+      $('inventoryCard').classList.toggle('invalid',inventoryCheck.status==='invalid');
+      $('heliumCard').setAttribute('aria-busy',String(heliumCheck.status==='checking'));
+      $('inventoryCard').setAttribute('aria-busy',String(inventoryCheck.status==='checking'));
+      const overview=renderPreflight();
+      $('runBtn').disabled=!overview.ready;
       if(!resetMessage) return;
-      if(heliumReady&&inventoryReady) setStatus('兩份檔案都已準備完成。下一步：按下「開始整理補貨資料」。',false,'ready');
+      if(heliumCheck.status==='checking'||inventoryCheck.status==='checking') setStatus('正在執行上傳前自動檢查…',false,'working');
+      else if(heliumCheck.status==='invalid') setStatus(`Helium 檔案無法使用：${heliumCheck.error}`,true);
+      else if(inventoryCheck.status==='invalid') setStatus(`Inventory 檔案無法使用：${inventoryCheck.error}`,true);
+      else if(heliumReady&&inventoryReady&&!overview.ready) setStatus('兩份檔案沒有可對應的 SKU，請確認是否選錯檔案。',true);
+      else if(heliumReady&&inventoryReady) setStatus(overview.warnings.length?`兩份檔案可整理，但有 ${overview.warnings.length} 項提醒，請先確認下方檢查結果。`:'兩份檔案已通過檢查。下一步：按下「開始整理補貨資料」。',false,'ready');
       else if(heliumReady) setStatus('Helium CSV 已完成。下一步：加入 Inventory Excel。',false,'ready');
       else if(inventoryReady) setStatus('Inventory Excel 已完成。下一步：加入 Helium CSV。',false,'ready');
       else { const el=$('status'); el.textContent='請先完成步驟 1 與步驟 2。'; el.className='tool-status'; }
     }
-    function setRestockLog(which, msg, cls=''){
-      const el = $(which === 'helium' ? 'logHelium' : 'logInventory');
-      if(!el) return;
-      el.innerHTML = cls ? `<span class="${cls}">${msg}</span>` : msg;
-    }
-    function assignRestockFile(which, file){
+    async function assignRestockFile(which, file){
       if(!file) return;
-      if(which === 'helium'){
-        restockFiles.helium = file;
-        setRestockLog('helium', `✓ <b>${escapeHtml(file.name)}</b> · ${Math.round(file.size/1024)} KB`, 'ok');
-      } else {
-        restockFiles.inventory = file;
-        setRestockLog('inventory', `✓ <b>${escapeHtml(file.name)}</b> · ${Math.round(file.size/1024)} KB`, 'ok');
-      }
+      const token=++validationTokens[which];
+      restockFiles[which]=file;
+      preflightChecks[which]={...emptyCheck(),status:'checking',file};
+      renderFileLog(which);
       resetGeneratedResult();
+      updateWorkflowState();
+      try{
+        const result=which==='helium'?await validateHeliumFile(file):await validateInventoryFile(file);
+        if(validationTokens[which]!==token) return;
+        preflightChecks[which]={status:'valid',file,error:'',...result};
+      }catch(error){
+        if(validationTokens[which]!==token) return;
+        preflightChecks[which]={...emptyCheck(),status:'invalid',file,error:error?.message||'檔案檢查失敗。'};
+      }
+      renderFileLog(which);
       updateWorkflowState();
     }
     function bindRestockDrop(dropId, inputId, which, acceptFn){
@@ -636,21 +831,29 @@ async function run(){
         const files = Array.from(e.dataTransfer?.files || []);
         const file = files.find(acceptFn);
         if(!file){ setStatus('拖曳的檔案格式不正確。', true); return; }
-        assignRestockFile(which, file);
+        void assignRestockFile(which, file);
       });
       input.addEventListener('change',(e)=>{
         const file = Array.from(e.target.files || [])[0];
         if(!file) return;
         if(!acceptFn(file)){ setStatus('選擇的檔案格式不正確。', true); return; }
-        assignRestockFile(which, file);
+        void assignRestockFile(which, file);
       });
+    }
+    function clearRestockFile(which){
+      validationTokens[which]++;
+      restockFiles[which]=null;
+      preflightChecks[which]=emptyCheck();
+      $(which==='helium'?'heliumFile':'inventoryFile').value='';
+      renderFileLog(which); resetGeneratedResult(); updateWorkflowState();
     }
     bindRestockDrop('dropHelium','heliumFile','helium', f=>f.name.toLowerCase().endsWith('.csv')||f.name.toLowerCase().endsWith('.txt'));
     bindRestockDrop('dropInventory','inventoryFile','inventory', f=>f.name.toLowerCase().endsWith('.xlsx')||f.name.toLowerCase().endsWith('.xls'));
-    $('btnClearHelium').addEventListener('click', ()=>{ restockFiles.helium=null; $('heliumFile').value=''; setRestockLog('helium','尚未選擇檔案'); resetGeneratedResult(); updateWorkflowState(); });
-    $('btnClearInventory').addEventListener('click', ()=>{ restockFiles.inventory=null; $('inventoryFile').value=''; setRestockLog('inventory','尚未選擇檔案'); resetGeneratedResult(); updateWorkflowState(); });
+    $('btnClearHelium').addEventListener('click', ()=>clearRestockFile('helium'));
+    $('btnClearInventory').addEventListener('click', ()=>clearRestockFile('inventory'));
     $('runBtn').addEventListener('click', run);
     $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook){ XLSX.writeFile(state.workbook, state.filename, {compression:true}); setStatus(`已下載 ${state.filename}`,false,'ok'); } });
+    renderFileLog('helium'); renderFileLog('inventory'); renderPreflight();
   })();
 </script>
 <script src="shared-workspace.js"></script>
