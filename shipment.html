@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Amazon 貨件棧板資訊擷取</title>
+  <style>
+:root {
+      --bg:#f3f6fc;
+      --card:#ffffff;
+      --muted:#5f6d8c;
+      --text:#1f2a44;
+      --accent:#4f7cff;
+      --ok:#0f9f6e;
+      --warn:#ca8a04;
+      --err:#e11d48;
+      --line:#dbe4f5;
+      --soft:#eef3ff;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial; background:var(--bg); color:var(--text); }
+    header { padding:18px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(243,246,252,.9); backdrop-filter: blur(10px); z-index:9; }
+    header h1 { margin:0; font-size:18px; letter-spacing:.5px; }
+    header .sub { margin-top:6px; color:var(--muted); font-size:13px; line-height:1.4; }
+    main { padding:18px 20px 28px; max-width:1200px; margin:0 auto; }
+    .stack { display:grid; grid-template-columns:1fr; gap:14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 10px 28px rgba(36,54,91,.08); }
+    .card h2 { margin:0 0 10px; font-size:15px; display:flex; align-items:center; gap:10px; }
+    .pill { font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:var(--soft); }
+    .drop {
+      border:2px dashed rgba(79,124,255,.35);
+      border-radius:16px;
+      padding:14px;
+      min-height:110px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:10px;
+      background:#f7f9ff;
+      transition:.15s ease;
+    }
+    .drop.dragover { border-color: rgba(79,124,255,.9); background:rgba(79,124,255,.10); transform: translateY(-1px); }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .btn {
+      appearance:none; border:1px solid var(--line);
+      background:#fff; color:var(--text);
+      padding:9px 12px; border-radius:12px; cursor:pointer;
+      font-size:13px; transition:.15s ease; user-select:none;
+    }
+    .btn:hover { border-color: rgba(79,124,255,.7); background:#f4f7ff; }
+    .btn.primary { border-color: rgba(79,124,255,.7); background:#e8efff; }
+    .btn.link { display:inline-block; text-decoration:none; }
+    .btn.danger { border-color: rgba(225,29,72,.35); background:rgba(225,29,72,.05); }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    input[type="file"]{ display:none; }
+    select, input[type="text"]{
+      border-radius:12px; padding:9px 10px; font-size:13px; color:var(--text);
+      background:#fff; border:1px solid var(--line);
+      outline:none; min-width:260px;
+    }
+    select:focus, input[type="text"]:focus{ border-color: rgba(79,124,255,.7); }
+    .hint { color:var(--muted); font-size:12px; line-height:1.45; }
+    .log { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; max-height:120px; overflow:auto; padding-right:6px; }
+    .log b { color:var(--text); }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .err { color:var(--err); }
+    .split { display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; font-size:12px; border-bottom:1px solid var(--line); padding:9px 8px; vertical-align:top; }
+    th { color:var(--muted); font-weight:600; background:#f8faff; }
+    .check { font-weight:700; }
+    .check.ok { color:var(--ok); }
+    .check.err { color:var(--err); }
+    .check.warn { color:var(--warn); }
+    .summary-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+    .floating-alias { position:fixed; right:18px; top:14px; z-index:11; }
+    .alias-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:30;padding:24px;align-items:center;justify-content:center}
+    .alias-modal.open{display:flex}
+    .alias-panel{width:min(980px,100%);max-height:85vh;overflow:auto}
+    .alias-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .card.collapsible .card-collapse-body{display:block}
+    .card.collapsible.collapsed .card-collapse-body{display:none}
+    .collapse-trigger{cursor:pointer;user-select:none}
+    .collapse-indicator{font-size:12px;color:var(--muted);margin-left:8px}
+    .small { font-size:12px; color:var(--muted); }
+
+    .top-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .top-tab{appearance:none;border:1px solid var(--line);background:#eef3ff;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700}
+    .top-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .page{display:none}
+    .page.active{display:block}
+
+    .tool-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 28px rgba(36,54,91,.08)}
+    .is-hidden{display:none !important}
+    .tool-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:12px}
+    .tool-grid-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+    .tool-status{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;font-size:13px}
+    .tool-status.ok{color:var(--ok);border-color:#b7ebc7;background:#f1fcf4}
+    .tool-status.bad{color:var(--err);border-color:#f3c1c1;background:#fff5f5}
+    .tool-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .tool-table-wrap table{width:100%;border-collapse:collapse}
+    .tool-table-wrap th,.tool-table-wrap td{padding:8px 10px;border-bottom:1px solid #edf1f5;text-align:left;white-space:nowrap}
+    .tool-pills{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+    .tool-pill{background:#eff6ff;color:#1d4ed8;border:1px solid #c7dcff;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .inner-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .inner-tab{background:#eef2f7;color:var(--text);border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+    .inner-tab.active{background:var(--accent);color:#fff}
+    .email-preview{border:1px solid var(--line);background:#fcfcfd;border-radius:12px;padding:14px;line-height:1.6}
+    .email-table{border-collapse:collapse;width:100%;margin:10px 0 0;background:#fff}
+    .email-table th,.email-table td{border:1px solid #cfd8e3;padding:8px 10px;text-align:left;vertical-align:top}
+    @media (max-width:980px){.tool-grid,.tool-grid-3{grid-template-columns:1fr}}
+
+
+.top-tabs a { text-decoration:none; }
+  </style>
+</head>
+<body>
+<header><h1>Amazon 貨件棧板資訊擷取</h1><div class="sub">貼上 Amazon 貨件頁文字，自動擷取包裝箱 / 重量並計算棧板與平均重量。</div></header>
+
+<main>
+<nav class="top-tabs" aria-label="功能選單">
+  <a class="top-tab " href="index.html">① 補貨 Excel 整合</a>
+  <a class="top-tab active" href="shipment.html">② Amazon 棧板擷取</a>
+  <a class="top-tab " href="sorter.html">③ FBA 檔案整理器</a>
+  <a class="top-tab " href="email.html">④ 出貨通知 Email</a>
+</nav>
+<section>
+    <div class="tool-card">
+      <h2>Amazon 貨件棧板資訊擷取</h2>
+      <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
+      <label for="shipmentText">貼上文字</label>
+      <textarea id="shipmentText" style="width:100%;min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
+      <div class="row" style="margin-top:12px"><button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button></div>
+      <div id="shipmentCard" style="display:none;margin-top:12px;">
+        <div id="shipmentSummary" class="tool-pill" style="display:inline-block;margin-bottom:8px">已擷取 0 筆</div>
+        <div class="tool-table-wrap"><table id="shipmentTable"></table></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  const text = document.getElementById('shipmentText');
+  const card = document.getElementById('shipmentCard');
+  const summary = document.getElementById('shipmentSummary');
+  const table = document.getElementById('shipmentTable');
+  const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+
+  document.getElementById('parseShipmentBtn').addEventListener('click', () => {
+    const cleaned = text.value.replace(/\r/g, '');
+    const regex = /貨件編號\s*#\s*(\d+)[\s\S]*?包裝箱：\s*([\d,]+)[\s\S]*?重量：\s*([\d,]+)\s*磅/g;
+    const rows = [];
+    let match;
+    while ((match = regex.exec(cleaned)) !== null) {
+      const cartons = Number(match[2].replace(/,/g, ''));
+      const weight = Number(match[3].replace(/,/g, ''));
+      const pallets = Math.ceil(cartons / 30);
+      const average = pallets ? Math.round((weight / pallets) * 10) / 10 : 0;
+      rows.push([`貨件編號 #${match[1]}`, cartons, weight, `${cartons} ÷ 30 = ${(cartons / 30).toFixed(2)} → 無條件進位`, pallets, average.toFixed(1)]);
+    }
+    card.style.display = rows.length ? 'block' : 'none';
+    summary.textContent = `已擷取 ${rows.length} 筆`;
+    const headers = ['貨件','包裝箱(CTN)','重量(lb)','棧板數計算過程','棧板數','平均每棧板重量(lb/棧板)'];
+    table.innerHTML = '<thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  });
+})();
+</script>
+</body>
+</html>
