@@ -140,8 +140,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     <div class="tool-card">
       <h2>Amazon 貨件棧板資訊擷取</h2>
       <div class="hint" style="margin-bottom:8px">貼上 Amazon 頁面整段文字後，自動擷取貨件包裝箱與重量。</div>
-      <label for="shipmentText">貼上文字</label>
-      <textarea id="shipmentText" style="width:100%;min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
+      <textarea id="shipmentText" aria-label="Amazon 貨件頁面完整文字" style="width:100%;min-height:220px" placeholder="請貼上 Amazon 貨件頁面的完整文字"></textarea>
       <div class="row" style="margin-top:12px"><button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button></div>
       <div id="shipmentCard" style="display:none;margin-top:12px;">
         <div id="shipmentSummary" class="tool-pill" style="display:inline-block;margin-bottom:8px">已擷取 0 筆</div>

@@ -2,6 +2,7 @@
   const PAGE = location.pathname.split('/').pop() || 'index.html';
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
+  let isClearing = false;
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
     .filter(el => el.id && !el.matches('[data-no-persist]'));
@@ -17,6 +18,17 @@
     const inbound = document.getElementById('pasteInput');
     if(inbound) localStorage.setItem(SHARED_INBOUND_KEY, inbound.value);
   };
+
+  const clearWorkspace = () => {
+    if(!window.confirm('確定要清除所有已儲存的入庫計畫資料嗎？此動作無法復原。')) return;
+    isClearing = true;
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('fba-workspace:'))
+      .forEach(key => localStorage.removeItem(key));
+    location.reload();
+  };
+
+  document.getElementById('clearWorkspaceBtn')?.addEventListener('click', clearWorkspace);
 
   let state = {};
   try { state = JSON.parse(localStorage.getItem(FORM_KEY) || '{}'); } catch {}
@@ -42,5 +54,5 @@
   });
   // 讓各頁既有的預覽/確認狀態依還原後的內容重新計算。
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles:true })));
-  window.addEventListener('pagehide', save);
+  window.addEventListener('pagehide', () => { if(!isClearing) save(); });
 })();

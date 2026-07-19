@@ -49,6 +49,8 @@
     .top-tab{color:#3a3a3c;text-decoration:none;white-space:nowrap;padding:7px 11px;border-radius:9px;font-size:12px;font-weight:600;transition:.2s ease}
     .top-tab:hover{background:rgba(255,255,255,.7)}
     .top-tab.active{color:#000;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.10)}
+    .clear-workspace{appearance:none;border:0;cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:var(--red-soft);color:var(--red);font-size:12px;font-weight:650;transition:.18s ease}
+    .clear-workspace:hover{background:#ffe3e5;transform:translateY(-1px)}
     main{max-width:1240px;margin:0 auto;padding:58px 28px 72px}
     .hero{max-width:790px;margin:0 auto 42px;text-align:center}
     .hero h1{margin:0;font-size:clamp(36px,5vw,58px);line-height:1.04;letter-spacing:-.045em;font-weight:700}
@@ -143,7 +145,7 @@
     .hint{color:var(--muted);font-size:12px;line-height:1.45}
     .ok{color:var(--green)}.warn{color:#a86500}.err{color:var(--red)}
     @media(max-width:860px){
-      .header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}
+      .header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}.clear-workspace{position:absolute;right:18px;top:15px}
       main{padding:38px 16px 56px}.hero{margin-bottom:30px}.hero p{font-size:16px}
       .upload-grid{grid-template-columns:1fr}.action-card{grid-template-columns:1fr}.run-button{width:100%}
       .result-hero{align-items:stretch;flex-direction:column}.download-button{width:100%}
@@ -169,11 +171,12 @@
       <a class="top-tab" href="sorter.html">FBA 整理</a>
       <a class="top-tab" href="email.html">出貨通知</a>
     </nav>
+    <button id="clearWorkspaceBtn" class="clear-workspace" type="button">一鍵清除</button>
   </div>
 </header>
 <main>
   <section class="hero">
-    <h1>三個步驟，完成補貨整理。</h1>
+    <h1>僅需兩個檔案，產生補貨整理</h1>
     <p>依序放入 Helium 10 建議檔與 Inventory Excel，系統會自動拆分效期批次、排序、標色並產生可直接使用的 Excel。</p>
   </section>
 
