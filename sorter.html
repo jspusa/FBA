@@ -142,6 +142,7 @@ main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!i
 .final-status{margin-top:14px;padding:12px 14px;border-radius:14px;font-weight:800}.final-status.ok{color:#0758a6;background:#e8f2ff}.final-status.warn{color:#9a4e00;background:#fff0d8}
 .active-risk-panel{margin-top:12px;padding:14px 16px;border:1px solid #ef9a9a;border-radius:16px;background:#fff2f2;color:#a11224}
 .active-risk-panel b{display:block}.active-risk-panel ul{margin:8px 0 0;padding-left:22px;line-height:1.6;font-size:13px}
+.active-risk-panel li+li,.export-warning-panel li+li{margin-top:7px}.active-risk-panel li>b,.export-warning-panel li>b{display:inline;margin-right:4px}.finding-warning{color:#8a4b00}.finding-error{color:#a11224}
 .folder-risk-detail{margin-top:5px;color:var(--err);font-size:11px;line-height:1.45}
 .shipment-summary{margin-top:14px}.shipment-summary td,.shipment-summary th{text-align:center}.shipment-summary td{font-size:16px;font-weight:800}
 .btn,button{border-radius:999px!important}.btn.primary,.primary{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}.btn.primary:hover,.primary:hover{background:#0077ed!important}
@@ -307,11 +308,11 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         </div>
       </div>
       <div class="export-warning-panel is-hidden" id="exportWarningPanel">
-        <b>匯出前仍有下列風險：</b>
+        <b>匯出前檢查結果：</b>
         <ul id="exportRiskList"></ul>
         <label class="confirm-row">
           <input id="confirmRiskExport" type="checkbox" />
-          <span>我已逐項確認上述風險，仍要匯出這份 ZIP。</span>
+          <span>我已逐項處理紅色問題，並人工核對橘色項目，仍要匯出這份 ZIP。</span>
         </label>
         <div class="export-warning-actions">
           <button class="btn export-warning" id="btnConfirmRiskExport" type="button" disabled>確認仍要匯出</button>
@@ -356,25 +357,38 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="fba-core.js"></script>
 <script>
 // folders: Map<folderName, { ids:Set<string>, files, hashes, analyses }>
   const folders = new Map();
   const SORTER_DB = 'fba-workspace';
+  const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const BATCH_META_KEY = 'fba-workspace:batch-meta';
   let restoringWorkspace = true;
   let persistTimer = 0;
+  function currentBatchId(){
+    try{
+      const existing=JSON.parse(localStorage.getItem(BATCH_META_KEY)||'null');
+      if(existing?.id)return existing.id;
+    }catch{}
+    const id=globalThis.crypto?.randomUUID?.()||`batch-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+    localStorage.setItem(BATCH_META_KEY,JSON.stringify({id,createdAt:Date.now(),updatedAt:Date.now()}));
+    return id;
+  }
   function openWorkspaceDb(){
-    return new Promise((resolve,reject)=>{const request=indexedDB.open(SORTER_DB,1);request.onupgradeneeded=()=>request.result.createObjectStore('sorter');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});
+    return new Promise((resolve,reject)=>{const request=indexedDB.open(SORTER_DB,1);request.onupgradeneeded=()=>request.result.createObjectStore('sorter');request.onsuccess=()=>{request.result.onversionchange=()=>request.result.close();resolve(request.result)};request.onerror=()=>reject(request.error)});
   }
   async function persistWorkspace(){
     if(restoringWorkspace) return;
     const records=[...folders.entries()].map(([folderName,meta])=>({folderName,ids:[...meta.ids],files:[...meta.files],hashes:[...meta.hashes],analyses:[...meta.analyses]}));
-    const db=await openWorkspaceDb();const tx=db.transaction('sorter','readwrite');tx.objectStore('sorter').put({records,batchStats},'current');
+    const db=await openWorkspaceDb();const tx=db.transaction('sorter','readwrite');tx.objectStore('sorter').put({batchId:currentBatchId(),records,batchStats,updatedAt:Date.now()},'current');
     await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();
   }
   function scheduleWorkspaceSave(){clearTimeout(persistTimer);persistTimer=setTimeout(()=>persistWorkspace().catch(console.error),150)}
   async function restoreWorkspace(){
     try{const db=await openWorkspaceDb();const tx=db.transaction('sorter');const request=tx.objectStore('sorter').get('current');const saved=await new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close();
-      if(saved?.records?.length){folders.clear();saved.records.forEach(r=>folders.set(r.folderName,{ids:new Set(r.ids),files:new Map(r.files),hashes:new Map(r.hashes),analyses:new Map(r.analyses)}));batchStats=saved.batchStats||batchStats;}
+      const sameBatch=!saved?.batchId||saved.batchId===currentBatchId();
+      if(sameBatch&&saved?.records?.length){folders.clear();saved.records.forEach(r=>folders.set(r.folderName,{ids:new Set(r.ids),files:new Map(r.files),hashes:new Map(r.hashes),analyses:new Map(r.analyses)}));batchStats=saved.batchStats||batchStats;}
     }catch(error){console.warn('無法還原 FBA 整理工作階段',error)}
     restoringWorkspace=false;refreshAliasTable();refreshTree();refreshExportState();
   }
@@ -670,17 +684,31 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       if(type === 'csv'){
         const buf = await file.arrayBuffer();
         const text = new TextDecoder('utf-8').decode(new Uint8Array(buf));
+        const metrics = window.FBACore?.parseCsvMetrics(text) || {};
         return {
           type,
-          shipmentId:parseCsvTopValue(text, ['貨件 ID','Shipment ID']),
-          cartons:toNumber(parseCsvTopValue(text, ['包裝箱','Boxes','Cartons'])),
-          units:toNumber(parseCsvTopValue(text, ['單位數量','Units','Total Units']))
+          shipmentId:metrics.shipmentId || parseCsvTopValue(text, ['貨件 ID','Shipment ID']),
+          cartons:Number.isFinite(metrics.cartons) ? metrics.cartons : toNumber(parseCsvTopValue(text, ['包裝箱','Boxes','Cartons'])),
+          units:Number.isFinite(metrics.units) ? metrics.units : toNumber(parseCsvTopValue(text, ['單位數量','Units','Total Units'])),
+          diagnostics:metrics.diagnostics || []
         };
       }
 
       if(type === 'pack'){
-        const details = await readPdfDetails(file, 0);
-        return { type, shipmentId:inferFolderKey(file.name), cartons:details.totalPages };
+        const details = await readPdfDetails(file, Infinity);
+        const cartonIds = new Set();
+        for(const pageText of details.pageTexts){
+          const compact=normalizePdfText(pageText).replace(/[^A-Z0-9]/g,'');
+          for(const match of compact.matchAll(/FBA[A-Z0-9]{5,}?U\d{6}/g))cartonIds.add(match[0]);
+        }
+        return {
+          type,
+          shipmentId:inferFolderKey(file.name),
+          cartons:cartonIds.size || details.totalPages,
+          cartonSource:cartonIds.size ? 'label-ids' : 'pdf-pages',
+          labelPages:details.totalPages,
+          cartonIds:[...cartonIds]
+        };
       }
 
       if(type === 'pallet'){
@@ -708,6 +736,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         const details = await readPdfDetails(file, Infinity, true);
         const text = normalizePdfText(details.text);
         const values = details.operatorStrings || [];
+        const parsed = window.FBACore?.parseBolMetrics(text) || {};
         const dateIndex = values.findIndex(value=>normalizeShipmentDate(value));
         const shipmentTypeIndex = values.findIndex(value=>/\b(?:LTL|FTL)\b/i.test(value));
         const shipmentValue = values.find(value=>/^FBA[A-Z0-9]+$/i.test(value));
@@ -731,11 +760,11 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         const units = toNumber(unitsMatch?.[1]) ?? (dateIndex >= 0 ? findInteger(dateIndex + 2, 1) : null);
         return {
           type,
-          shipmentId:shipmentMatch?.[1] || shipmentValue || inferFolderKey(file.name),
-          shipmentDate:normalizeShipmentDate(dateMatch?.[1]) || (dateIndex >= 0 ? normalizeShipmentDate(values[dateIndex]) : null),
-          cartons,
-          palletCount:stackable != null && unstackable != null ? stackable + unstackable : null,
-          units
+          shipmentId:parsed.shipmentId || shipmentMatch?.[1] || shipmentValue || inferFolderKey(file.name),
+          shipmentDate:parsed.shipmentDate || normalizeShipmentDate(dateMatch?.[1]) || (dateIndex >= 0 ? normalizeShipmentDate(values[dateIndex]) : null),
+          cartons:Number.isFinite(parsed.cartons) ? parsed.cartons : cartons,
+          palletCount:Number.isFinite(parsed.palletCount) ? parsed.palletCount : (stackable != null && unstackable != null ? stackable + unstackable : null),
+          units:Number.isFinite(parsed.units) ? parsed.units : units
         };
       }
     } catch (error){
@@ -898,38 +927,63 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       .map(([folderName,meta])=>getFolderAudit(folderName,meta));
   }
 
-  function getExportRisks(){
-    const risks = [];
-    if(folders.size === 0) return ['尚未加入任何檔案。'];
+  function getExportFindings(){
+    const findings = [];
+    const add=(level,message,folderName='')=>findings.push({level,message,folderName});
+    if(folders.size === 0){
+      add('error','尚未加入任何檔案。');
+      return findings;
+    }
 
     const labels = { csv:'CSV', pack:'包裝箱標籤', pallet:'棧板標籤', bol:'提單' };
     const audits = getAllFolderAudits();
     for(const audit of audits){
       const { folderName, counts, analyses } = audit;
       for(const [type, label] of Object.entries(labels)){
-        if(counts[type] === 0) risks.push(`${folderName}：缺少${label}。`);
-        if(counts[type] > 1) risks.push(`${folderName}：有 ${counts[type]} 份${label}，請確認是否正確。`);
+        if(counts[type] === 0) add('error',`${folderName}：缺少${label}。`,folderName);
+        if(counts[type] > 1) add('error',`${folderName}：有 ${counts[type]} 份${label}，請確認是否正確。`,folderName);
       }
       if(!audit.shipmentConsistent){
-        risks.push(`${folderName}：資料夾內的 Shipment ID 不一致（${audit.shipmentIds.join('、')}）。`);
+        add('error',`${folderName}：資料夾內的 Shipment ID 不一致（${audit.shipmentIds.join('、')}）。`,folderName);
       }
       for(const [type,label] of Object.entries(labels)){
         if(counts[type] > 0 && analyses[type]?.analysisError){
-          risks.push(`${folderName}：${label}內容解析失敗（${analyses[type].analysisError}）。`);
+          add('warning',`${folderName}：${label}無法自動解析（${analyses[type].analysisError}），請人工確認。`,folderName);
         }
       }
 
       if(counts.csv && counts.pack && counts.bol){
-        const cartonText = audit.cartonValues.map(value=>Number.isFinite(value) ? value : '讀取失敗');
-        if(!audit.cartonValues.every(Number.isFinite)) risks.push(`${folderName}：包裝箱數無法完整比對（CSV ${cartonText[0]}／包裝箱標籤 ${cartonText[1]}／BOL ${cartonText[2]}）。`);
-        else if(!audit.cartonsConsistent) risks.push(`${folderName}：箱數不一致（CSV ${audit.cartonValues[0]}／標籤 ${audit.cartonValues[1]}／BOL ${audit.cartonValues[2]}）。`);
+        const cartonText = audit.cartonValues.map(value=>Number.isFinite(value) ? value : '無法讀取');
+        if(!audit.cartonValues.every(Number.isFinite)){
+          add('warning',`${folderName}：箱數無法完整自動驗證（CSV ${cartonText[0]}／包裝箱標籤 ${cartonText[1]}／BOL ${cartonText[2]}），請人工核對。`,folderName);
+        }else if(!audit.cartonsConsistent){
+          add('error',`${folderName}：箱數確定不一致（CSV ${audit.cartonValues[0]}／包裝箱標籤 ${audit.cartonValues[1]}／BOL ${audit.cartonValues[2]}）。`,folderName);
+        }
       }
-      if(counts.bol && !audit.shipmentDate) risks.push(`${folderName}：無法讀取 BOL 左上角的出貨日期。`);
+      if(counts.bol && !audit.shipmentDate){
+        add('warning',`${folderName}：無法自動讀取 BOL 出貨日期，請人工確認。`,folderName);
+      }
     }
 
     const dates = [...new Set(audits.map(a=>a.shipmentDate).filter(Boolean))];
-    if(dates.length > 1) risks.push(`本批次 BOL 出貨日期不一致（${dates.join('、')}）。`);
-    return [...new Set(risks)];
+    if(dates.length > 1) add('error',`本批次 BOL 出貨日期確定不一致（${dates.join('、')}）。`);
+    const seen=new Set();
+    return findings.filter(finding=>{
+      const key=`${finding.level}:${finding.message}`;
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+    });
+  }
+
+  function getExportRisks(){
+    return getExportFindings().map(finding=>finding.message);
+  }
+
+  function findingHtml(finding, includeFolder=true){
+    const icon=finding.level==='error'?'🔴':'🟠';
+    const label=finding.level==='error'?'確定問題':'無法自動驗證';
+    const message=includeFolder?finding.message:finding.message.replace(`${finding.folderName}：`,'');
+    return `<li class="finding-${finding.level}"><b>${icon} ${label}</b> ${escapeHtml(message)}</li>`;
   }
 
   function displayMetric(values){
@@ -951,6 +1005,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       els.activeRiskPanel.classList.add('is-hidden');
       els.activeRiskList.innerHTML = '';
       els.shipmentSummaryBody.innerHTML = '<tr><td>—</td><td>0 車</td><td>0 箱</td></tr>';
+      localStorage.removeItem(SORTER_SUMMARY_KEY);
       return;
     }
 
@@ -963,18 +1018,28 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       els.auditCartons.textContent = `${audits.filter(a=>a.cartonsConsistent).length}/${audits.length} 車一致`;
     }
 
-    const risks = getExportRisks();
-    els.finalStatus.className = risks.length ? 'final-status warn' : 'final-status ok';
-    els.finalStatus.textContent = risks.length ? `⚠ 發現 ${risks.length} 項問題，請查看下方警示` : '✅ 可以安全匯出';
-    els.activeRiskPanel.classList.toggle('is-hidden', risks.length === 0);
-    els.activeRiskList.innerHTML = risks.map(risk=>`<li>${escapeHtml(risk)}</li>`).join('');
+    const findings = getExportFindings();
+    const errors=findings.filter(finding=>finding.level==='error').length;
+    const warnings=findings.length-errors;
+    els.finalStatus.className = findings.length ? 'final-status warn' : 'final-status ok';
+    els.finalStatus.textContent = findings.length
+      ? `${errors?`🔴 ${errors} 項確定問題`:''}${errors&&warnings?' · ':''}${warnings?`🟠 ${warnings} 項需人工確認`:''}`
+      : '✅ 所有自動檢查均已通過，可以安全匯出';
+    els.activeRiskPanel.classList.toggle('is-hidden', findings.length === 0);
+    els.activeRiskList.innerHTML = findings.map(finding=>findingHtml(finding)).join('');
 
     const dates = [...new Set(audits.map(a=>a.shipmentDate).filter(Boolean))];
     const allDatesRead = dates.length === 1 && audits.every(a=>a.shipmentDate);
     const dateText = allDatesRead ? dates[0].replaceAll('-','/') : (dates.length > 1 ? `不一致：${dates.join('、')}` : '—');
     const totalCartons = audits.reduce((sum,a)=>sum + (Number.isFinite(a.preferredCartons) ? a.preferredCartons : 0),0);
     els.shipmentSummaryBody.innerHTML = `<tr><td>${escapeHtml(dateText)}</td><td>${audits.length} 車</td><td>${totalCartons.toLocaleString('en-US')} 箱</td></tr>`;
-    if(allDatesRead) localStorage.setItem('fba-workspace:sorter-summary',JSON.stringify({pickupDate:dates[0],truckCount:audits.length,totalCartons,updatedAt:Date.now()}));
+    const summaryValid=allDatesRead&&audits.every(audit=>audit.shipmentConsistent);
+    if(summaryValid){
+      const shipmentIds=[...new Set(audits.flatMap(audit=>audit.shipmentIds))];
+      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:dates[0],truckCount:audits.length,totalCartons,shipmentIds,updatedAt:Date.now()}));
+    }else{
+      localStorage.removeItem(SORTER_SUMMARY_KEY);
+    }
   }
 
   function hideExportWarningPanel(){
@@ -997,15 +1062,16 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       return;
     }
 
-    const risks = getExportRisks();
-    if(risks.length === 0){
+    const findings = getExportFindings();
+    if(findings.length === 0){
       els.btnExport.classList.add('export-ready');
       els.btnExport.textContent = '匯出 ZIP';
       els.btnExport.title = '四類檔案齊全，Shipment ID、包裝箱數與出貨日期均通過檢查';
     } else {
       els.btnExport.classList.add('export-warning');
-      els.btnExport.textContent = '仍要匯出 ZIP';
-      els.btnExport.title = `目前有 ${risks.length} 項風險`;
+      els.btnExport.textContent = '檢查後匯出 ZIP';
+      const errors=findings.filter(finding=>finding.level==='error').length;
+      els.btnExport.title = `目前有 ${errors} 項確定問題、${findings.length-errors} 項需人工確認`;
     }
   }
 
@@ -1025,9 +1091,9 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       const palletCount = files.filter(f=>f.startsWith('Pallet-')).length;
       const bolCount = files.filter(f=>f.startsWith('BOL-')).length;
 
-      const folderRisks = getExportRisks().filter(risk=>risk.startsWith(`${folderName}：`));
-      const status = folderRisks.length
-        ? `<span class="check warn">⚠ ${folderRisks.length} 項問題</span>${folderRisks.map(risk=>`<div class="folder-risk-detail">${escapeHtml(risk.replace(`${folderName}：`,''))}</div>`).join('')}`
+      const folderFindings = getExportFindings().filter(finding=>finding.folderName===folderName);
+      const status = folderFindings.length
+        ? `<span class="check warn">⚠ ${folderFindings.length} 項需處理</span>${folderFindings.map(finding=>`<div class="folder-risk-detail finding-${finding.level}">${finding.level==='error'?'🔴':'🟠'} ${escapeHtml(finding.message.replace(`${folderName}：`,''))}</div>`).join('')}`
         : `<span class="check ok">✓ 全部通過</span>`;
 
       rows.push(`
@@ -1371,8 +1437,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 
 
   // ====== Export ZIP ======
-  function showExportWarningPanel(risks){
-    els.exportRiskList.innerHTML = risks.map(risk=>`<li>${escapeHtml(risk)}</li>`).join('');
+  function showExportWarningPanel(findings){
+    els.exportRiskList.innerHTML = findings.map(finding=>findingHtml(finding)).join('');
     els.confirmRiskExport.checked = false;
     els.btnConfirmRiskExport.disabled = true;
     els.exportWarningPanel.classList.remove('is-hidden');
@@ -1380,13 +1446,13 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
 
   async function requestExport(){
-    const risks = getExportRisks();
-    if(risks.length === 0){
+    const findings = getExportFindings();
+    if(findings.length === 0){
       hideExportWarningPanel();
       await exportZip();
       return;
     }
-    showExportWarningPanel(risks);
+    showExportWarningPanel(findings);
   }
 
   async function exportZip(){
