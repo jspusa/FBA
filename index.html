@@ -186,7 +186,7 @@
     .preflight-notes[hidden]{display:none}.preflight-notes summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;cursor:pointer;list-style:none;color:#3a3a3c;font-size:13px;font-weight:750;background:#fafafa}.preflight-notes summary::-webkit-details-marker{display:none}
     .preflight-notes summary::before{content:'›';font-size:19px;color:var(--muted);transition:.16s transform}.preflight-notes[open] summary::before{transform:rotate(90deg)}.preflight-notes summary span:first-of-type{flex:1}
     .notes-count{padding:5px 9px;border-radius:999px;background:#ededf0;color:#5d5d62;font-size:10px;font-weight:750}.notes-body{padding:0 20px 18px}.notes-intro{margin:0 0 11px;color:var(--muted);font-size:11px;line-height:1.55}
-    .auto-note-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}.auto-note-table{min-width:680px}.auto-note-table th,.auto-note-table td{text-align:left;padding:10px 12px;font-size:11px}.auto-note-table td:first-child{font-weight:750}.file-note{margin-top:10px;padding:11px 13px;border-radius:12px;background:#f5f5f7;color:#5d5d62;font-size:11px;line-height:1.5}
+    .auto-note-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}.auto-note-table{min-width:680px}.auto-note-table th,.auto-note-table td{text-align:left;padding:10px 12px;font-size:11px}.auto-note-table td:first-child{font-weight:750}.notes-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}.notes-section:first-child{margin-top:0;padding-top:0;border-top:0}.notes-section-title{margin:0 0 5px;font-size:13px;color:var(--text)}.notes-section-copy{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.5}.inventory-note-table{min-width:720px}.file-note{margin-top:10px;padding:11px 13px;border-radius:12px;background:#f5f5f7;color:#5d5d62;font-size:11px;line-height:1.5}
     @keyframes pulse{50%{opacity:.28}}
     #resultCard{margin-top:22px;padding:0;overflow:hidden}
     .result-hero{padding:25px 28px;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%);display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line)}
@@ -988,9 +988,11 @@ async function run(){
       const details=$('preflightNotes'), body=$('preflightNotesBody');
       details.hidden=notes.length===0; body.innerHTML=''; $('preflightNotesCount').textContent=`${notes.length} 項`;
       if(!notes.length){ details.open=false; return; }
-      const autoItems=notes.filter(note=>note.kind==='helium-auto'), fileItems=notes.filter(note=>note.kind!=='helium-auto');
+      const autoItems=notes.filter(note=>note.kind==='helium-auto'), inventoryItems=notes.filter(note=>note.kind==='inventory-info'), fileItems=notes.filter(note=>note.kind!=='helium-auto'&&note.kind!=='inventory-info');
       if(autoItems.length){
-        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷與可售庫存都較高，且 Inbound 不低於其他資料列；系統已直接採用，不需要人工選擇。'));
+        const section=createIssueElement('section','notes-section');
+        section.appendChild(createIssueElement('h3','notes-section-title','H10 重複 SKU 自動採用'));
+        section.appendChild(createIssueElement('p','notes-section-copy','估算日銷與可售庫存都較高，且 Inbound 不低於其他資料列；系統已直接採用，不需要人工選擇。'));
         const wrap=createIssueElement('div','auto-note-table-wrap'), table=createIssueElement('table','auto-note-table');
         table.innerHTML='<thead><tr><th>SKU</th><th>自動採用</th><th>估算日銷</th><th>可售庫存</th><th>Inbound</th></tr></thead>';
         const tbody=document.createElement('tbody');
@@ -999,8 +1001,29 @@ async function run(){
           [note.sku,`CSV 第 ${selected._sourceRow} 列`,`${formatDailySales(selected._estimatedDailySales)}／天`,compactValue(selected['可售庫存']),compactValue(selected['入項'])].forEach(value=>row.appendChild(createIssueElement('td','',value)));
           tbody.appendChild(row);
         });
-        table.appendChild(tbody); wrap.appendChild(table); body.appendChild(wrap);
+        table.appendChild(tbody); wrap.appendChild(table); section.appendChild(wrap); body.appendChild(section);
       }
+      inventoryItems.forEach(note=>{
+        const section=createIssueElement('section','notes-section');
+        section.appendChild(createIssueElement('h3','notes-section-title','Inventory 效期欄位辨識'));
+        section.appendChild(createIssueElement('p','notes-section-copy',`已辨識 ${note.pairCount} 組 EXPIRE／QTY；各組來源欄位與實際讀取結果如下。`));
+        const wrap=createIssueElement('div','auto-note-table-wrap'), table=createIssueElement('table','auto-note-table inventory-note-table');
+        table.innerHTML='<thead><tr><th>組別</th><th>EXPIRE 欄位</th><th>QTY 欄位</th><th>已填批次</th><th>可辨識效期</th><th>可辨識 QTY</th></tr></thead>';
+        const tbody=document.createElement('tbody');
+        (note.pairs||[]).forEach(pair=>{
+          const row=document.createElement('tr');
+          [
+            `第 ${pair.group} 組`,
+            `${pair.expiryColumn} 欄 · ${pair.expiryHeader}`,
+            pair.qtyColumn?`${pair.qtyColumn} 欄 · ${pair.qtyHeader}`:'未找到 QTY 欄',
+            `${pair.populatedRows} 筆`,
+            `${pair.validExpiryRows} 筆`,
+            `${pair.validQtyRows} 筆`
+          ].forEach(value=>row.appendChild(createIssueElement('td','',value)));
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody); wrap.appendChild(table); section.appendChild(wrap); body.appendChild(section);
+      });
       fileItems.forEach(note=>body.appendChild(createIssueElement('div','file-note',note.text)));
     }
     function renderPreflight(){
@@ -1059,6 +1082,16 @@ async function run(){
       const cols=detectInventoryColumns(headers);
       if(!cols.expiryPairs.length) throw new Error('Inventory Excel 找不到成對的 EXPIRE／QTY 欄位。');
       const skus=new Set(), groups=new Map(), diagnostics=[];
+      const expiryPairStats=cols.expiryPairs.map((pair,index)=>({
+        group:index+1,
+        expiryColumn:colLetter(pair.expiryIdx),
+        qtyColumn:pair.qtyIdx===-1?'':colLetter(pair.qtyIdx),
+        expiryHeader:String(headers[pair.expiryIdx]??'EXPIRE'),
+        qtyHeader:pair.qtyIdx===-1?'':String(headers[pair.qtyIdx]??'QTY'),
+        populatedRows:0,
+        validExpiryRows:0,
+        validQtyRows:0
+      }));
       const addDiagnostic=(label,sku,location,detail,handling='請確認原始檔')=>diagnostics.push({id:`inventory-${diagnostics.length+1}`,kind:'diagnostic',label,source:'Inventory',sku,location,detail,handling});
       for(let r=2;r<rows.length;r++){
         const row=rows[r]||[], rawSku=String(row[cols.skuIdx]??'').trim();
@@ -1071,10 +1104,14 @@ async function run(){
         if(total>0&&(!isNumericLike(packRaw)||toNumber(packRaw)<=0)) addDiagnostic('箱入數缺漏',sku,`Excel 第 ${r+1} 列 · ${colLetter(cols.packIdx)}${r+1}`,`有 ${total} 箱庫存，但箱入數是「${compactValue(packRaw)}」。`,'補貨箱數建議將留白');
         let lotTotal=0;
         const lotLabels=[];
-        cols.expiryPairs.forEach(pair=>{
+        cols.expiryPairs.forEach((pair,pairIndex)=>{
           const expiryRaw=row[pair.expiryIdx], qtyRaw=pair.qtyIdx===-1?'':row[pair.qtyIdx];
           const expiryText=String(expiryRaw??'').trim(), qtyText=String(qtyRaw??'').trim();
           const expiryDate=parseExpiryDate(expiryRaw), qtyIsNumeric=isNumericLike(qtyRaw);
+          const pairStat=expiryPairStats[pairIndex];
+          if(expiryText||qtyText) pairStat.populatedRows++;
+          if(expiryDate) pairStat.validExpiryRows++;
+          if(qtyText&&qtyIsNumeric) pairStat.validQtyRows++;
           if(expiryText||qtyText) lotLabels.push(`${expiryText||'未填效期'} × ${qtyText||'未填 QTY'}`);
           if(qtyText&&!qtyIsNumeric) addDiagnostic('QTY 格式',sku,`Excel 第 ${r+1} 列 · ${pair.qtyIdx===-1?'缺少 QTY 欄':`${colLetter(pair.qtyIdx)}${r+1}`}`,`QTY「${compactValue(qtyRaw)}」不是有效數字。`,'整理時會按 0 計算');
           if(expiryText&&!expiryDate&&qtyIsNumeric&&toNumber(qtyRaw)>0) addDiagnostic('效期格式',sku,`Excel 第 ${r+1} 列 · ${colLetter(pair.expiryIdx)}${r+1}`,`效期「${expiryText}」無法辨識，對應 QTY 為 ${Math.round(toNumber(qtyRaw))}。`,'批次會暫列為未知效期');
@@ -1093,7 +1130,7 @@ async function run(){
       groups.forEach((options,sku)=>{ if(options.length>1) decisions.push({id:`inventory-${sku}`,kind:'inventory-duplicate',source:'Inventory',sku,options,defaultChoice:'all',location:`Excel 第 ${options.map(option=>option._sourceRow).join('、')} 列`}); });
       const stale=freshnessWarning(file,'Inventory Excel',7);
       if(stale) diagnostics.push({id:'inventory-file-age',kind:'diagnostic',label:'檔案日期',source:'Inventory',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      return {rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',text:`Inventory 已辨識 ${cols.expiryPairs.length} 組 EXPIRE／QTY 效期欄位。`}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}`};
+      return {rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',pairCount:cols.expiryPairs.length,pairs:expiryPairStats}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}`};
     }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
