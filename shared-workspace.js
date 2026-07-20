@@ -5,6 +5,8 @@
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
+  const VALUE_MODE_KEY = 'fba-workspace:value-mode';
+  const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
   const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
   const RESTOCK_DB = 'fba-restock-files';
@@ -50,7 +52,7 @@
   };
   window.FBAWorkspaceFiles = {
     async save(kind, file) {
-      if (!file || !['helium', 'inventory'].includes(kind)) return;
+      if (!file || !['helium', 'inventory', 'business'].includes(kind)) return;
       await restockRequest('readwrite', store => store.put({
         kind, batchId: batchMeta.id, name: file.name, type: file.type,
         lastModified: file.lastModified, blob: file
@@ -66,6 +68,25 @@
         return result;
       }, {});
     }
+  };
+
+  const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
+  const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
+  window.FBAValueMode = {
+    isEnabled: valueModeEnabled,
+    setEnabled(enabled) {
+      if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
+      else localStorage.removeItem(VALUE_MODE_KEY);
+      notifyValueMode();
+    },
+    getBusinessReport() {
+      const report = readJson(BUSINESS_REPORT_KEY);
+      return report?.batchId === batchMeta.id ? report : null;
+    },
+    saveBusinessReport(items, fileName = '') {
+      localStorage.setItem(BUSINESS_REPORT_KEY, JSON.stringify({ batchId: batchMeta.id, items, fileName, updatedAt: Date.now() }));
+    },
+    clearBusinessReport() { localStorage.removeItem(BUSINESS_REPORT_KEY); }
   };
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
@@ -123,10 +144,14 @@
     .clear-workspace{appearance:none;border:1px solid rgba(36,138,61,.2);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#e8f7ed;color:#176b2c;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
     .clear-workspace:hover{background:#d9f1e1;transform:translateY(-1px)}
     .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
-    .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}`;
+    .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
+    .private-value-action[hidden],.private-value-panel[hidden]{display:none!important}`;
   document.head.appendChild(style);
   ensureResetButton()?.addEventListener('click', startNewBatch);
-  window.addEventListener('storage', event => { if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear(); });
+  window.addEventListener('storage', event => {
+    if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
+    if (event.key === VALUE_MODE_KEY) notifyValueMode();
+  });
   const latestClear = localStorage.getItem(CLEAR_KEY);
   if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
     sessionStorage.setItem(SEEN_CLEAR_KEY, latestClear); clearCurrentPage();
@@ -161,4 +186,5 @@
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
+  notifyValueMode();
 })();
