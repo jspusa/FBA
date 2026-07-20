@@ -157,7 +157,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <main>
 <section class="page-hero"><h1>FBA 檔案整理</h1><p>所有檔案一次丟入，自動分辨包裝箱標籤、棧板標籤、提單與 CSV。</p></section>
 
-<div class="page-tools"><button class="btn" id="btnAdvancedToggle" type="button">顯示進階功能</button></div>
+<div class="page-tools"><button class="btn advanced-toggle" id="btnAdvancedToggle" type="button">顯示進階功能</button></div>
 
 <section id="page-sorter">
   <div class="stack">
@@ -1559,6 +1559,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   els.btnClearBol.addEventListener('click', ()=>clearByType('bol'));
   els.btnAdvancedToggle.addEventListener('click', ()=>{
     const isOpen = els.pageSorter.classList.toggle('show-advanced');
+    els.btnAdvancedToggle.classList.toggle('active', isOpen);
     els.btnAdvancedToggle.textContent = isOpen ? '隱藏進階功能' : '顯示進階功能';
   });
   els.btnAliasToggle.addEventListener('click', ()=>{
@@ -1624,7 +1625,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260720c"></script>
+<script src="shared-workspace.js?v=20260720e"></script>
 </body>
 </html>
-
