@@ -154,6 +154,7 @@
     .issue-summary-pill{padding:7px 11px;border-radius:999px;background:#f2f2f4;color:#4b4b50;font-size:11px;font-weight:700}
     .issue-summary-pill.choice{background:#eef6ff;color:#175d9c}
     .issue-summary-pill.warning{background:#fff2d8;color:#8a5200}
+    .issue-summary-pill.confirmed{background:#eef9f1;color:#166534}
     .issue-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:#fff}
     .issue-table{min-width:940px}
     .issue-table th,.issue-table td{text-align:left;vertical-align:top;white-space:normal;padding:13px 12px}
@@ -171,6 +172,9 @@
     .issue-option.selected{border:2px solid var(--blue);background:#eef6ff;padding:9px;box-shadow:0 0 0 2px rgba(0,113,227,.08)}
     .issue-option.safe-default{display:flex;min-height:104px;align-items:center;justify-content:center;text-align:center;background:#f5faf6}
     .issue-option.safe-default.selected{background:#eef9f1;border-color:var(--green);box-shadow:0 0 0 2px rgba(52,199,89,.09)}
+    .decision-confirm{display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 11px;border:1px solid #e0e0e5;border-radius:11px;background:#f7f7f9;color:#4b4b50;font-size:12px;font-weight:750;cursor:pointer}
+    .decision-confirm input{width:17px;height:17px;margin:0;accent-color:var(--green)}
+    .decision-confirm.confirmed{border-color:#a8ddb5;background:#eef9f1;color:#166534}
     .option-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
     .option-top strong{font-size:11px}
     .recommended-tag{padding:3px 6px;border-radius:999px;background:#dceeff;color:#0b5d9c;font-size:8px;font-weight:800;white-space:nowrap}
@@ -365,7 +369,6 @@
 <script>
 (function(){
     const $ = (id) => document.getElementById(id);
-    const SKU_FIX_MAP = {"EZD021":"EZD021AM","EZD011":"EZD011AM","EZD041":"EZD041AM","EPD020":"EPD020AM","EZD061":"EZD061AM","EPD011":"EPD011AM","EPD050":"EPD050AM","EPD060":"EPD060AM","EZD010-3":"EZD010AM-3","EZD060-3":"EZD060AM-3","EZD020-3":"EZD020AM-3","EZD040-3":"EZD040AM-3","EZD050-3":"EZD050AM-3","EZD051":"EZD051AM","EPD040":"EPD040AM","EPD021":"EPD021AM","EPD041":"EPD041AM"};
     const REQUIRED_HELIUM_COLS = {"SKU":["SKU"],"供貨天數":["供貨天數","供货天数","Days of Supply"],"補貨數量":["補貨數量","补货数量","Reorder Units"],"可售庫存":["可售庫存","可售库存","Sellable Inventory"],"入項":["入項","入项","Inbound"]};
     const SHEET_ORDER = ['主工作表','需儘速入庫','未上架','效期拒入FBA','已過期','缺貨','不足五箱','未使用SKU','美國總數'];
     const SHEET_DEFINITIONS = {
@@ -401,7 +404,7 @@
     const trimTrailingEmpty=(arr)=>{ let end=arr.length; while(end>0&&(arr[end-1]===''||arr[end-1]==null)) end--; return arr.slice(0,end);} ;
     const toNumber=(v)=>{ if(v==null||v==='') return 0; const n=Number(String(v).replace(/,/g,'').trim()); return Number.isFinite(n)?n:0; };
     const isNumericLike=(v)=>!(v==null||v==='') && Number.isFinite(Number(String(v).replace(/,/g,'').trim()));
-    const fixSku=(sku)=>{ const k=String(sku??'').trim(); return SKU_FIX_MAP[k]||k; };
+    const fixSku=(sku)=>String(sku??'').trim();
     const isInventorySummarySku=(sku)=>['new sku','total','totals','subtotal','grand total','合計','總計','总计'].includes(normalizeHeader(sku));
     function setStatus(msg, err=false, mode='ok'){ const el=$('status'); el.textContent=msg; el.className='tool-status '+(err?'bad':mode); }
     async function readCsvAsRows(file){ const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array',raw:true,codepage:65001}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
@@ -843,6 +846,7 @@ async function run(){
     const restockFiles = { helium:null, inventory:null };
     const validationTokens = { helium:0, inventory:0 };
     const issueChoices = { helium:{}, inventory:{} };
+    const issueConfirmations = { helium:{}, inventory:{} };
     const emptyCheck = () => ({status:'empty',file:null,rows:null,skus:new Set(),detail:'',warnings:[],decisions:[],diagnostics:[],error:''});
     const preflightChecks = { helium:emptyCheck(), inventory:emptyCheck() };
     const isValidCheck = (check) => check?.status==='valid';
@@ -875,14 +879,21 @@ async function run(){
       const ratio=helium.skus.size?matched/helium.skus.size:0;
       return {matched,ratio,heliumTotal:helium.skus.size,inventoryTotal:inventory.skus.size};
     }
-    function setAuditItem(itemId,textId,check,baseIcon,emptyText){
+    function decisionsConfirmed(kind,check){
+      const decisions=check?.decisions||[];
+      return decisions.length>0&&decisions.every(decision=>Boolean(issueConfirmations[kind]?.[decision.sku]));
+    }
+    function setAuditItem(itemId,textId,check,baseIcon,emptyText,kind){
       const item=$(itemId), textEl=$(textId), icon=item.querySelector('.audit-icon');
       let stateName='pending', text=emptyText, iconText=baseIcon;
       if(check.status==='checking'){ stateName='checking'; text='正在讀取並核對欄位…'; iconText='…'; }
       else if(check.status==='invalid'){ stateName='bad'; text=check.error||'檢查未通過'; iconText='!'; }
       else if(check.status==='valid'){
-        const issueCount=(check.decisions||[]).length+(check.diagnostics||[]).length+(check.warnings||[]).length;
+        const confirmed=decisionsConfirmed(kind,check);
+        const unresolvedDecisions=confirmed?0:(check.decisions||[]).length;
+        const issueCount=unresolvedDecisions+(check.diagnostics||[]).length+(check.warnings||[]).length;
         stateName=issueCount?'warn':'valid'; text=check.detail; iconText=issueCount?'!':'✓';
+        if(confirmed) text=text.replace(/(\d+) 組待選/, '$1 組已確認');
       }
       item.dataset.state=stateName; icon.textContent=iconText; textEl.textContent=text; textEl.title=text;
     }
@@ -903,6 +914,14 @@ async function run(){
       button.type='button'; button.dataset.choiceKind=kind; button.dataset.sku=sku; button.dataset.choice=choiceId;
       button.classList.toggle('selected',selected); button.setAttribute('aria-pressed',String(selected)); button.setAttribute('aria-label',ariaLabel);
       return button;
+    }
+    function appendDecisionConfirmation(kind,sku,currentCell){
+      const confirmed=Boolean(issueConfirmations[kind]?.[sku]);
+      const label=createIssueElement('label',`decision-confirm${confirmed?' confirmed':''}`);
+      const input=document.createElement('input');
+      input.type='checkbox'; input.dataset.confirmKind=kind; input.dataset.sku=sku; input.checked=confirmed;
+      label.append(input,createIssueElement('span','',confirmed?'✓ 已確認完畢':'確認完畢'));
+      currentCell.appendChild(label);
     }
     function renderHeliumDecision(decision,choiceCell,currentCell){
       const selectedId=String(issueChoices.helium[decision.sku]??decision.defaultChoice);
@@ -925,6 +944,7 @@ async function run(){
       currentCell.appendChild(createIssueElement('strong','',`CSV 第 ${selected._sourceRow} 列`));
       currentCell.appendChild(createIssueElement('span','',`估算日銷 ${formatDailySales(selected._estimatedDailySales)}／天 · 可售 ${compactValue(selected['可售庫存'])} · Inbound ${compactValue(selected['入項'])}`));
       currentCell.appendChild(createIssueElement('span',`issue-handling ${selected._choiceId===decision.defaultChoice?'default':'manual'}`,selected._choiceId===decision.defaultChoice?'系統多數預選':'手動選擇'));
+      appendDecisionConfirmation('helium',decision.sku,currentCell);
     }
     function renderInventoryOption(decision,option,selected){
       const button=makeChoiceButton('inventory',decision.sku,option._choiceId,selected,`${decision.sku} 只採用 Excel 第 ${option._sourceRow} 列`);
@@ -952,6 +972,7 @@ async function run(){
         currentCell.appendChild(createIssueElement('span','',`箱入 ${compactValue(selected.pack)} · 總箱 ${compactValue(selected.total)}`));
         currentCell.appendChild(createIssueElement('span','issue-handling manual','手動只保留此列'));
       }
+      appendDecisionConfirmation('inventory',decision.sku,currentCell);
     }
     function getIssueItems(pairDiagnostics=[]){
       const helium=preflightChecks.helium, inventory=preflightChecks.inventory;
@@ -963,7 +984,11 @@ async function run(){
       if(!items.length){ $('issueCount').textContent='0 項'; return; }
       const decisionCount=items.filter(item=>item.kind!=='diagnostic').length, diagnosticCount=items.length-decisionCount;
       $('issueCount').textContent=`${items.length} 項`;
-      if(decisionCount) summary.appendChild(createIssueElement('span','issue-summary-pill choice',`${decisionCount} 項已套用預選，可點選切換`));
+      const confirmedCount=items.filter(item=>item.kind!=='diagnostic'&&Boolean(issueConfirmations[item.kind==='helium-duplicate'?'helium':'inventory']?.[item.sku])).length;
+      if(decisionCount){
+        if(confirmedCount===decisionCount) summary.appendChild(createIssueElement('span','issue-summary-pill confirmed',`${decisionCount} 項已確認完畢`));
+        else summary.appendChild(createIssueElement('span','issue-summary-pill choice',`${confirmedCount} / ${decisionCount} 項已確認；可先切換再勾選`));
+      }
       if(diagnosticCount) summary.appendChild(createIssueElement('span','issue-summary-pill warning',`${diagnosticCount} 項資料提醒`));
       if(items.some(item=>item.kind==='helium-duplicate')) summary.appendChild(createIssueElement('span','issue-summary-pill','三項未全勝，依勝出較多項預選'));
       items.forEach(item=>{
@@ -1028,8 +1053,8 @@ async function run(){
     }
     function renderPreflight(){
       const helium=preflightChecks.helium, inventory=preflightChecks.inventory;
-      setAuditItem('auditHelium','auditHeliumText',helium,'1','等待上傳 CSV');
-      setAuditItem('auditInventory','auditInventoryText',inventory,'2','等待上傳 Excel');
+      setAuditItem('auditHelium','auditHeliumText',helium,'1','等待上傳 CSV','helium');
+      setAuditItem('auditInventory','auditInventoryText',inventory,'2','等待上傳 Excel','inventory');
       const pair=getPairStats(), pairItem=$('auditCoverage'), pairText=$('auditCoverageText'), pairIcon=pairItem.querySelector('.audit-icon');
       const pairDiagnostics=[];
       if(pair){
@@ -1056,7 +1081,9 @@ async function run(){
       }else if(helium.status==='invalid'||inventory.status==='invalid'||(pair&&pair.matched===0)){
         badge.textContent='需要修正'; badge.classList.add('bad'); summary.textContent=pair&&pair.matched===0?'兩份檔案沒有共同 SKU，可能選到不同批次或錯誤檔案。':'至少一份檔案未通過必要格式檢查。';
       }else if(ready){
-        badge.textContent=issues.length?(diagnosticCount?`${issues.length} 項待確認`:`${decisionCount} 項已預選`):'檢查通過'; badge.classList.add(issues.length?'warn':'ready');
+        const heliumDone=!(helium.decisions||[]).length||decisionsConfirmed('helium',helium), inventoryDone=!(inventory.decisions||[]).length||decisionsConfirmed('inventory',inventory);
+        const allDecisionsDone=decisionCount>0&&diagnosticCount===0&&heliumDone&&inventoryDone;
+        badge.textContent=issues.length?(diagnosticCount?`${issues.length} 項待確認`:allDecisionsDone?`${decisionCount} 項已確認`:`${decisionCount} 項已預選`):'檢查通過'; badge.classList.add(issues.length&&!allDecisionsDone?'warn':'ready');
         summary.textContent=`Helium ${pair.heliumTotal} 個 SKU、Inventory ${pair.inventoryTotal} 個 SKU，共同對應 ${pair.matched} 個。`;
       }else{
         badge.textContent='等待檔案'; summary.textContent='會先確認檔案格式、必要欄位、效期資料與 SKU 對應，再開放整理。';
@@ -1167,6 +1194,7 @@ async function run(){
       const token=++validationTokens[which];
       restockFiles[which]=file;
       issueChoices[which]={};
+      issueConfirmations[which]={};
       preflightChecks[which]={...emptyCheck(),status:'checking',file};
       renderFileLog(which);
       resetGeneratedResult();
@@ -1206,6 +1234,7 @@ async function run(){
       validationTokens[which]++;
       restockFiles[which]=null;
       issueChoices[which]={};
+      issueConfirmations[which]={};
       preflightChecks[which]=emptyCheck();
       $(which==='helium'?'heliumFile':'inventoryFile').value='';
       renderFileLog(which); resetGeneratedResult(); updateWorkflowState();
@@ -1220,9 +1249,20 @@ async function run(){
       const kind=button.dataset.choiceKind, sku=button.dataset.sku, choice=button.dataset.choice;
       if(!issueChoices[kind]||!sku) return;
       issueChoices[kind][sku]=choice;
+      issueConfirmations[kind][sku]=false;
       resetGeneratedResult(); updateWorkflowState(false);
       const source=kind==='helium'?'Helium 10':'Inventory';
       setStatus(`已更新 ${source} 的 ${sku} 採用值；下一次整理與輸出 Excel 會使用這個選擇。`,false,'ready');
+    });
+    $('issueTableBody').addEventListener('change',(event)=>{
+      const input=event.target.closest('input[data-confirm-kind]');
+      if(!input) return;
+      const kind=input.dataset.confirmKind, sku=input.dataset.sku;
+      if(!issueConfirmations[kind]||!sku) return;
+      issueConfirmations[kind][sku]=input.checked;
+      updateWorkflowState(false);
+      const source=kind==='helium'?'Helium 建議檔':'Inventory Update';
+      setStatus(input.checked?`${source} 的 ${sku} 已確認完畢。`:`已取消 ${source} 的 ${sku} 確認。`,false,'ready');
     });
     $('runBtn').addEventListener('click', run);
     $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook){ XLSX.writeFile(state.workbook, state.filename, {compression:true}); setStatus(`已下載 ${state.filename}`,false,'ok'); } });
