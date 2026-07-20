@@ -18,7 +18,6 @@
       --green-soft:#e8f7ed;
       --red:#d70015;
       --red-soft:#fff0f1;
-      --orange:#c93400;
       --shadow:0 18px 55px rgba(0,0,0,.07);
       --radius-xl:28px;
       --radius-lg:20px;
@@ -213,7 +212,6 @@
     .tool-table-wrap td.highlight-green{background:#dcfce7;color:#166534;font-weight:700}
     .tool-table-wrap td.highlight-yellow{background:#fef3c7;color:#92400e;font-weight:700}
     .tool-table-wrap td.highlight-red{background:#fee2e2;color:#991b1b;font-weight:700}
-    .tool-table-wrap td.highlight-orange{background:#ffedd5;color:#9a3412;font-weight:700}
     .tool-table-wrap td.highlight-blue{background:#dbeafe;color:#1e40af;font-weight:700}
     .tool-table-wrap th.hidden-output-col,.tool-table-wrap td.hidden-output-col{display:none}
     .tool-table-wrap th.focus-header{background:#f4b183;color:#7c2d12;font-weight:800}
@@ -277,7 +275,7 @@
         <div class="hint">或從電腦選擇檔案</div>
         <div class="file-actions">
           <label class="btn primary" for="heliumFile">選擇 Helium CSV</label>
-          <input id="heliumFile" type="file" accept=".csv,.txt" />
+          <input id="heliumFile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple />
         </div>
         <div class="file-state"><div class="log" id="logHelium">尚未選擇檔案</div><button class="btn danger" id="btnClearHelium" type="button">清除</button></div>
       </div>
@@ -300,7 +298,7 @@
         <div class="hint">或從電腦選擇檔案</div>
         <div class="file-actions">
           <label class="btn primary" for="inventoryFile">選擇 Inventory Excel</label>
-          <input id="inventoryFile" type="file" accept=".xlsx,.xls" />
+          <input id="inventoryFile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple />
         </div>
         <div class="file-state"><div class="log" id="logInventory">尚未選擇檔案</div><button class="btn danger" id="btnClearInventory" type="button">清除</button></div>
       </div>
@@ -359,7 +357,7 @@
     </div>
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
-      <p class="result-guide">主工作表：黃色＝效期剩餘 201–245 天；綠色＝建議補貨箱數大於可用箱數；橘色＝建議數量超過第一個效期批次，已按該批次數量帶入入庫計畫；藍色＝效期距今 22–23 個月；紅色＝供貨天數超過 730 天。同時符合多種條件時會分段保留各種顏色；供貨天數 120–365 天且沒有特殊標記的列會先隱藏。</p>
+      <p class="result-guide">主工作表：黃色＝需儘速入庫；綠色＝可全部入庫；藍色＝新入倉；紅色＝供貨天數超過 730 天。供貨天數還有 4 至 12 個月，且無顏色註記品項則隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
     </div>
@@ -389,7 +387,6 @@
     const DEFINITION_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'F1F5F9'}},font:{bold:true,color:{rgb:'475569'}},alignment:CENTER_ALIGNMENT,border:{top:{style:'thin',color:{rgb:'CBD5E1'}}}};
     const GREEN_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'C6EFCE'}},font:{color:{rgb:'006100'},bold:true},alignment:CENTER_ALIGNMENT};
     const YELLOW_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FFF2CC'}},font:{color:{rgb:'9C5700'},bold:true},alignment:CENTER_ALIGNMENT};
-    const ORANGE_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FED7AA'}},font:{color:{rgb:'9A3412'},bold:true},alignment:CENTER_ALIGNMENT};
     const BLUE_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'DBEAFE'}},font:{color:{rgb:'1E40AF'},bold:true},alignment:CENTER_ALIGNMENT};
     const URGENT_CLEARABLE_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FFF2CC'}},font:{color:{rgb:'006100'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'16A34A'}},bottom:{style:'medium',color:{rgb:'16A34A'}}}};
     const RED_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'991B1B'},bold:true},alignment:CENTER_ALIGNMENT};
@@ -567,15 +564,12 @@
       if(isLongSupplyRow(headers,row)) kinds.push('red');
       if(isUrgentRow(headers,row)) kinds.push('yellow');
       if(isClearableRow(headers,row)) kinds.push('green');
-      if(isFirstExpiryCappedRow(headers,row)) kinds.push('orange');
       if(isLatestExpiryRow(headers,row)) kinds.push('blue');
       return kinds;
     }
     function rowHighlightKindAt(headers,row,columnIndex){
       const kinds=rowHighlightKinds(headers,row);
       if(!kinds.length) return '';
-      const pair=firstExpiryPair(headers,row);
-      if(kinds.includes('orange')&&(columnIndex===pair.expiryIdx||columnIndex===pair.qtyIdx)) return 'orange';
       return kinds[Math.min(kinds.length-1,Math.floor(columnIndex*kinds.length/Math.max(1,headers.length)))];
     }
     function shouldHideSupplyRow(headers,row){
@@ -756,7 +750,6 @@
           if(highlight==='red') cell.s=RED_ROW_STYLE;
           else if(highlight==='yellow') cell.s=YELLOW_ROW_STYLE;
           else if(highlight==='green') cell.s=GREEN_ROW_STYLE;
-          else if(highlight==='orange') cell.s=ORANGE_ROW_STYLE;
           else if(highlight==='blue') cell.s=BLUE_ROW_STYLE;
           else cell.s=BASE_CELL_STYLE;
           ws[a]=cell;
@@ -1189,7 +1182,7 @@ async function run(){
       else if(inventoryReady) setStatus('Inventory Excel 已完成。下一步：加入 Helium CSV。',false,'ready');
       else { const el=$('status'); el.textContent='請先完成步驟 1 與步驟 2。'; el.className='tool-status'; }
     }
-    async function assignRestockFile(which, file){
+    async function assignRestockFile(which, file, persist=true){
       if(!file) return;
       const token=++validationTokens[which];
       restockFiles[which]=file;
@@ -1210,24 +1203,30 @@ async function run(){
       }
       renderFileLog(which);
       updateWorkflowState();
+      if(persist&&preflightChecks[which].status==='valid'&&window.FBAWorkspaceFiles){ try{ await window.FBAWorkspaceFiles.save(which,file); }catch{} }
     }
-    function bindRestockDrop(dropId, inputId, which, acceptFn){
+    const restockKind=(file)=>{ const name=String(file?.name||'').toLowerCase(); if(name.endsWith('.csv')||name.endsWith('.txt')) return 'helium'; if(name.endsWith('.xlsx')||name.endsWith('.xls')) return 'inventory'; return ''; };
+    function routeRestockFiles(files, origin){
+      const selected={};
+      Array.from(files||[]).forEach(file=>{ const kind=restockKind(file); if(kind&&!selected[kind]) selected[kind]=file; });
+      const kinds=Object.keys(selected);
+      if(!kinds.length){ setStatus('沒有辨識到 Helium CSV 或 Inventory Excel。',true); return; }
+      kinds.forEach(kind=>void assignRestockFile(kind,selected[kind]));
+      if(kinds.length===2) setStatus('已自動辨識兩份檔案，並分別放入 Helium 與 Inventory。',false,'working');
+      else if(kinds[0]!==origin) setStatus(`已辨識檔案類型並自動移到${kinds[0]==='helium'?' Helium':' Inventory'} 區。`,false,'working');
+    }
+    function bindRestockDrop(dropId, inputId, which){
       const drop = $(dropId), input = $(inputId);
       if(!drop || !input) return;
       ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,(e)=>{ e.preventDefault(); drop.classList.add('dragover'); }));
       ['dragleave','dragend','drop'].forEach(evt=>drop.addEventListener(evt,()=>drop.classList.remove('dragover')));
       drop.addEventListener('drop',(e)=>{
         e.preventDefault();
-        const files = Array.from(e.dataTransfer?.files || []);
-        const file = files.find(acceptFn);
-        if(!file){ setStatus('拖曳的檔案格式不正確。', true); return; }
-        void assignRestockFile(which, file);
+        routeRestockFiles(e.dataTransfer?.files||[],which);
       });
       input.addEventListener('change',(e)=>{
-        const file = Array.from(e.target.files || [])[0];
-        if(!file) return;
-        if(!acceptFn(file)){ setStatus('選擇的檔案格式不正確。', true); return; }
-        void assignRestockFile(which, file);
+        routeRestockFiles(e.target.files||[],which);
+        input.value='';
       });
     }
     function clearRestockFile(which){
@@ -1237,10 +1236,11 @@ async function run(){
       issueConfirmations[which]={};
       preflightChecks[which]=emptyCheck();
       $(which==='helium'?'heliumFile':'inventoryFile').value='';
+      if(window.FBAWorkspaceFiles) void window.FBAWorkspaceFiles.remove(which);
       renderFileLog(which); resetGeneratedResult(); updateWorkflowState();
     }
-    bindRestockDrop('dropHelium','heliumFile','helium', f=>f.name.toLowerCase().endsWith('.csv')||f.name.toLowerCase().endsWith('.txt'));
-    bindRestockDrop('dropInventory','inventoryFile','inventory', f=>f.name.toLowerCase().endsWith('.xlsx')||f.name.toLowerCase().endsWith('.xls'));
+    bindRestockDrop('dropHelium','heliumFile','helium');
+    bindRestockDrop('dropInventory','inventoryFile','inventory');
     $('btnClearHelium').addEventListener('click', ()=>clearRestockFile('helium'));
     $('btnClearInventory').addEventListener('click', ()=>clearRestockFile('inventory'));
     $('issueTableBody').addEventListener('click',(event)=>{
@@ -1266,6 +1266,12 @@ async function run(){
     });
     $('runBtn').addEventListener('click', run);
     $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook){ XLSX.writeFile(state.workbook, state.filename, {compression:true}); setStatus(`已下載 ${state.filename}`,false,'ok'); } });
+    window.addEventListener('fba-workspace-ready',async()=>{
+      if(!window.FBAWorkspaceFiles) return;
+      const saved=await window.FBAWorkspaceFiles.loadAll();
+      if(saved.helium) await assignRestockFile('helium',saved.helium,false);
+      if(saved.inventory) await assignRestockFile('inventory',saved.inventory,false);
+    });
     renderFileLog('helium'); renderFileLog('inventory'); renderPreflight();
   })();
 </script>
