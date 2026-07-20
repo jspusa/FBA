@@ -90,9 +90,14 @@
     });
     document.querySelectorAll('input[type="file"]').forEach(el => { el.value = ''; });
   };
-  const deleteDatabase = name => new Promise(resolve => {
+  const deleteSorterDatabase = () => new Promise(resolve => {
     if (!globalThis.indexedDB) return resolve();
-    const request = indexedDB.deleteDatabase(name);
+    const request = indexedDB.deleteDatabase(SORTER_DB);
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
+  });
+  const deleteRestockDatabase = () => new Promise(resolve => {
+    if (!globalThis.indexedDB) return resolve();
+    const request = indexedDB.deleteDatabase(RESTOCK_DB);
     request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
   const reloadAfterClear = () => { isClearing = true; clearCurrentPage(); location.reload(); };
@@ -100,7 +105,7 @@
     if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
     isClearing = true;
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
-    await Promise.all([deleteDatabase(SORTER_DB), deleteDatabase(RESTOCK_DB)]);
+    await Promise.all([deleteSorterDatabase(), deleteRestockDatabase()]);
     localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
   };
