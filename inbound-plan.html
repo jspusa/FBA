@@ -340,8 +340,8 @@ function businessReportItems(){
  try{return JSON.parse(localStorage.getItem('fba-workspace:business-report')||'{}').items||{}}catch{return{}}
 }
 function syncInboundValueMode(enabled=valueModeEnabled()){
- const button=document.getElementById('calculateInboundValueBtn'),panel=document.getElementById('inboundValuePanel');button.hidden=!enabled;
- if(!enabled){panel.hidden=true;panel.innerHTML='';panel.dataset.shown=''}else if(panel.dataset.shown==='true')panel.hidden=false;
+ const button=document.getElementById('calculateInboundValueBtn'),panel=document.getElementById('inboundValuePanel'),available=enabled&&Object.keys(businessReportItems()).length>0;button.hidden=!available;
+ if(!available){panel.hidden=true;panel.innerHTML='';panel.dataset.shown=''}else if(panel.dataset.shown==='true')panel.hidden=false;
 }
 function calculateInboundValue(){
  try{
