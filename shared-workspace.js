@@ -72,11 +72,27 @@
 
   const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
   const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
+  const playValueTransition = enabled => {
+    document.body.classList.toggle('fba-night', enabled);
+    document.body.classList.remove('fba-value-shake');
+    void document.body.offsetWidth;
+    document.body.classList.add('fba-value-shake');
+    let overlay = document.getElementById('fbaDoorTransition');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div'); overlay.id = 'fbaDoorTransition'; overlay.className = `fba-door-transition ${enabled ? 'opening' : 'closing'}`;
+    overlay.innerHTML = `<div class="fba-door left"><span></span></div><div class="fba-secret-mark">${enabled ? '芝麻開門' : '芝麻關門'}</div><div class="fba-door right"><span></span></div>`;
+    document.body.appendChild(overlay);
+    if (navigator.vibrate) navigator.vibrate(enabled ? [90, 45, 150, 45, 90] : [150, 55, 100]);
+    setTimeout(() => { overlay.remove(); document.body.classList.remove('fba-value-shake'); }, 1350);
+  };
   window.FBAValueMode = {
     isEnabled: valueModeEnabled,
     setEnabled(enabled) {
+      const changed = valueModeEnabled() !== Boolean(enabled);
       if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
       else localStorage.removeItem(VALUE_MODE_KEY);
+      if (changed) playValueTransition(Boolean(enabled));
+      else document.body.classList.toggle('fba-night', Boolean(enabled));
       notifyValueMode();
     },
     getBusinessReport() {
@@ -145,12 +161,32 @@
     .clear-workspace:hover{background:#d9f1e1;transform:translateY(-1px)}
     .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
     .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
-    .private-value-action[hidden],.private-value-panel[hidden]{display:none!important}`;
+    .private-value-action[hidden],.private-value-panel[hidden]{display:none!important}
+    body.fba-night{--bg:#050608!important;--card:#101217!important;--text:#f5f7ff!important;--muted:#98a2b8!important;--line:#29303d!important;--soft:#171b23!important;--accent:#8b5cf6!important;background:#050608!important;color:#f5f7ff!important;color-scheme:dark;transition:background .45s ease,color .45s ease}
+    body.fba-night header,body.fba-night .site-header{background:rgba(5,6,8,.94)!important;border-color:#29303d!important}
+    body.fba-night .card,body.fba-night article,body.fba-night .tool-card,body.fba-night .upload-card,body.fba-night .action-card,body.fba-night .preflight-panel,body.fba-night .result-body,body.fba-night .email-preview,body.fba-night .private-value-panel{background:#101217!important;color:#f5f7ff!important;border-color:#29303d!important;box-shadow:0 18px 48px rgba(0,0,0,.42)!important}
+    body.fba-night input,body.fba-night textarea,body.fba-night select,body.fba-night table,body.fba-night th,body.fba-night td,body.fba-night .drop,body.fba-night .tool-table-wrap{background:#0b0d12!important;color:#eef2ff!important;border-color:#29303d!important}
+    body.fba-night .btn:not(.primary),body.fba-night button:not(.primary):not(.top-tab):not(.inner-tab){background:#171b23;color:#eef2ff;border-color:#343c4b}
+    body.fba-night .primary,body.fba-night .top-tab.active,body.fba-night .inner-tab.active{background:linear-gradient(135deg,#7c3aed,#2563eb)!important;color:#fff!important;border-color:#8b5cf6!important}
+    body.fba-night a{color:#a9c1ff}body.fba-night .hint,body.fba-night .small,body.fba-night .note,body.fba-night .result-guide{color:#aab3c5!important}
+    .fba-door-transition{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;display:flex;align-items:stretch;background:rgba(0,0,0,.18)}
+    .fba-door{position:absolute;top:0;bottom:0;width:50.5%;background:linear-gradient(90deg,#090b10,#1c2230 48%,#090b10);border:1px solid #454f64;box-shadow:0 0 80px rgba(0,0,0,.9);display:grid;place-items:center}
+    .fba-door.left{left:0}.fba-door.right{right:0;transform:scaleX(-1)}.fba-door span{width:18px;height:18px;border-radius:50%;background:#d6b85f;box-shadow:0 0 18px #f7dc82;position:absolute;right:24px}
+    .fba-secret-mark{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);padding:15px 24px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(0,0,0,.76);color:#fff;font-weight:900;letter-spacing:.28em;white-space:nowrap;box-shadow:0 0 45px rgba(139,92,246,.7)}
+    .fba-door-transition.opening .left{animation:fbaDoorOpenLeft 1.2s cubic-bezier(.7,0,.2,1) forwards}.fba-door-transition.opening .right{animation:fbaDoorOpenRight 1.2s cubic-bezier(.7,0,.2,1) forwards}
+    .fba-door-transition.closing .left{transform:translateX(-101%);animation:fbaDoorCloseLeft 1.2s cubic-bezier(.7,0,.2,1) forwards}.fba-door-transition.closing .right{transform:translateX(101%) scaleX(-1);animation:fbaDoorCloseRight 1.2s cubic-bezier(.7,0,.2,1) forwards}
+    .fba-value-shake{animation:fbaShake .52s ease-in-out}
+    @keyframes fbaDoorOpenLeft{to{transform:translateX(-101%)}}@keyframes fbaDoorOpenRight{to{transform:translateX(101%) scaleX(-1)}}
+    @keyframes fbaDoorCloseLeft{to{transform:translateX(0)}}@keyframes fbaDoorCloseRight{to{transform:translateX(0) scaleX(-1)}}
+    @keyframes fbaShake{0%,100%{transform:translate(0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+    @media(prefers-reduced-motion:reduce){.fba-door-transition .fba-door,.fba-value-shake{animation-duration:.01ms!important}}
+    `;
   document.head.appendChild(style);
+  document.body.classList.toggle('fba-night', valueModeEnabled());
   ensureResetButton()?.addEventListener('click', startNewBatch);
   window.addEventListener('storage', event => {
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
-    if (event.key === VALUE_MODE_KEY) notifyValueMode();
+    if (event.key === VALUE_MODE_KEY) { playValueTransition(valueModeEnabled()); notifyValueMode(); }
   });
   const latestClear = localStorage.getItem(CLEAR_KEY);
   if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
