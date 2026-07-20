@@ -214,6 +214,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('copyRichEmailBtn').addEventListener('click', async()=>{ if(!emailHtml)return; const div=document.createElement('div');div.innerHTML=emailHtml; await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([div.textContent],{type:'text/plain'}),'text/html':new Blob([emailHtml],{type:'text/html'})})]);$('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; });
 })();
 </script>
-<script src="shared-workspace.js?v=20260720c"></script>
+<script src="shared-workspace.js?v=20260720e"></script>
 </body>
 </html>
