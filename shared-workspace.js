@@ -166,3 +166,5 @@
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
 })();
+
+// GitHub Pages deployment marker: 2026-07-20-f6a54c39
