@@ -55,31 +55,30 @@
     .hero h1{margin:0;font-size:clamp(36px,5vw,58px);line-height:1.04;letter-spacing:-.045em;font-weight:700}
     .hero p{max-width:680px;margin:18px auto 0;color:var(--muted);font-size:18px;line-height:1.55;letter-spacing:-.01em}
     .workflow-label{margin:0 0 14px;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
-    .upload-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+    .upload-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
     .card{
       background:var(--surface);
       border:1px solid rgba(0,0,0,.06);
       border-radius:var(--radius-xl);
       box-shadow:var(--shadow);
     }
-    .upload-card{padding:24px;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+    .upload-card{padding:24px;display:flex;min-width:0;height:100%;flex-direction:column;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
     .upload-card:hover{transform:translateY(-2px);box-shadow:0 23px 65px rgba(0,0,0,.09)}
     .upload-card.ready{border-color:rgba(36,138,61,.32);box-shadow:0 18px 55px rgba(36,138,61,.09)}
     .upload-card.checking{border-color:rgba(255,159,10,.32);box-shadow:0 18px 55px rgba(255,159,10,.08)}
     .upload-card.invalid{border-color:rgba(215,0,21,.28);box-shadow:0 18px 55px rgba(215,0,21,.07)}
-    .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
+    .card-head{display:grid;grid-template-rows:34px 42px;align-content:start;gap:9px;min-height:94px;margin-bottom:14px}
     .title-group{display:flex;align-items:flex-start;gap:13px;min-width:0}
     .step-number{width:31px;height:31px;flex:0 0 31px;border-radius:50%;display:grid;place-items:center;background:#1d1d1f;color:#fff;font-size:14px;font-weight:700}
-    .title-copy h2{margin:0;font-size:19px;line-height:1.25;letter-spacing:-.025em}
-    .file-type{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:7px;background:#f1f1f3;color:var(--muted);font-size:10px;vertical-align:2px;letter-spacing:.03em}
-    .title-copy p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+    .title-copy h2{margin:0;font-size:19px;line-height:1.25;letter-spacing:-.025em;white-space:nowrap}
+    .file-type{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:7px;background:#f1f1f3;color:var(--muted);font-size:10px;vertical-align:2px;letter-spacing:.03em;white-space:nowrap}
     .source-link{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:var(--blue);text-decoration:none;font-size:13px;font-weight:600;padding:7px 0}
     .source-link:hover{text-decoration:underline}
-    .source-access{display:flex;flex:0 0 auto;flex-direction:column;align-items:flex-end}
+    .source-access{display:flex;min-height:42px;flex:0 0 auto;flex-direction:column;align-items:flex-start;justify-content:flex-start}
     .source-access .source-link{padding-bottom:2px}
     .access-note{color:var(--muted);font-size:10px;line-height:1.35;white-space:nowrap}
     .drop{
-      min-height:178px;padding:25px;border:1.5px dashed rgba(0,0,0,.16);border-radius:var(--radius-lg);
+      min-height:252px;padding:25px;border:1.5px dashed rgba(0,0,0,.16);border-radius:var(--radius-lg);flex:1;
       background:var(--surface-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
       transition:.2s ease;
     }
@@ -101,7 +100,7 @@
     .btn.danger{padding:8px 12px;background:transparent;color:var(--muted);font-size:12px}
     .btn.danger:hover{background:#f0f0f2;color:var(--red)}
     .btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none;transform:none}
-    .file-state{width:100%;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
+    .file-state{width:100%;min-height:59px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
     .log{min-width:0;color:var(--muted);font-size:12px;line-height:1.45;overflow:hidden}
     .file-log-title,.file-log-meta{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .file-log-title{color:var(--text);font-weight:650}
@@ -232,7 +231,7 @@
       .result-hero{align-items:stretch;flex-direction:column}.download-button{width:100%}
     }
     @media(max-width:520px){
-      .brand-copy span{display:none}.upload-card,.action-card{padding:20px;border-radius:22px}.card-head{flex-direction:column}.source-access{align-self:flex-end;margin-top:-46px}
+      .brand-copy span{display:none}.upload-card,.action-card{padding:20px;border-radius:22px}.card-head{grid-template-rows:auto auto;min-height:90px}.source-access{align-self:auto;margin-top:0}
       .file-state{align-items:flex-start}.hero h1{font-size:38px}
       .preflight-heading{align-items:flex-start;flex-direction:column}.preflight-badge{align-self:flex-start}
     }
@@ -269,9 +268,9 @@
       <div class="card-head">
         <div class="title-group">
           <span class="step-number">1</span>
-          <div class="title-copy"><h2>Helium 建議檔 <span class="file-type">CSV</span></h2><p>下載最新的 Restock Suggestions 後放入這裡。</p></div>
+          <div class="title-copy"><h2>Helium 建議檔 <span class="file-type">CSV</span></h2></div>
         </div>
-        <a class="source-link" href="https://members.helium10.com/inventory-management/restock-suggestions-new/index?accountId=1547156136" target="_blank" rel="noopener noreferrer">開啟 Helium 10 ↗</a>
+        <div class="source-access"><a class="source-link" href="https://members.helium10.com/inventory-management/restock-suggestions-new/index?accountId=1547156136" target="_blank" rel="noopener noreferrer">開啟 Helium 10 ↗</a></div>
       </div>
       <div class="drop" id="dropHelium">
         <div class="file-icon" data-label="CSV"></div>
@@ -289,7 +288,7 @@
       <div class="card-head">
         <div class="title-group">
           <span class="step-number">2</span>
-          <div class="title-copy"><h2>Inventory Update <span class="file-type">XLSX</span></h2><p>使用含效期與箱數的最新庫存檔。</p></div>
+          <div class="title-copy"><h2>Inventory Update <span class="file-type">XLSX</span></h2></div>
         </div>
         <div class="source-access">
           <a class="source-link" href="https://24466647.sharepoint.com/:x:/r/sites/Cloud/Shared%2520Documents/%E7%8F%8D%E9%A3%9F%E5%A0%A1%2520-%2520%E5%85%B1%E7%94%A8/JSP%2520Amrica/Inventory%2520update%2520with%2520expiration%2520date%2520-%2520temporary%2520file.xlsx?d=wdb6b7635090543b0b4433ce8572b2c4a&amp;e=4%3a4f53ae0c86064211bffd905531f77147&amp;sharingv2=true&amp;fromShare=true&amp;at=9" target="_blank" rel="noopener noreferrer">開啟 Inventory Excel ↗</a>
@@ -312,9 +311,9 @@
       <div class="card-head">
         <div class="title-group">
           <span class="step-number">3</span>
-          <div class="title-copy"><h2>Business Report <span class="file-type">CSV · 選填</span></h2><p>使用過去 30 天的 SKU 銷量與訂購產品銷售額；未提供也能整理。</p></div>
+          <div class="title-copy"><h2>Business Report <span class="file-type">CSV · 選填</span></h2></div>
         </div>
-        <a class="source-link" href="https://sellercentral.amazon.com/business-reports/ref=xx_sitemetric_dnav_xx#/report?id=102%3ADetailSalesTrafficBySKU" target="_blank" rel="noopener noreferrer">開啟 Business Report ↗</a>
+        <div class="source-access"><a class="source-link" href="https://sellercentral.amazon.com/business-reports/ref=xx_sitemetric_dnav_xx#/report?id=102%3ADetailSalesTrafficBySKU" target="_blank" rel="noopener noreferrer">開啟 Business Report ↗</a></div>
       </div>
       <div class="drop" id="dropBusiness">
         <div class="file-icon" data-label="CSV"></div>
@@ -332,7 +331,7 @@
   <section class="card action-card">
     <div class="action-title">
       <span class="step-number">4</span>
-      <div><h2>產生補貨結果</h2><p>Helium 與 Inventory 完成後即可整理；Business Report 可稍後再加。</p></div>
+      <div><h2>產生補貨結果</h2></div>
     </div>
     <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>計算美國倉價值</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
     <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1 與 2；步驟 3 為選填。</div>
@@ -1503,6 +1502,6 @@ async function run(){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260720c"></script>
+<script src="shared-workspace.js?v=20260720e"></script>
 </body>
 </html>
