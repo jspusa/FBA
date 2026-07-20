@@ -89,7 +89,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <h2>Amazon 入庫 Excel 自動產生器</h2>
 <p>可貼上三欄或四欄資料。提供「入庫包數」時，系統會先核對人工總數與公式 Quantity，再進行效期複查；兩項都通過才可輸出 Excel。</p>
 <textarea id="pasteInput" spellcheck="false" placeholder="SKU&#9;入庫計畫&#9;入庫包數&#9;EXPIRE&#10;ATS01&#9;94&#9;8460&#9;9/27"></textarea>
-<div class="actions"><button class="secondary" onclick="loadExample()">載入範例</button><button class="secondary" onclick="clearInput()">清空</button><button id="exportBtn" class="primary" onclick="exportExcel()" disabled>下載 Excel</button></div>
+<div class="actions"><button class="secondary" onclick="loadExample()">載入範例</button><button id="exportBtn" class="primary" onclick="exportExcel()" disabled>下載 Excel</button></div>
 <div class="note">可直接從 Excel 複製貼上，支援三欄「SKU／入庫計畫／EXPIRE」或四欄「SKU／入庫計畫／入庫包數／EXPIRE」。效期支援 <b>3/28</b>（2028 年 3 月最後一天）、<b>10/28/27</b>、<b>2029-08-30</b>。Default prep owner 與 Default labeling owner 固定為 Seller。</div>
 <div id="status"></div><div id="reviewProgress" class="review-progress"></div><div class="preview" id="preview"></div><div id="quantityAudit" class="quantity-audit warn" hidden></div>
 </div></main>
@@ -209,7 +209,6 @@ function resetCatalog(){CATALOG={...BUILTIN_CATALOG};renderCatalogMeta();renderI
 const EXAMPLE_DATA=`SKU\t入庫計畫\t入庫包數\tEXPIRE
 ATS01\t94\t8460\t9/27`;
 function loadExample(){const input=document.getElementById('pasteInput');input.value=EXAMPLE_DATA;input.dispatchEvent(new Event('input',{bubbles:true}));renderPreview()}
-function clearInput(){const input=document.getElementById('pasteInput');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));REVIEWED={};saveReviewed();document.getElementById('preview').innerHTML='';document.getElementById('status').textContent='';document.getElementById('reviewProgress').textContent='';const audit=document.getElementById('quantityAudit');audit.className='quantity-audit warn';audit.textContent='';audit.hidden=true;document.getElementById('exportBtn').disabled=true}
 function parseExpiry(v){
  v=(v||'').trim(); let y,m,d,a;
  if((a=v.match(/^(\d{1,2})\/(\d{2})$/))){m=+a[1];y=2000+(+a[2]);d=new Date(y,m,0).getDate();}
