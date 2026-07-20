@@ -206,13 +206,11 @@
     th,td{text-align:center;font-size:12px;border-bottom:1px solid #ececf0;padding:10px 10px;vertical-align:middle;white-space:nowrap}
     th{position:sticky;top:0;z-index:2;background:#f7f7f9;color:#5d5d62;font-weight:700}
     tbody tr:last-child td{border-bottom:0}
-    .tool-table-wrap tr.clearable-row td{background:#dcfce7;color:#166534;font-weight:700}
-    .tool-table-wrap tr.urgent-row td{background:#fef3c7;color:#92400e;font-weight:700}
-    .tool-table-wrap tr.urgent-clearable-row td{background:#fef3c7;color:#166534;font-weight:700;border-top:2px solid #16a34a;border-bottom:2px solid #16a34a}
-    .tool-table-wrap tr.long-supply-row td{background:#fee2e2;color:#991b1b;font-weight:700}
-    .tool-table-wrap tr.long-supply-clearable-row td{background:#fee2e2;color:#166534;font-weight:700;border-top:2px solid #16a34a;border-bottom:2px solid #16a34a}
-    .tool-table-wrap tr.long-supply-urgent-row td{background:#fee2e2;color:#92400e;font-weight:700;border-top:2px solid #d97706;border-bottom:2px solid #d97706}
-    .tool-table-wrap tr.long-supply-urgent-clearable-row td{background:#fee2e2;color:#7f1d1d;font-weight:700;border-top:2px solid #16a34a;border-bottom:2px solid #16a34a;border-left:2px solid #d97706;border-right:2px solid #d97706}
+    .tool-table-wrap td.highlight-green{background:#dcfce7;color:#166534;font-weight:700}
+    .tool-table-wrap td.highlight-yellow{background:#fef3c7;color:#92400e;font-weight:700}
+    .tool-table-wrap td.highlight-red{background:#fee2e2;color:#991b1b;font-weight:700}
+    .tool-table-wrap td.highlight-orange{background:#ffedd5;color:#9a3412;font-weight:700}
+    .tool-table-wrap td.highlight-blue{background:#dbeafe;color:#1e40af;font-weight:700}
     .tool-table-wrap th.hidden-output-col,.tool-table-wrap td.hidden-output-col{display:none}
     .tool-table-wrap th.focus-header{background:#f4b183;color:#7c2d12;font-weight:800}
     .section-row td{background:#e8e8ed;color:#3a3a3c;font-weight:800;border-top:1px solid #c7c7cc;border-bottom:1px solid #c7c7cc}
@@ -357,7 +355,7 @@
     </div>
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
-      <p class="result-guide">主工作表：黃色＝效期剩餘 201–245 天；綠色＝建議補貨箱數大於可用箱數；紅色＝供貨天數超過 730 天。每張工作表只保留實際用到的 EXPIRE／QTY 欄位，缺貨表不顯示效期欄位。</p>
+      <p class="result-guide">主工作表：黃色＝效期剩餘 201–245 天；綠色＝建議補貨箱數大於可用箱數；橘色＝建議數量超過第一個效期批次，已按該批次數量帶入入庫計畫；藍色＝效期距今 22–23 個月；紅色＝供貨天數超過 730 天。同時符合多種條件時會分段保留各種顏色；供貨天數 120–365 天且沒有特殊標記的列會先隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
     </div>
@@ -388,6 +386,8 @@
     const DEFINITION_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'F1F5F9'}},font:{bold:true,color:{rgb:'475569'}},alignment:CENTER_ALIGNMENT,border:{top:{style:'thin',color:{rgb:'CBD5E1'}}}};
     const GREEN_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'C6EFCE'}},font:{color:{rgb:'006100'},bold:true},alignment:CENTER_ALIGNMENT};
     const YELLOW_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FFF2CC'}},font:{color:{rgb:'9C5700'},bold:true},alignment:CENTER_ALIGNMENT};
+    const ORANGE_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FED7AA'}},font:{color:{rgb:'9A3412'},bold:true},alignment:CENTER_ALIGNMENT};
+    const BLUE_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'DBEAFE'}},font:{color:{rgb:'1E40AF'},bold:true},alignment:CENTER_ALIGNMENT};
     const URGENT_CLEARABLE_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FFF2CC'}},font:{color:{rgb:'006100'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'16A34A'}},bottom:{style:'medium',color:{rgb:'16A34A'}}}};
     const RED_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'991B1B'},bold:true},alignment:CENTER_ALIGNMENT};
     const RED_CLEARABLE_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'166534'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'16A34A'}},bottom:{style:'medium',color:{rgb:'16A34A'}}}};
@@ -443,7 +443,11 @@
         const comparisonValues=option=>[option._estimatedDailySales,toNumber(option['可售庫存']),toNumber(option['入項'])];
         options.forEach(candidate=>{
           const values=comparisonValues(candidate);
-          candidate._comparisonWins=values.reduce((wins,value,metricIndex)=>wins+(options.every(other=>other===candidate||value>comparisonValues(other)[metricIndex])?1:0),0);
+          candidate._comparisonWins=values.reduce((wins,value,metricIndex)=>wins+(options.every(other=>{
+            if(other===candidate) return true;
+            const otherValue=comparisonValues(other)[metricIndex];
+            return metricIndex===2?value>=otherValue:value>otherValue;
+          })?1:0),0);
         });
         const dominant=options.find(candidate=>candidate._comparisonWins===3);
         const maxWins=Math.max(...options.map(option=>option._comparisonWins));
@@ -530,8 +534,53 @@
     function earliestLotExpiry(lots){ const dates=lots.map(l=>l.expiryDate).filter(Boolean); return dates.length?new Date(Math.min(...dates.map(d=>d.getTime()))):null; }
     function isClearableRow(headers,row){ const totalIdx=headers.indexOf('總箱數'), suggestionIdx=headers.indexOf('補貨箱數建議'); return totalIdx!==-1&&suggestionIdx!==-1&&Math.round(toNumber(row[suggestionIdx]))>Math.round(toNumber(row[totalIdx])); }
     function isLongSupplyRow(headers,row){ const dayIdx=headers.indexOf('供貨天數'); return dayIdx!==-1&&isNumericLike(row[dayIdx])&&Math.round(toNumber(row[dayIdx]))>730; }
+    function firstExpiryPair(headers,row){
+      const expiryIdx=headers.findIndex(isExpiryHeader);
+      if(expiryIdx===-1) return {expiryIdx:-1,qtyIdx:-1,qty:0};
+      let qtyIdx=-1;
+      for(let i=expiryIdx+1;i<headers.length&&!isExpiryHeader(headers[i]);i++){ if(isQtyHeader(headers[i])){ qtyIdx=i; break; } }
+      return {expiryIdx,qtyIdx,qty:qtyIdx===-1?0:Math.max(0,Math.round(toNumber(row[qtyIdx])))};
+    }
+    function isFirstExpiryCappedRow(headers,row){
+      const suggestionIdx=headers.indexOf('補貨箱數建議'), pair=firstExpiryPair(headers,row);
+      return suggestionIdx!==-1&&pair.qty>0&&Math.round(toNumber(row[suggestionIdx]))>pair.qty;
+    }
+    function expiryMonthDistance(date){
+      if(!date) return null;
+      const now=new Date();
+      return (date.getFullYear()-now.getFullYear())*12+(date.getMonth()-now.getMonth());
+    }
+    function isLatestExpiryRow(headers,row){
+      return headers.some((h,i)=>{
+        if(!isExpiryHeader(h)) return false;
+        const distance=expiryMonthDistance(parseExpiryDate(row[i]));
+        return distance===22||distance===23;
+      });
+    }
     function earliestExpiryFromOutput(headers,row){ const dates=headers.map((h,i)=>isExpiryHeader(h)?parseExpiryDate(row[i]):null).filter(Boolean); return dates.length?new Date(Math.min(...dates.map(d=>d.getTime()))):null; }
     function isUrgentRow(headers,row){ const expiry=earliestExpiryFromOutput(headers,row); if(!expiry) return false; const days=daysFromToday(expiry); return days>=201&&days<=245; }
+    function rowHighlightKinds(headers,row){
+      const kinds=[];
+      if(isLongSupplyRow(headers,row)) kinds.push('red');
+      if(isUrgentRow(headers,row)) kinds.push('yellow');
+      if(isClearableRow(headers,row)) kinds.push('green');
+      if(isFirstExpiryCappedRow(headers,row)) kinds.push('orange');
+      if(isLatestExpiryRow(headers,row)) kinds.push('blue');
+      return kinds;
+    }
+    function rowHighlightKindAt(headers,row,columnIndex){
+      const kinds=rowHighlightKinds(headers,row);
+      if(!kinds.length) return '';
+      const pair=firstExpiryPair(headers,row);
+      if(kinds.includes('orange')&&(columnIndex===pair.expiryIdx||columnIndex===pair.qtyIdx)) return 'orange';
+      return kinds[Math.min(kinds.length-1,Math.floor(columnIndex*kinds.length/Math.max(1,headers.length)))];
+    }
+    function shouldHideSupplyRow(headers,row){
+      const dayIdx=headers.indexOf('供貨天數');
+      if(dayIdx===-1||!isNumericLike(row[dayIdx])) return false;
+      const days=toNumber(row[dayIdx]);
+      return days>=120&&days<=365&&rowHighlightKinds(headers,row).length===0;
+    }
     function sortBySupplyDays(headers,rows){ const dayIdx=headers.indexOf('供貨天數'), skuIdx=headers.indexOf('SKU'); if(dayIdx===-1) return rows; return rows.sort((a,b)=>{ const av=isNumericLike(a[dayIdx])?toNumber(a[dayIdx]):Number.POSITIVE_INFINITY; const bv=isNumericLike(b[dayIdx])?toNumber(b[dayIdx]):Number.POSITIVE_INFINITY; if(av!==bv) return av-bv; return String(a[skuIdx]??'').localeCompare(String(b[skuIdx]??''),'zh-Hant'); }); }
     function optimizeLotColumns(name,sheet){
       const pairIndices=[];
@@ -586,6 +635,8 @@
       const buildRow=(fixedSku,sd,cartons,rq,lots,packValue,inb,sell,headersForRow=standardHeaders,latestDate='')=>{
         const roundedCartons=Math.max(0,Math.round(cartons));
         const suggestion=computeSuggestion(rq,packValue);
+        const firstLotQty=lots.length?Math.max(0,Math.round(toNumber(lots[0].qty))):0;
+        const plannedCartons=firstLotQty>0&&isNumericLike(suggestion)&&Math.round(toNumber(suggestion))>firstLotQty?firstLotQty:'';
         const lotValues=compactLotValues(lots,pairCount);
         const totalPacks=Math.round(roundedCartons*toNumber(packValue));
         let lotValueIndex=0;
@@ -593,7 +644,8 @@
           if(h==='SKU') return fixedSku;
           if(h==='供貨天數') return sd;
           if(h==='總箱數') return roundedCartons;
-          if(h==='入庫計畫'||h==='入庫包數') return '';
+          if(h==='入庫計畫') return plannedCartons;
+          if(h==='入庫包數') return '';
           if(h==='補貨箱數建議') return suggestion;
           if(h==='补货数量') return rq;
           if(isExpiryHeader(h)||isQtyHeader(h)) return lotValues[lotValueIndex++]??'';
@@ -689,7 +741,7 @@
       let excelRow=1;
       const writeDataRow=(row)=>{
         const r=excelRow++;
-        const markGreen=highlightMain&&isClearableRow(headers,row), markYellow=highlightMain&&isUrgentRow(headers,row), markRed=highlightMain&&isLongSupplyRow(headers,row);
+        const hidden=highlightMain&&shouldHideSupplyRow(headers,row);
         headers.forEach((h,c)=>{
           const a=XLSX.utils.encode_cell({r,c}); let cell;
           if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
@@ -697,9 +749,16 @@
           } else if(c===usSum&&usInb!==-1&&usSell!==-1&&usTotal!==-1){
             cell={f:`${colLetter(usInb)}${r+1}+${colLetter(usSell)}${r+1}+${colLetter(usTotal)}${r+1}`,v:Math.round(toNumber(row[c])),t:'n',z:'0'};
           } else cell=coerceCellValue(h,row[c]);
-          if(markRed&&markGreen&&markYellow) cell.s=RED_URGENT_CLEARABLE_STYLE; else if(markRed&&markGreen) cell.s=RED_CLEARABLE_STYLE; else if(markRed&&markYellow) cell.s=RED_URGENT_STYLE; else if(markRed) cell.s=RED_ROW_STYLE; else if(markGreen&&markYellow) cell.s=URGENT_CLEARABLE_STYLE; else if(markYellow) cell.s=YELLOW_ROW_STYLE; else if(markGreen) cell.s=GREEN_ROW_STYLE; else cell.s=BASE_CELL_STYLE;
+          const highlight=highlightMain?rowHighlightKindAt(headers,row,c):'';
+          if(highlight==='red') cell.s=RED_ROW_STYLE;
+          else if(highlight==='yellow') cell.s=YELLOW_ROW_STYLE;
+          else if(highlight==='green') cell.s=GREEN_ROW_STYLE;
+          else if(highlight==='orange') cell.s=ORANGE_ROW_STYLE;
+          else if(highlight==='blue') cell.s=BLUE_ROW_STYLE;
+          else cell.s=BASE_CELL_STYLE;
           ws[a]=cell;
         });
+        if(hidden) ws['!rowsHidden']=(ws['!rowsHidden']||[]).concat(r);
       };
       const writeSection=(label)=>{
         const r=excelRow++;
@@ -717,7 +776,9 @@
       ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,excelRow-1),c:headers.length-1}});
       if(!sheet.groups){ const dataEnd=Math.max(0,sheet.rows.length); ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:dataEnd,c:headers.length-1}})}; }
       ws['!cols']=headers.map(h=>{ const col={wch:outputColumnWidth(h)}; if(isHiddenOutputHeader(h)) col.hidden=true; return col; });
-      ws['!rows']=Array.from({length:excelRow},(_,i)=>({hpt:i===0?24:21}));
+      const hiddenRows=new Set(ws['!rowsHidden']||[]);
+      delete ws['!rowsHidden'];
+      ws['!rows']=Array.from({length:excelRow},(_,i)=>({hpt:i===0?24:21,...(hiddenRows.has(i)?{hidden:true}:{})}));
       return ws;
     }
     function createWorkbookFromState(){ const wb=XLSX.utils.book_new(); SHEET_ORDER.forEach(n=>XLSX.utils.book_append_sheet(wb, createSheet(n,state.sheets[n],n==='主工作表'), n)); state.workbook=wb; state.filename=`Restock_Check_${todayStr()}.xlsx`; }
@@ -731,11 +792,8 @@
       const tbody=document.createElement('tbody');
       const addDataRow=(row)=>{
         const tr=document.createElement('tr');
-        if(name==='主工作表'){
-          const green=isClearableRow(sheet.headers,row), yellow=isUrgentRow(sheet.headers,row), red=isLongSupplyRow(sheet.headers,row);
-          if(red&&green&&yellow) tr.classList.add('long-supply-urgent-clearable-row'); else if(red&&green) tr.classList.add('long-supply-clearable-row'); else if(red&&yellow) tr.classList.add('long-supply-urgent-row'); else if(red) tr.classList.add('long-supply-row'); else if(green&&yellow) tr.classList.add('urgent-clearable-row'); else if(yellow) tr.classList.add('urgent-row'); else if(green) tr.classList.add('clearable-row');
-        }
-        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputHeader(h)) td.classList.add('hidden-output-col'); tr.appendChild(td); });
+        if(name==='主工作表'&&shouldHideSupplyRow(sheet.headers,row)) tr.hidden=true;
+        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputHeader(h)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } tr.appendChild(td); });
         tbody.appendChild(tr);
       };
       const addSection=(label)=>{ const tr=document.createElement('tr'); tr.className='section-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,sheet.headers.filter(h=>!isHiddenOutputHeader(h)).length); td.textContent=label; tr.appendChild(td); tbody.appendChild(tr); };
