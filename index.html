@@ -990,7 +990,7 @@ async function run(){
       if(!notes.length){ details.open=false; return; }
       const autoItems=notes.filter(note=>note.kind==='helium-auto'), fileItems=notes.filter(note=>note.kind!=='helium-auto');
       if(autoItems.length){
-        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷、可售庫存與 Inbound 三項都明確較高，系統已直接採用，不需要人工選擇。'));
+        body.appendChild(createIssueElement('p','notes-intro','以下 H10 重複 SKU 的估算日銷與可售庫存都較高，且 Inbound 不低於其他資料列；系統已直接採用，不需要人工選擇。'));
         const wrap=createIssueElement('div','auto-note-table-wrap'), table=createIssueElement('table','auto-note-table');
         table.innerHTML='<thead><tr><th>SKU</th><th>自動採用</th><th>估算日銷</th><th>可售庫存</th><th>Inbound</th></tr></thead>';
         const tbody=document.createElement('tbody');
