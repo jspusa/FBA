@@ -260,7 +260,7 @@
 <main>
   <section class="hero">
     <h1>三個檔案，完成補貨整理</h1>
-    <p>放入 Helium 10、Inventory 與 Business Report，系統會整理效期、核對後台月數與營業額風險，並產生可直接使用的 Excel。</p>
+    <p>放入 Helium 10 與 Inventory 即可整理；Business Report 為選填，可額外核對月數與營業額風險。</p>
   </section>
 
   <p class="workflow-label">準備檔案</p>
@@ -312,7 +312,7 @@
       <div class="card-head">
         <div class="title-group">
           <span class="step-number">3</span>
-          <div class="title-copy"><h2>Business Report <span class="file-type">CSV</span></h2><p>使用過去 30 天的 SKU 銷量與訂購產品銷售額。</p></div>
+          <div class="title-copy"><h2>Business Report <span class="file-type">CSV · 選填</span></h2><p>使用過去 30 天的 SKU 銷量與訂購產品銷售額；未提供也能整理。</p></div>
         </div>
         <a class="source-link" href="https://sellercentral.amazon.com/business-reports/ref=xx_sitemetric_dnav_xx#/report?id=102%3ADetailSalesTrafficBySKU" target="_blank" rel="noopener noreferrer">開啟 Business Report ↗</a>
       </div>
@@ -332,13 +332,13 @@
   <section class="card action-card">
     <div class="action-title">
       <span class="step-number">4</span>
-      <div><h2>產生補貨結果</h2><p>三份檔案都完成後，按下右側按鈕開始整理。</p></div>
+      <div><h2>產生補貨結果</h2><p>Helium 與 Inventory 完成後即可整理；Business Report 可稍後再加。</p></div>
     </div>
     <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>計算美國倉價值</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
-    <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1、2 與 3。</div>
+    <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1 與 2；步驟 3 為選填。</div>
     <div id="preflightPanel" class="preflight-panel">
       <div class="preflight-heading">
-        <div><strong>上傳前自動檢查</strong><p id="preflightSummary">會先確認檔案格式、必要欄位、效期資料與 SKU 對應，再開放整理。</p></div>
+        <div><strong>上傳前自動檢查</strong><p id="preflightSummary">會先確認兩份必要檔案與 SKU 對應；Business Report 為選填。</p></div>
         <span id="preflightBadge" class="preflight-badge">等待檔案</span>
       </div>
       <div class="audit-grid">
@@ -386,12 +386,14 @@
       <div id="summary" class="tool-pills"></div>
       <p class="result-guide">主工作表：黃色＝需儘速入庫；綠色＝可全部入庫；藍色＝新入倉；紅色＝供貨天數超過 730 天。供貨天數還有 4 至 12 個月，且無顏色註記品項則隱藏。</p>
       <p class="result-guide">後台月數驗算＝（入項＋可售庫存＋補貨數量）÷ 過去 30 天已訂購單位數量。超過 6.0 個月時以紅字提醒；此估算很保守，過往銷量不等於未來銷量，若持續成長，實際可售月數應低於驗算值，僅供參考。</p>
+      <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量。Business Report 未提供時，兩種月數與營業額欄位會自動隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
     </div>
   </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
 (function(){
     const $ = (id) => document.getElementById(id);
@@ -401,7 +403,7 @@
     const SHEET_DEFINITIONS = {
       '需儘速入庫':'定義：只複製效期距程式執行當天為 201–245 天的可入庫批次，並依該批次箱數顯示。本表不會從主工作表移除資料；「最後可入庫日期」＝該列最早效期往前扣 201 天。「預估損失營業額」以 Business Report 過去 30 天平均每包銷售額 × 此批次包數估算。',
       '未上架':'定義：排除已過期及效期拒入 FBA 批次後，仍有可用庫存，但在本次 Helium 10 補貨建議檔中找不到相同 SKU 的品項。',
-      '效期拒入FBA':'定義：本表依實際 EXPIRE／QTY 批次上下分區；上區為剩餘效期不足 180 天、即使立即到倉也會拒收的批次，下區為剩餘 180–200 天、無法保留 21 天入庫緩衝的批次。同一 SKU 的其他可入庫批次仍會保留在主工作表或「需儘速入庫」。',
+      '效期拒入FBA':'定義：本表依實際 EXPIRE／QTY 批次上下分區；上區為剩餘效期不足 180 天、即使立即到倉也會拒收的批次，下區為剩餘 180–200 天、無法保留 21 天入庫緩衝的批次。同一 SKU 的其他可入庫批次仍會保留在主工作表或「需儘速入庫」。「預估損失營業額」以 Business Report 過去 30 天平均每包銷售額 × 拒入批次包數估算。',
       '已過期':'定義：只列出已早於程式執行當天的 EXPIRE／QTY 批次。同一 SKU 若另有尚可入庫的批次，仍會保留在其他工作表。「預估損失營業額」以 Business Report 過去 30 天平均每包銷售額 × 已過期批次包數估算。',
       '缺貨':'定義：Inventory Update 原始「總箱數」為 0 的品項，沒有任何庫存可安排補貨。',
       '不足五箱':'定義：排除已過期及效期拒入 FBA 批次後，可入庫總箱數只剩 1–4 箱的品項；因不足五箱，暫不列入主工作表。',
@@ -675,10 +677,15 @@
       }
       const pairCount=cols.expiryPairs.length;
       const expiryQtyHeaders=Array.from({length:pairCount},()=>['EXPIRE','QTY']).flat();
-      const plannedHeaders=['SKU','供貨天數','總箱數','入庫計畫','補貨箱數建議','补货数量','後台月數驗算','入庫包數',...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存'];
-      const standardHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量','後台月數驗算',...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存'];
-      const urgentHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量','後台月數驗算',...expiryQtyHeaders,'最後可入庫日期','箱入數','總包數','預估損失營業額','入項','可售庫存'];
-      const expiredHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量','後台月數驗算',...expiryQtyHeaders,'箱入數','總包數','預估損失營業額','入項','可售庫存'];
+      const hasBusiness=Object.keys(businessData||{}).length>0;
+      const backendMonthHeaders=hasBusiness?['後台月數驗算']:[];
+      const plannedMonthHeaders=hasBusiness?['後台月數驗算','入庫月數驗算']:[];
+      const revenueHeaders=hasBusiness?['預估損失營業額']:[];
+      const plannedHeaders=['SKU','供貨天數','總箱數','入庫計畫','補貨箱數建議','补货数量',...plannedMonthHeaders,'入庫包數',...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存',...(hasBusiness?['過去30天銷量']:[])];
+      const standardHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存'];
+      const urgentHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'最後可入庫日期','箱入數','總包數',...revenueHeaders,'入項','可售庫存'];
+      const expiredHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'箱入數','總包數',...revenueHeaders,'入項','可售庫存'];
+      const rejectedHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'箱入數','總包數',...revenueHeaders,'入項','可售庫存'];
       const matched=new Set(), main=[], urgent=[], shortage=[], underFive=[], expired=[], rejectedUnder180=[], rejectedBuffer=[], unlisted=[];
       const usRows=[]; const inventorySkus=new Set();
       const buildRow=(fixedSku,sd,cartons,rq,lots,packValue,inb,sell,headersForRow=standardHeaders,latestDate='')=>{
@@ -686,10 +693,12 @@
         const suggestion=computeSuggestion(rq,packValue);
         const firstLotQty=lots.length?Math.max(0,Math.round(toNumber(lots[0].qty))):0;
         const plannedCartons=firstLotQty>0&&isNumericLike(suggestion)&&Math.round(toNumber(suggestion))>firstLotQty?firstLotQty:'';
+        const inboundUnits=plannedCartons===''?'':Math.round(toNumber(plannedCartons)*toNumber(packValue));
         const lotValues=compactLotValues(lots,pairCount);
         const totalPacks=Math.round(roundedCartons*toNumber(packValue));
         const metric=businessMetric(fixedSku,businessData);
         const monthlyCheck=metric.units>0?(toNumber(inb)+toNumber(sell)+toNumber(rq))/metric.units:'';
+        const inboundMonthlyCheck=metric.units>0&&inboundUnits!==''?(toNumber(inb)+toNumber(sell)+toNumber(inboundUnits))/metric.units:'';
         const lostRevenue=metric.unitPrice>0?totalPacks*metric.unitPrice:'';
         let lotValueIndex=0;
         return headersForRow.map((h)=>{
@@ -697,10 +706,11 @@
           if(h==='供貨天數') return sd;
           if(h==='總箱數') return roundedCartons;
           if(h==='入庫計畫') return plannedCartons;
-          if(h==='入庫包數') return '';
+          if(h==='入庫包數') return inboundUnits;
           if(h==='補貨箱數建議') return suggestion;
           if(h==='补货数量') return rq;
           if(h==='後台月數驗算') return monthlyCheck;
+          if(h==='入庫月數驗算') return inboundMonthlyCheck;
           if(isExpiryHeader(h)||isQtyHeader(h)) return lotValues[lotValueIndex++]??'';
           if(h==='最後可入庫日期') return latestDate;
           if(h==='箱入數') return packValue;
@@ -708,6 +718,7 @@
           if(h==='預估損失營業額') return lostRevenue;
           if(h==='入項') return inb;
           if(h==='可售庫存') return sell;
+          if(h==='過去30天銷量') return metric.units||0;
           return '';
         });
       };
@@ -735,8 +746,8 @@
         const safeLots=lots.filter(l=>l.category==='safe'||l.category==='unknown');
         const expiredQty=lotQty(expiredLots), under180Qty=lotQty(under180Lots), bufferQty=lotQty(bufferLots), urgentQty=lotQty(urgentLots);
         if(expiredQty>0) expired.push(buildRow(fixedSku,sd,expiredQty,rq,expiredLots,packValue,inb,sell,expiredHeaders));
-        if(under180Qty>0) rejectedUnder180.push(buildRow(fixedSku,sd,under180Qty,rq,under180Lots,packValue,inb,sell,standardHeaders));
-        if(bufferQty>0) rejectedBuffer.push(buildRow(fixedSku,sd,bufferQty,rq,bufferLots,packValue,inb,sell,standardHeaders));
+        if(under180Qty>0) rejectedUnder180.push(buildRow(fixedSku,sd,under180Qty,rq,under180Lots,packValue,inb,sell,rejectedHeaders));
+        if(bufferQty>0) rejectedBuffer.push(buildRow(fixedSku,sd,bufferQty,rq,bufferLots,packValue,inb,sell,rejectedHeaders));
         const eligibleLots=[...urgentLots,...safeLots].sort((a,b)=>{
           const at=a.expiryDate?a.expiryDate.getTime():Number.POSITIVE_INFINITY;
           const bt=b.expiryDate?b.expiryDate.getTime():Number.POSITIVE_INFINITY;
@@ -759,8 +770,8 @@
           }
         }
       }
-      const unusedHeaders=['SKU','供貨天數','补货数量','後台月數驗算','入項','可售庫存'];
-      const unusedRows=heliumData.records.filter(r=>!matched.has(r.SKU)).map(r=>{const m=businessMetric(r.SKU,businessData),months=m.units>0?(toNumber(r['入項'])+toNumber(r['可售庫存'])+toNumber(r['補貨數量']))/m.units:'';return[r['SKU'],r['供貨天數'],r['補貨數量'],months,r['入項'],r['可售庫存']];});
+      const unusedHeaders=['SKU','供貨天數','补货数量',...backendMonthHeaders,'入項','可售庫存'];
+      const unusedRows=heliumData.records.filter(r=>!matched.has(r.SKU)).map(r=>{const m=businessMetric(r.SKU,businessData),months=m.units>0?(toNumber(r['入項'])+toNumber(r['可售庫存'])+toNumber(r['補貨數量']))/m.units:'';return hasBusiness?[r['SKU'],r['供貨天數'],r['補貨數量'],months,r['入項'],r['可售庫存']]:[r['SKU'],r['供貨天數'],r['補貨數量'],r['入項'],r['可售庫存']];});
       heliumData.records.forEach(h=>{ if(!inventorySkus.has(h.SKU)){ const inbNum=toNumber(h['入項']), sellNum=toNumber(h['可售庫存']); usRows.push([h.SKU,inbNum,sellNum,0,inbNum+sellNum]); } });
       const usHeaders=['SKU','入項','可售庫存','總數','總和'];
       sortBySupplyDays(plannedHeaders,main); sortBySupplyDays(urgentHeaders,urgent); sortBySupplyDays(standardHeaders,shortage); sortBySupplyDays(standardHeaders,underFive); sortBySupplyDays(expiredHeaders,expired); sortBySupplyDays(standardHeaders,rejectedUnder180); sortBySupplyDays(standardHeaders,rejectedBuffer); sortBySupplyDays(plannedHeaders,unlisted); sortBySupplyDays(unusedHeaders,unusedRows);
@@ -769,7 +780,7 @@
         '主工作表':{headers:plannedHeaders,rows:main},
         '需儘速入庫':{headers:urgentHeaders,rows:urgent},
         '未上架':{headers:plannedHeaders,rows:unlisted},
-        '效期拒入FBA':{headers:standardHeaders,rows:rejectedRows,groups:[{label:'不足180天（FBA直接拒收）',rows:rejectedUnder180},{label:'180–200天（不足21天入庫緩衝）',rows:rejectedBuffer}]},
+        '效期拒入FBA':{headers:rejectedHeaders,rows:rejectedRows,groups:[{label:'不足180天（FBA直接拒收）',rows:rejectedUnder180},{label:'180–200天（不足21天入庫緩衝）',rows:rejectedBuffer}]},
         '已過期':{headers:expiredHeaders,rows:expired},
         '缺貨':{headers:standardHeaders,rows:shortage},
         '不足五箱':{headers:standardHeaders,rows:underFive},
@@ -779,10 +790,10 @@
       SHEET_ORDER.forEach(name=>{ sheets[name]=optimizeLotColumns(name,sheets[name]); });
       return {sheets};
     }
-    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='入庫計畫'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if(h==='後台月數驗算'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'US$#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
+    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='入庫計畫'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
     function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
-    function isHiddenOutputHeader(h){ return h==='入項'||h==='可售庫存'; }
-    function outputColumnWidth(h){ if(h==='SKU') return 18; if(h==='入庫計畫'||h==='入庫包數') return 14; if(h==='最後可入庫日期'||h==='預估損失營業額'||h==='後台月數驗算') return 17; if(h==='補貨箱數建議'||h==='补货数量'||h==='供貨天數') return 14; if(isExpiryHeader(h)) return 13; if(isQtyHeader(h)) return 10; if(h==='入項'||h==='可售庫存') return 12; return 11; }
+    function isHiddenOutputHeader(h){ return h==='入項'||h==='可售庫存'||h==='過去30天銷量'; }
+    function outputColumnWidth(h){ if(h==='SKU') return 18; if(h==='入庫計畫'||h==='入庫包數') return 14; if(h==='最後可入庫日期'||h==='預估損失營業額'||h==='後台月數驗算'||h==='入庫月數驗算') return 17; if(h==='補貨箱數建議'||h==='补货数量'||h==='供貨天數') return 14; if(isExpiryHeader(h)) return 13; if(isQtyHeader(h)) return 10; if(h==='入項'||h==='可售庫存') return 12; return 11; }
     function isPlanSheet(name){ return name==='主工作表'||name==='未上架'; }
     function isFocusHeader(name,headers,c){
       if(!isPlanSheet(name)) return false;
@@ -812,7 +823,7 @@
           else if(highlight==='green') cell.s=GREEN_ROW_STYLE;
           else if(highlight==='blue') cell.s=BLUE_ROW_STYLE;
           else cell.s=BASE_CELL_STYLE;
-          if(h==='後台月數驗算'&&isNumericLike(row[c])&&toNumber(row[c])>6){ const previous=cell.s||BASE_CELL_STYLE; cell.s={...previous,font:{...(previous.font||{}),...MONTH_WARNING_STYLE.font},alignment:CENTER_ALIGNMENT}; }
+          if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>6){ const previous=cell.s||BASE_CELL_STYLE; cell.s={...previous,font:{...(previous.font||{}),...MONTH_WARNING_STYLE.font},alignment:CENTER_ALIGNMENT}; }
           ws[a]=cell;
         });
         if(hidden) ws['!rowsHidden']=(ws['!rowsHidden']||[]).concat(r);
@@ -838,10 +849,76 @@
       ws['!rows']=Array.from({length:excelRow},(_,i)=>({hpt:i===0?24:21,...(hiddenRows.has(i)?{hidden:true}:{})}));
       return ws;
     }
-    function createWorkbookFromState(){ const wb=XLSX.utils.book_new(); SHEET_ORDER.forEach(n=>XLSX.utils.book_append_sheet(wb, createSheet(n,state.sheets[n],n==='主工作表'), n)); state.workbook=wb; state.filename=`Restock_Check_${todayStr()}.xlsx`; }
+    function applyExcelJsStyle(cell,style=BASE_CELL_STYLE){
+      cell.alignment={horizontal:style.alignment?.horizontal||'center',vertical:style.alignment?.vertical||'middle',wrapText:style.alignment?.wrapText!==false};
+      if(style.font){ cell.font={bold:Boolean(style.font.bold),color:style.font.color?.rgb?{argb:`FF${style.font.color.rgb.replace(/^FF/,'')}`} : undefined}; }
+      if(style.fill?.fgColor?.rgb) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:`FF${style.fill.fgColor.rgb.replace(/^FF/,'')}`}};
+      if(style.border){
+        cell.border={};
+        ['top','bottom','left','right'].forEach(side=>{ const value=style.border[side]; if(value?.style) cell.border[side]={style:value.style,color:value.color?.rgb?{argb:`FF${value.color.rgb.replace(/^FF/,'')}`} : undefined}; });
+      }
+    }
+    function excelJsRowStyle(name,headers,row,c,highlightMain){
+      const h=headers[c], highlight=highlightMain?rowHighlightKindAt(headers,row,c):'';
+      let style=highlight==='red'?RED_ROW_STYLE:highlight==='yellow'?YELLOW_ROW_STYLE:highlight==='green'?GREEN_ROW_STYLE:highlight==='blue'?BLUE_ROW_STYLE:BASE_CELL_STYLE;
+      if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>6) style={...style,font:{...(style.font||{}),...MONTH_WARNING_STYLE.font}};
+      return style;
+    }
+    function createExcelJsWorkbook(){
+      if(typeof ExcelJS==='undefined') throw new Error('Excel 輸出元件尚未載入，請重新整理後再試。');
+      const wb=new ExcelJS.Workbook();
+      wb.creator='Jasper Pet Care Products, Inc.'; wb.created=new Date(); wb.modified=new Date();
+      wb.calcProperties.fullCalcOnLoad=true; wb.calcProperties.forceFullCalc=true; wb.calcProperties.calcMode='auto';
+      SHEET_ORDER.forEach(name=>{
+        const sheet=state.sheets[name], headers=sheet.headers, highlightMain=name==='主工作表';
+        const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
+        headers.forEach((h,c)=>{
+          const cell=ws.getCell(1,c+1); cell.value=h; applyExcelJsStyle(cell,isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE);
+          ws.getColumn(c+1).width=outputColumnWidth(h); ws.getColumn(c+1).hidden=isHiddenOutputHeader(h);
+        });
+        ws.getRow(1).height=24;
+        const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), inboundMonthIdx=headers.indexOf('入庫月數驗算'), packIdx=headers.indexOf('箱入數'), sales30Idx=headers.indexOf('過去30天銷量');
+        const usInb=headers.indexOf('入項'), usSell=headers.indexOf('可售庫存'), usTotal=headers.indexOf('總數'), usSum=headers.indexOf('總和');
+        let excelRow=2, dataRows=0;
+        const writeDataRow=row=>{
+          const currentRow=excelRow++; dataRows++;
+          headers.forEach((h,c)=>{
+            const cell=ws.getCell(currentRow,c+1), coerced=coerceCellValue(h,row[c]);
+            if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
+              const result=isNumericLike(row[c])?Math.round(toNumber(row[c])):0;
+              cell.value={formula:`IF(${colLetter(planIdx)}${currentRow}="","",ROUND(${colLetter(planIdx)}${currentRow}*${colLetter(packIdx)}${currentRow},0))`,result}; cell.numFmt='0';
+            }else if(c===inboundMonthIdx&&inboundUnitsIdx!==-1&&sales30Idx!==-1&&usInb!==-1&&usSell!==-1){
+              const result=isNumericLike(row[c])?toNumber(row[c]):0;
+              cell.value={formula:`IF(OR(${colLetter(inboundUnitsIdx)}${currentRow}="",${colLetter(sales30Idx)}${currentRow}=0),"",(${colLetter(usInb)}${currentRow}+${colLetter(usSell)}${currentRow}+${colLetter(inboundUnitsIdx)}${currentRow})/${colLetter(sales30Idx)}${currentRow})`,result}; cell.numFmt='0.0';
+            }else if(c===usSum&&usInb!==-1&&usSell!==-1&&usTotal!==-1){
+              cell.value={formula:`${colLetter(usInb)}${currentRow}+${colLetter(usSell)}${currentRow}+${colLetter(usTotal)}${currentRow}`,result:Math.round(toNumber(row[c]))}; cell.numFmt='0';
+            }else{
+              cell.value=coerced.v===''?null:coerced.v; if(coerced.z) cell.numFmt=coerced.z;
+            }
+            applyExcelJsStyle(cell,excelJsRowStyle(name,headers,row,c,highlightMain));
+          });
+          ws.getRow(currentRow).height=21; ws.getRow(currentRow).hidden=highlightMain&&shouldHideSupplyRow(headers,row);
+        };
+        const writeSection=label=>{
+          const currentRow=excelRow++;
+          headers.forEach((_,c)=>{ const cell=ws.getCell(currentRow,c+1); cell.value=c===0?label:null; applyExcelJsStyle(cell,SECTION_STYLE); });
+          if(headers.length>1) ws.mergeCells(currentRow,1,currentRow,headers.length); ws.getRow(currentRow).height=21;
+        };
+        if(sheet.groups) sheet.groups.forEach(group=>{writeSection(group.label);group.rows.forEach(writeDataRow);}); else sheet.rows.forEach(writeDataRow);
+        const definition=SHEET_DEFINITIONS[name]||'';
+        if(definition){
+          const currentRow=excelRow++;
+          headers.forEach((_,c)=>{const cell=ws.getCell(currentRow,c+1);cell.value=c===0?definition:null;applyExcelJsStyle(cell,DEFINITION_STYLE);});
+          if(headers.length>1) ws.mergeCells(currentRow,1,currentRow,headers.length); ws.getRow(currentRow).height=36;
+        }
+        if(!sheet.groups&&dataRows) ws.autoFilter={from:{row:1,column:1},to:{row:1+dataRows,column:headers.length}};
+      });
+      return wb;
+    }
+    function createWorkbookFromState(){ state.workbook=createExcelJsWorkbook(); state.filename=`Restock_Check_${todayStr()}.xlsx`; }
     function renderSummary(){ const summary=$('summary'); summary.innerHTML=''; SHEET_ORDER.forEach(l=>{ const d=document.createElement('div'); d.className='tool-pill'; d.textContent=`${l}：${state.sheets[l].rows.length} 筆`; summary.appendChild(d);}); }
     const formatUsd=value=>`US$${toNumber(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-    function displayValue(h,v){ if(v===''||v==null) return ''; if(h==='後台月數驗算'&&isNumericLike(v)) return toNumber(v).toFixed(1); if(h==='預估損失營業額'&&isNumericLike(v)) return formatUsd(v); if(h!=='SKU'&&h!=='入庫計畫'&&h!=='最後可入庫日期'&&!isExpiryHeader(h)&&isNumericLike(v)) return String(Math.round(toNumber(v))); return String(v); }
+    function displayValue(h,v){ if(v===''||v==null) return ''; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return toNumber(v).toFixed(1); if(h==='預估損失營業額'&&isNumericLike(v)) return formatUsd(v); if(h!=='SKU'&&h!=='入庫計畫'&&h!=='最後可入庫日期'&&!isExpiryHeader(h)&&isNumericLike(v)) return String(Math.round(toNumber(v))); return String(v); }
     function renderTable(name){
       const table=$('previewTable'), sheet=state.sheets[name]; table.innerHTML='';
       const thead=document.createElement('thead'), headerTr=document.createElement('tr');
@@ -851,7 +928,7 @@
       const addDataRow=(row)=>{
         const tr=document.createElement('tr');
         if(name==='主工作表'&&shouldHideSupplyRow(sheet.headers,row)) tr.hidden=true;
-        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputHeader(h)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if(h==='後台月數驗算'&&isNumericLike(row[i])&&toNumber(row[i])>6) td.classList.add('month-warning'); tr.appendChild(td); });
+        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputHeader(h)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[i])&&toNumber(row[i])>6) td.classList.add('month-warning'); tr.appendChild(td); });
         tbody.appendChild(tr);
       };
       const addSection=(label)=>{ const tr=document.createElement('tr'); tr.className='section-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,sheet.headers.filter(h=>!isHiddenOutputHeader(h)).length); td.textContent=label; tr.appendChild(td); tbody.appendChild(tr); };
@@ -865,8 +942,9 @@
     function valueModeEnabled(){ return window.FBAValueMode?.isEnabled?.()||localStorage.getItem('fba-workspace:value-mode')==='open'; }
     function syncValueMode(enabled=valueModeEnabled()){
       const button=$('calculateInventoryValueBtn'), panel=$('inventoryValuePanel');
-      button.hidden=!enabled;
-      if(!enabled){ panel.hidden=true; panel.innerHTML=''; panel.dataset.shown=''; }
+      const available=enabled&&isValidCheck(preflightChecks.business);
+      button.hidden=!available;
+      if(!available){ panel.hidden=true; panel.innerHTML=''; panel.dataset.shown=''; }
       else if(panel.dataset.shown==='true') panel.hidden=false;
     }
     function calculateInventoryValue(){
@@ -902,16 +980,16 @@
 async function run(){
       try{
         const heliumFile=restockFiles.helium || $('heliumFile').files[0], inventoryFile=restockFiles.inventory || $('inventoryFile').files[0], businessFile=restockFiles.business || $('businessFile').files[0];
-        if(!heliumFile||!inventoryFile||!businessFile) throw new Error('請先完成步驟 1、2 與 3。');
-        if(typeof XLSX==='undefined') throw new Error('無法載入 Excel 函式庫。');
+        if(!heliumFile||!inventoryFile) throw new Error('請先完成步驟 1 與 2；Business Report 為選填。');
+        if(typeof XLSX==='undefined'||typeof ExcelJS==='undefined') throw new Error('無法載入 Excel 函式庫。');
         $('runBtn').disabled=true; $('downloadBtn').disabled=true;
         setStatus('正在讀取檔案並整理效期批次…',false,'working');
-        if(preflightChecks.helium.status!=='valid'||preflightChecks.inventory.status!=='valid'||preflightChecks.business.status!=='valid') throw new Error('上傳前自動檢查尚未完成。');
+        if(preflightChecks.helium.status!=='valid'||preflightChecks.inventory.status!=='valid'||preflightChecks.business.status==='checking') throw new Error('上傳前自動檢查尚未完成。');
         const pairStats=getPairStats();
         if(!pairStats||pairStats.matched===0) throw new Error('兩份檔案沒有可對應的 SKU，請確認是否選錯檔案。');
         const heliumRows=preflightChecks.helium.rows||await readCsvAsRows(heliumFile);
         const inventoryRows=preflightChecks.inventory.rows||await readWorkbookFirstSheetAsRows(inventoryFile);
-        state.businessData=preflightChecks.business.businessData||parseBusinessReport(preflightChecks.business.rows||await readWorkbookFirstSheetAsRows(businessFile)).data;
+        state.businessData=isValidCheck(preflightChecks.business)?(preflightChecks.business.businessData||parseBusinessReport(preflightChecks.business.rows||await readWorkbookFirstSheetAsRows(businessFile)).data):{};
         state.sheets=processInventory(parseHelium(heliumRows,issueChoices.helium),inventoryRows,issueChoices.inventory,state.businessData).sheets;
         state.activeSheet='主工作表';
         createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
@@ -1139,7 +1217,10 @@ async function run(){
       const helium=preflightChecks.helium, inventory=preflightChecks.inventory, business=preflightChecks.business;
       setAuditItem('auditHelium','auditHeliumText',helium,'1','等待上傳 CSV','helium');
       setAuditItem('auditInventory','auditInventoryText',inventory,'2','等待上傳 Excel','inventory');
-      setAuditItem('auditBusiness','auditBusinessText',business,'3','等待上傳 CSV','business');
+      setAuditItem('auditBusiness','auditBusinessText',business,'3','選填；未提供時月數與營業額欄位會隱藏','business');
+      if(business.status==='empty'){
+        const item=$('auditBusiness'), icon=item.querySelector('.audit-icon'); item.dataset.state='valid'; icon.textContent='—';
+      }
       const pair=getPairStats(), pairItem=$('auditCoverage'), pairText=$('auditCoverageText'), pairIcon=pairItem.querySelector('.audit-icon');
       const pairDiagnostics=[];
       if(pair){
@@ -1156,22 +1237,23 @@ async function run(){
         pairItem.dataset.state=(helium.status==='invalid'||inventory.status==='invalid')?'bad':'pending';
         pairText.textContent='等待兩份檔案'; pairText.title='等待兩份檔案'; pairIcon.textContent=pairItem.dataset.state==='bad'?'!':'↔';
       }
-      const allValid=isValidCheck(helium)&&isValidCheck(inventory)&&isValidCheck(business);
-      const ready=allValid&&pair&&pair.matched>0;
+      const requiredValid=isValidCheck(helium)&&isValidCheck(inventory);
+      const ready=requiredValid&&business.status!=='checking'&&pair&&pair.matched>0;
       const issues=getIssueItems(pairDiagnostics), decisionCount=issues.filter(item=>item.kind!=='diagnostic').length, diagnosticCount=issues.length-decisionCount;
       const badge=$('preflightBadge'), summary=$('preflightSummary');
       badge.className='preflight-badge';
       if(helium.status==='checking'||inventory.status==='checking'||business.status==='checking'){
         badge.textContent='檢查中'; badge.classList.add('checking'); summary.textContent='正在確認檔案內容，完成前不會開放整理。';
-      }else if(helium.status==='invalid'||inventory.status==='invalid'||business.status==='invalid'||(pair&&pair.matched===0)){
+      }else if(helium.status==='invalid'||inventory.status==='invalid'||(pair&&pair.matched===0)){
         badge.textContent='需要修正'; badge.classList.add('bad'); summary.textContent=pair&&pair.matched===0?'兩份檔案沒有共同 SKU，可能選到不同批次或錯誤檔案。':'至少一份檔案未通過必要格式檢查。';
       }else if(ready){
         const heliumDone=!(helium.decisions||[]).length||decisionsConfirmed('helium',helium), inventoryDone=!(inventory.decisions||[]).length||decisionsConfirmed('inventory',inventory);
         const allDecisionsDone=decisionCount>0&&diagnosticCount===0&&heliumDone&&inventoryDone;
         badge.textContent=issues.length?(diagnosticCount?`${issues.length} 項待確認`:allDecisionsDone?`${decisionCount} 項已確認`:`${decisionCount} 項已預選`):'檢查通過'; badge.classList.add(issues.length&&!allDecisionsDone?'warn':'ready');
-        summary.textContent=`Helium ${pair.heliumTotal} 個 SKU、Inventory ${pair.inventoryTotal} 個 SKU、Business Report ${business.skus?.size||0} 個 SKU；Helium 與 Inventory 共同對應 ${pair.matched} 個。`;
+        const businessText=isValidCheck(business)?`Business Report ${business.skus?.size||0} 個 SKU`:(business.status==='invalid'?'Business Report 無法使用，本次略過':'Business Report 未提供');
+        summary.textContent=`Helium ${pair.heliumTotal} 個 SKU、Inventory ${pair.inventoryTotal} 個 SKU、${businessText}；Helium 與 Inventory 共同對應 ${pair.matched} 個。`;
       }else{
-        badge.textContent='等待檔案'; summary.textContent='會先確認三份檔案的格式、必要欄位、效期資料與 SKU 對應，再開放整理。';
+        badge.textContent='等待檔案'; summary.textContent='會先確認 Helium、Inventory 與 SKU 對應；Business Report 為選填。';
       }
       const warningBox=$('preflightWarnings'); warningBox.innerHTML=''; warningBox.classList.add('hidden');
       renderIssueCard(issues);
@@ -1276,17 +1358,19 @@ async function run(){
       const overview=renderPreflight();
       $('runBtn').disabled=!overview.ready;
       $('calculateInventoryValueBtn').disabled=!(inventoryReady&&businessReady);
+      syncValueMode();
       if(!resetMessage) return;
       if(heliumCheck.status==='checking'||inventoryCheck.status==='checking'||businessCheck.status==='checking') setStatus('正在執行上傳前自動檢查…',false,'working');
       else if(heliumCheck.status==='invalid') setStatus(`Helium 檔案無法使用：${heliumCheck.error}`,true);
       else if(inventoryCheck.status==='invalid') setStatus(`Inventory 檔案無法使用：${inventoryCheck.error}`,true);
-      else if(businessCheck.status==='invalid') setStatus(`Business Report 無法使用：${businessCheck.error}`,true);
-      else if(heliumReady&&inventoryReady&&businessReady&&!overview.ready) setStatus('Helium 與 Inventory 沒有可對應的 SKU，請確認是否選錯檔案。',true);
-      else if(heliumReady&&inventoryReady&&businessReady){
-        if(overview.issues.length) setStatus(overview.diagnosticCount?`三份檔案可整理；功能 5 已列出 ${overview.issues.length} 項問題，建議先確認表格。`:`三份檔案可整理；功能 5 已為 ${overview.decisionCount} 項重複資料套用安全預選，可直接整理或先調整。`,false,'ready');
-        else setStatus('三份檔案已通過檢查。下一步：按下「開始整理補貨資料」。',false,'ready');
+      else if(heliumReady&&inventoryReady&&!overview.ready&&businessCheck.status!=='checking') setStatus('Helium 與 Inventory 沒有可對應的 SKU，請確認是否選錯檔案。',true);
+      else if(heliumReady&&inventoryReady){
+        const sourceText=businessReady?'三份檔案':'兩份必要檔案';
+        if(overview.issues.length) setStatus(overview.diagnosticCount?`${sourceText}可整理；功能 5 已列出 ${overview.issues.length} 項問題，建議先確認表格。`:`${sourceText}可整理；功能 5 已為 ${overview.decisionCount} 項重複資料套用安全預選，可直接整理或先調整。`,false,'ready');
+        else if(businessCheck.status==='invalid') setStatus(`兩份必要檔案可整理；Business Report 無法使用，本次月數與營業額欄位會略過。`,false,'ready');
+        else setStatus(`${sourceText}已通過檢查。下一步：按下「開始整理補貨資料」。`,false,'ready');
       }
-      else { const missing=[]; if(!heliumReady)missing.push('Helium'); if(!inventoryReady)missing.push('Inventory'); if(!businessReady)missing.push('Business Report'); setStatus(`尚需加入：${missing.join('、')}。`,false,'ready'); }
+      else { const missing=[]; if(!heliumReady)missing.push('Helium'); if(!inventoryReady)missing.push('Inventory'); setStatus(`尚需加入：${missing.join('、')}。Business Report 為選填。`,false,'ready'); }
     }
     async function assignRestockFile(which, file, persist=true){
       if(!file) return;
@@ -1394,7 +1478,18 @@ async function run(){
     });
     $('runBtn').addEventListener('click', run);
     $('calculateInventoryValueBtn').addEventListener('click',calculateInventoryValue);
-    $('downloadBtn').addEventListener('click', ()=>{ if(state.workbook){ XLSX.writeFile(state.workbook, state.filename, {compression:true}); setStatus(`已下載 ${state.filename}`,false,'ok'); } });
+    $('downloadBtn').addEventListener('click', async()=>{
+      if(!state.workbook) return;
+      const button=$('downloadBtn'); button.disabled=true;
+      try{
+        setStatus('正在建立相容的 Excel 檔案…',false,'working');
+        const buffer=await state.workbook.xlsx.writeBuffer();
+        const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), anchor=document.createElement('a');
+        anchor.href=url; anchor.download=state.filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+        setStatus(`已下載 ${state.filename}`,false,'ok');
+      }catch(error){ setStatus(error?.message||'Excel 產生失敗。',true); }
+      finally{ button.disabled=false; }
+    });
     window.addEventListener('fba-workspace-ready',async()=>{
       if(!window.FBAWorkspaceFiles) return;
       const saved=await window.FBAWorkspaceFiles.loadAll();
