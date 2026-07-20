@@ -177,6 +177,22 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
   $('pickupDate').addEventListener('input',()=>resetConfirmation('date')); $('truckCount').addEventListener('input',()=>resetConfirmation('trucks'));
   $('confirmPickup').addEventListener('change',updateConfirmationLabels); $('confirmTrucks').addEventListener('change',updateConfirmationLabels); updateConfirmationLabels();
+  $('recipientName').addEventListener('keydown',(event)=>{
+    if(event.key!=='Enter') return;
+    const command=$('recipientName').value.trim();
+    if(command!=='芝麻開門'&&command!=='芝麻關門') return;
+    event.preventDefault();
+    const enabled=command==='芝麻開門';
+    if(window.FBAValueMode) window.FBAValueMode.setEnabled(enabled);
+    else {
+      if(enabled) localStorage.setItem('fba-workspace:value-mode','open');
+      else localStorage.removeItem('fba-workspace:value-mode');
+      window.dispatchEvent(new CustomEvent('fba-value-mode-changed',{detail:{enabled}}));
+    }
+    $('recipientName').value='Tiffany';
+    $('recipientName').dispatchEvent(new Event('input',{bubbles:true}));
+    $('emailMeta').textContent=enabled?'隱藏價值功能已開啟。':'隱藏價值功能已關閉。';
+  });
   function parseData(value) {
     const lines=value.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(lines.length<2) throw new Error('至少需要標題列與一筆資料。');
     const split=line=>line.includes('\t')?line.split('\t').map(s=>s.trim()):line.split(/\s{2,}/).map(s=>s.trim());
