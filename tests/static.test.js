@@ -12,7 +12,7 @@ test('all workflow pages load shared workspace behavior', () => {
   const expectedTabs = ['補貨整合', '入庫計畫', '棧板擷取', 'FBA 整理', '出貨通知'];
   for (const file of htmlFiles) {
     const source = read(file);
-    assert.match(source, /<script src="shared-workspace\.js"><\/script>/, file);
+    assert.match(source, /<script src="shared-workspace\.js(?:\?v=[^"]+)?"><\/script>, file);
     assert.match(source, /<link rel="stylesheet" href="workspace-shell\.css"\s*\/>/, file);
     assert.match(source, /id="clearWorkspaceBtn"/, file);
     assert.equal((source.match(/aria-current="page"/g) || []).length, 1, file);
