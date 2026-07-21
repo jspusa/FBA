@@ -6,6 +6,7 @@
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
+  const BRO_MODE_KEY = 'fba-workspace:bro-mode';
   const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
   const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
@@ -71,18 +72,21 @@
   };
 
   const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
+  const broModeEnabled = () => localStorage.getItem(BRO_MODE_KEY) === 'open';
+  const nightModeEnabled = () => valueModeEnabled() || broModeEnabled();
   const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
-  const playValueTransition = enabled => {
-    document.body.classList.toggle('fba-night', enabled);
+  const notifyBroMode = () => window.dispatchEvent(new CustomEvent('fba-bro-mode-changed', { detail: { enabled: broModeEnabled() } }));
+  const playValueTransition = (opening, label = '') => {
+    document.body.classList.toggle('fba-night', nightModeEnabled());
     document.body.classList.remove('fba-value-shake');
     void document.body.offsetWidth;
     document.body.classList.add('fba-value-shake');
     let overlay = document.getElementById('fbaDoorTransition');
     if (overlay) overlay.remove();
-    overlay = document.createElement('div'); overlay.id = 'fbaDoorTransition'; overlay.className = `fba-door-transition ${enabled ? 'opening' : 'closing'}`;
-    overlay.innerHTML = `<div class="fba-door left"><span></span></div><div class="fba-secret-mark">${enabled ? '芝麻開門' : '芝麻關門'}</div><div class="fba-door right"><span></span></div>`;
+    overlay = document.createElement('div'); overlay.id = 'fbaDoorTransition'; overlay.className = `fba-door-transition ${opening ? 'opening' : 'closing'}`;
+    overlay.innerHTML = `<div class="fba-door left"><span></span></div><div class="fba-secret-mark">${label || (opening ? '芝麻開門' : '芝麻關門')}</div><div class="fba-door right"><span></span></div>`;
     document.body.appendChild(overlay);
-    if (navigator.vibrate) navigator.vibrate(enabled ? [90, 45, 150, 45, 90] : [150, 55, 100]);
+    if (navigator.vibrate) navigator.vibrate(opening ? [90, 45, 150, 45, 90] : [150, 55, 100]);
     setTimeout(() => { overlay.remove(); document.body.classList.remove('fba-value-shake'); }, 1350);
   };
   window.FBAValueMode = {
@@ -92,7 +96,7 @@
       if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
       else localStorage.removeItem(VALUE_MODE_KEY);
       if (changed) playValueTransition(Boolean(enabled));
-      else document.body.classList.toggle('fba-night', Boolean(enabled));
+      else document.body.classList.toggle('fba-night', nightModeEnabled());
       notifyValueMode();
     },
     getBusinessReport() {
@@ -103,6 +107,17 @@
       localStorage.setItem(BUSINESS_REPORT_KEY, JSON.stringify({ batchId: batchMeta.id, items, fileName, updatedAt: Date.now() }));
     },
     clearBusinessReport() { localStorage.removeItem(BUSINESS_REPORT_KEY); }
+  };
+  window.FBABroMode = {
+    isEnabled: broModeEnabled,
+    setEnabled(enabled) {
+      const changed = broModeEnabled() !== Boolean(enabled);
+      if (enabled) localStorage.setItem(BRO_MODE_KEY, 'open');
+      else localStorage.removeItem(BRO_MODE_KEY);
+      if (changed) playValueTransition(Boolean(enabled), enabled ? 'BRO MODE' : 'BACK TO WORK');
+      else document.body.classList.toggle('fba-night', nightModeEnabled());
+      notifyBroMode();
+    }
   };
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
@@ -146,6 +161,23 @@
     localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
   };
+  const clearThisPage = async () => {
+    if (!window.confirm('確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。')) return;
+    isClearing = true;
+    localStorage.removeItem(FORM_KEY);
+    if (PAGE === 'index.html') {
+      localStorage.removeItem(BUSINESS_REPORT_KEY);
+      await deleteRestockDatabase();
+    } else if (PAGE === 'inbound-plan.html') {
+      localStorage.removeItem(SHARED_INBOUND_KEY);
+      localStorage.removeItem('fba-workspace:inbound-reviewed');
+      localStorage.removeItem('fba-workspace:quantity-choices');
+    } else if (PAGE === 'sorter.html') {
+      localStorage.removeItem(SORTER_SUMMARY_KEY);
+      await deleteSorterDatabase();
+    }
+    location.reload();
+  };
   const ensureResetButton = () => {
     let button = document.getElementById('clearWorkspaceBtn');
     if (!button) {
@@ -155,10 +187,26 @@
     }
     button.textContent = '開始新批次'; return button;
   };
+  const ensurePageClearButton = resetButton => {
+    if (!resetButton?.parentElement) return null;
+    let actions = resetButton.closest('.workspace-header-actions');
+    if (!actions) {
+      actions = document.createElement('div'); actions.className = 'workspace-header-actions';
+      resetButton.parentElement.insertBefore(actions, resetButton); actions.appendChild(resetButton);
+    }
+    let button = document.getElementById('clearPageBtn');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'clearPageBtn'; button.className = 'clear-page'; button.type = 'button'; button.textContent = '清除此頁面'; actions.insertBefore(button, resetButton);
+    }
+    return button;
+  };
   const style = document.createElement('style');
   style.textContent = `
     .clear-workspace{appearance:none;border:1px solid rgba(36,138,61,.2);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#e8f7ed;color:#176b2c;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
     .clear-workspace:hover{background:#d9f1e1;transform:translateY(-1px)}
+    .workspace-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:max-content}
+    .clear-page{appearance:none;border:1px solid rgba(0,0,0,.09);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.82);color:#52525b;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
+    .clear-page:hover{background:#fff;transform:translateY(-1px);box-shadow:0 7px 18px rgba(0,0,0,.08)}
     .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
     .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
     .private-value-action[hidden],.private-value-panel[hidden]{display:none!important}
@@ -196,16 +244,19 @@
     @keyframes fbaShake{0%,100%{transform:translate(0)}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
     body.fba-night .advanced-toggle{background:rgba(23,27,35,.9)!important;color:#eef2ff!important;border-color:#343c4b!important}
     body.fba-night .drawer-section summary{background:#171b23!important;color:#eef2ff!important}
-    @media(max-width:680px){.page-tools{margin:-8px 0 14px}.advanced-toggle{width:100%;justify-content:center}}
+    @media(max-width:680px){.page-tools{margin:-8px 0 14px}.advanced-toggle{width:100%;justify-content:center}.workspace-header-actions{width:100%;justify-content:flex-end}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.fba-door-transition .fba-door,.fba-value-shake,body.fba-ui-ready main>.hero,body.fba-ui-ready main>.page-hero,body.fba-ui-ready main .upload-card,body.fba-ui-ready main>.card,body.fba-ui-ready main .tool-card,body.fba-ui-ready main .auto-detect-card{animation-duration:.01ms!important}}
     `;
   document.head.appendChild(style);
-  document.body.classList.toggle('fba-night', valueModeEnabled());
+  document.body.classList.toggle('fba-night', nightModeEnabled());
   requestAnimationFrame(() => document.body.classList.add('fba-ui-ready'));
-  ensureResetButton()?.addEventListener('click', startNewBatch);
+  const resetButton = ensureResetButton();
+  resetButton?.addEventListener('click', startNewBatch);
+  ensurePageClearButton(resetButton)?.addEventListener('click', clearThisPage);
   window.addEventListener('storage', event => {
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
-    if (event.key === VALUE_MODE_KEY) { playValueTransition(valueModeEnabled()); notifyValueMode(); }
+    if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
+    if (event.key === BRO_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyBroMode(); }
   });
   const latestClear = localStorage.getItem(CLEAR_KEY);
   if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
@@ -242,4 +293,5 @@
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
   notifyValueMode();
+  notifyBroMode();
 })();
