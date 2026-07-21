@@ -156,7 +156,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <label class="confirm-check"><input id="confirmPickup" type="checkbox" /> <span>我已確認 Pickup Date 是正確日期：<strong id="pickupConfirmText">尚未選擇</strong></span></label>
         <label class="confirm-check"><input id="confirmTrucks" type="checkbox" /> <span>我已確認本次貨件分成 <strong id="truckConfirmText">尚未填寫</strong> 車。</span></label>
       </div>
-      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
+      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="buildCasualEmailBtn" class="btn" type="button" hidden>產生口語信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
       <div id="emailPreview" class="email-preview" style="margin-top:8px"></div>
     </div>
@@ -180,19 +180,30 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('recipientName').addEventListener('keydown',(event)=>{
     if(event.key!=='Enter') return;
     const command=$('recipientName').value.trim();
-    if(command!=='芝麻開門'&&command!=='芝麻關門') return;
+    if(command!=='芝麻開門'&&command!=='芝麻關門'&&command.toLowerCase()!=='bro') return;
     event.preventDefault();
-    const enabled=command==='芝麻開門';
-    if(window.FBAValueMode) window.FBAValueMode.setEnabled(enabled);
-    else {
-      if(enabled) localStorage.setItem('fba-workspace:value-mode','open');
-      else localStorage.removeItem('fba-workspace:value-mode');
-      window.dispatchEvent(new CustomEvent('fba-value-mode-changed',{detail:{enabled}}));
+    let message='';
+    if(command.toLowerCase()==='bro'){
+      const enabled=!(window.FBABroMode?.isEnabled?.()||localStorage.getItem('fba-workspace:bro-mode')==='open');
+      if(window.FBABroMode) window.FBABroMode.setEnabled(enabled);
+      else { if(enabled)localStorage.setItem('fba-workspace:bro-mode','open');else localStorage.removeItem('fba-workspace:bro-mode');window.dispatchEvent(new CustomEvent('fba-bro-mode-changed',{detail:{enabled}})); }
+      message=enabled?'Bro 口語信件模式已開啟。':'Bro 口語信件模式已關閉。';
+    }else{
+      const enabled=command==='芝麻開門';
+      if(window.FBAValueMode) window.FBAValueMode.setEnabled(enabled);
+      else {
+        if(enabled) localStorage.setItem('fba-workspace:value-mode','open');
+        else localStorage.removeItem('fba-workspace:value-mode');
+        window.dispatchEvent(new CustomEvent('fba-value-mode-changed',{detail:{enabled}}));
+      }
+      message=enabled?'全部隱藏功能已開啟。':'價值隱藏功能已關閉。';
     }
     $('recipientName').value='Tiffany';
     $('recipientName').dispatchEvent(new Event('input',{bubbles:true}));
-    $('emailMeta').textContent=enabled?'隱藏價值功能已開啟。':'隱藏價值功能已關閉。';
+    $('emailMeta').textContent=message;
   });
+  function secretEmailEnabled(){return Boolean(window.FBAValueMode?.isEnabled?.()||localStorage.getItem('fba-workspace:value-mode')==='open'||window.FBABroMode?.isEnabled?.()||localStorage.getItem('fba-workspace:bro-mode')==='open');}
+  function syncSecretEmailActions(){ $('buildCasualEmailBtn').hidden=!secretEmailEnabled(); }
   function parseData(value) {
     const lines=value.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(lines.length<2) throw new Error('至少需要標題列與一筆資料。');
     const split=line=>line.includes('\t')?line.split('\t').map(s=>s.trim()):line.split(/\s{2,}/).map(s=>s.trim());
@@ -203,15 +214,24 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     if(!rows.length) throw new Error('沒有成功解析到任何 SKU 資料。');
     return {rows,totalCtn:rows.reduce((sum,r)=>sum+r.ctn,0),totalQuantity:rows.reduce((sum,r)=>sum+r.quantity,0)};
   }
-  $('buildEmailBtn').addEventListener('click',()=>{ try {
+  function buildEmail(casual=false){ try {
     const data=parseData($('emailData').value), date=$('pickupDate').value; if(!date) throw new Error('請先選擇 Pickup Date。'); if(!$('confirmPickup').checked) throw new Error('請勾選確認 Pickup Date。');
     const trucks=parsePositiveInteger($('truckCount').value,'分車數'); if(trucks>99) throw new Error('分車數不可超過 99，請重新檢查。'); if(!$('confirmTrucks').checked) throw new Error('請勾選確認分成幾車。');
     const recipient=$('recipientName').value.trim()||'Tiffany'; const [y,m,d]=date.split('-').map(Number), dt=new Date(y,m-1,d); const fullDate=`${new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(dt)}, ${new Intl.DateTimeFormat('en-US',{month:'long'}).format(dt)} ${d}, ${y}`;
     const rows=data.rows.map((r,index)=>`<tr><td>${index+1}</td><td>${escapeHtml(r.sku)}</td><td>${r.ctn}</td><td>${r.quantity}</td><td>${escapeHtml(r.expire)}</td></tr>`).join('');
-    emailHtml=`<div><p><strong>Subject:</strong> ${m}/${d} Pickup – Shipment Details</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p>Pickup Date: ${fullDate}</p><p>SKU / CTN / Quantity / Expiry Date:</p><table class="email-table"><thead><tr><th>No.</th><th>SKU</th><th>CTN</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-    $('emailPreview').innerHTML=emailHtml; $('emailMeta').textContent=`已產生信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false;
-  } catch(error) { emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=error.message; $('copyRichEmailBtn').disabled=true; }});
+    const table=`<table class="email-table"><thead><tr><th>No.</th><th>SKU</th><th>CTN</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+    emailHtml=casual
+      ? `<div><p><strong>Subject:</strong> Yo — ${m}/${d} Pickup Game Plan</p><p>Wassup bro!</p><p>Quick heads-up: this load is locked in, split across ${trucks} trucks, and ready to roll — ${data.rows.length} SKUs, ${data.totalCtn} cartons, ${data.totalQuantity} units. Whole squad showed up.</p><p><strong>Pickup:</strong> ${fullDate}</p><p>Here’s the lineup:</p>${table}<p>That’s the whole play. Holler if anything looks wild; otherwise, we’re good to roll.</p><p>Appreciate you!</p></div>`
+      : `<div><p><strong>Subject:</strong> ${m}/${d} Pickup – Shipment Details</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p>Pickup Date: ${fullDate}</p><p>SKU / CTN / Quantity / Expiry Date:</p>${table}</div>`;
+    $('emailPreview').innerHTML=emailHtml; $('emailMeta').textContent=`已產生${casual?'口語':''}信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false;
+  } catch(error) { emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=error.message; $('copyRichEmailBtn').disabled=true; }}
+  $('buildEmailBtn').addEventListener('click',()=>buildEmail(false));
+  $('buildCasualEmailBtn').addEventListener('click',()=>buildEmail(true));
   $('copyRichEmailBtn').addEventListener('click', async()=>{ if(!emailHtml)return; const div=document.createElement('div');div.innerHTML=emailHtml; await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([div.textContent],{type:'text/plain'}),'text/html':new Blob([emailHtml],{type:'text/html'})})]);$('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; });
+  window.addEventListener('fba-value-mode-changed',syncSecretEmailActions);
+  window.addEventListener('fba-bro-mode-changed',syncSecretEmailActions);
+  window.addEventListener('fba-workspace-ready',syncSecretEmailActions);
+  syncSecretEmailActions();
 })();
 </script>
 <script src="shared-workspace.js"></script>
