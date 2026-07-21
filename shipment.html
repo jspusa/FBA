@@ -130,6 +130,7 @@ main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!i
 textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:14px!important;background:var(--surface-soft)!important;padding:12px!important;font:inherit}textarea:focus,input:focus,select:focus{outline:3px solid rgba(0,113,227,.16)!important;border-color:var(--blue)!important}
 .tool-table-wrap,.preview{border-radius:16px}.confirm-panel{margin-top:14px;padding:14px 16px;border-radius:16px;background:#f5faff;border:1px solid #d6eaff}.confirm-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.45}.confirm-check+.confirm-check{margin-top:10px}.confirm-check input{margin-top:2px;min-width:auto}.field-help{display:block;margin-top:5px;color:var(--muted);font-size:11px}
 .pallet-action{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}.pallet-capacity{display:flex;align-items:center;gap:10px;padding:9px 12px 9px 16px;border:1px solid rgba(0,0,0,.09);border-radius:18px;background:#f7f7f9;color:#3a3a3c;font-size:14px;font-weight:700}.pallet-capacity input{width:82px!important;padding:9px 8px!important;text-align:center;background:#fff!important;font-weight:800}.pallet-help{flex-basis:100%;margin-top:-5px;color:var(--muted);font-size:11px}
+.shipment-instruction{margin-bottom:12px;padding:13px 15px;border-radius:14px;background:#f5faff;border:1px solid #d6eaff;color:#475467;font-size:13px;line-height:1.65}.shipment-instruction strong{color:var(--blue);font-weight:850}.pallet-key{background:#eaf8ee!important;color:#176b2c!important;font-weight:800}.pallet-table th,.pallet-table td{white-space:nowrap}
 @media(max-width:860px){.header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}main{padding:38px 16px 56px!important}.brand-copy span{display:none}.tool-grid-3{grid-template-columns:1fr!important}}
 </style>
 <link rel="stylesheet" href="workspace-shell.css" />
@@ -141,7 +142,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <section>
     <div class="tool-card">
       <h2>Amazon 貨件棧板資訊擷取</h2>
-      <div class="hint" style="margin-bottom:8px">提醒：貨運類別請選擇「類別 85」。</div>
+      <div class="shipment-instruction">到入庫計畫的「步驟 4：確認承運方和貨件資訊」時，先確認使用棧板出貨並選擇貨運類別「<strong>類別 85</strong>」；再展開「<strong>貨件內容</strong>」，確認顯示包裝箱、SKU、單位與重量後，複製整頁內容貼到下方。</div>
       <textarea id="shipmentText" aria-label="Amazon 貨件頁面完整文字" style="width:100%;min-height:220px" placeholder="Amazon 貨件頁面完整內容"></textarea>
       <div class="pallet-action">
         <label class="pallet-capacity" for="cartonsPerPallet"><span>每</span><input id="cartonsPerPallet" aria-label="每棧板箱數" type="number" min="1" max="999" step="1" value="30" data-preserve-on-new-batch /><span>箱／棧板</span></label>
@@ -178,15 +179,16 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       if (!parsed.length) throw new Error('無法辨識貨件資料。請確認內容同時包含「貨件編號／Shipment ID」、「包裝箱／Cartons」與「重量／Weight（lb）」。');
       const rows = parsed.map(item => {
         const pallets = Math.ceil(item.cartons / cartonsPerPallet);
-        const average = pallets ? Math.round((item.weight / pallets) * 10) / 10 : 0;
-        return [`貨件編號 #${item.shipment}`, item.cartons, item.weight, `${item.cartons} ÷ ${cartonsPerPallet} = ${(item.cartons / cartonsPerPallet).toFixed(2)} → 無條件進位`, pallets, average.toFixed(1)];
+        const average = pallets ? Math.round(item.weight / pallets) : 0;
+        return [`貨件編號 #${item.shipment}`, 72, pallets, average, item.cartons, item.weight, `${item.cartons} ÷ ${cartonsPerPallet} = ${(item.cartons / cartonsPerPallet).toFixed(2)} → 無條件進位`];
       });
       card.style.display = 'block';
       summary.textContent = `已擷取 ${rows.length} 筆`;
       status.className = 'workspace-source ok';
       status.textContent = `成功辨識 ${rows.length} 筆貨件，並以每棧板 ${cartonsPerPallet} 箱計算。`;
-      const headers = ['貨件','包裝箱(CTN)','重量(lb)','棧板數計算過程','棧板數','平均每棧板重量(lb/棧板)'];
-      table.innerHTML = '<thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      const headers = ['貨件','高度','棧板數','平均每棧板重量(lb)','包裝箱(CTN)','重量(lb)','棧板計算過程'];
+      table.className = 'pallet-table';
+      table.innerHTML = '<thead><tr>' + headers.map((h,index) => `<th class="${index<4?'pallet-key':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map((cell,index) => `<td class="${index<4?'pallet-key':''}">${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
     } catch (error) {
       card.style.display = 'none';
       table.innerHTML = '';
