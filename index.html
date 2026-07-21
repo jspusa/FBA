@@ -384,7 +384,7 @@
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
       <p class="result-guide">主工作表：黃色＝需儘速入庫；綠色＝可全部入庫；藍色＝新入倉；紅色＝供貨天數超過 730 天。供貨天數還有 4 至 12 個月，且無顏色註記品項則隱藏。</p>
-      <p class="result-guide">後台月數驗算＝（入項＋可售庫存＋補貨數量）÷ 過去 30 天已訂購單位數量。超過 6.0 個月時以紅字提醒；此估算很保守，過往銷量不等於未來銷量，若持續成長，實際可售月數應低於驗算值，僅供參考。</p>
+      <p class="result-guide">後台月數驗算＝（入項＋可售庫存＋補貨數量）÷ 過去 30 天已訂購單位數量。超過 10.0 個月時以紅字提醒；此估算很保守，過往銷量不等於未來銷量，若持續成長，實際可售月數應低於驗算值，僅供參考。</p>
       <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量。Business Report 未提供時，兩種月數與營業額欄位會自動隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
@@ -791,7 +791,15 @@
     }
     function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='入庫計畫'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
     function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
-    function isHiddenOutputHeader(h){ return h==='入項'||h==='可售庫存'||h==='過去30天銷量'; }
+    function isHiddenOutputHeader(h){ return ['入項','可售庫存','過去30天銷量','补货数量','後台月數驗算','箱入數','總包數'].includes(h); }
+    function isHiddenOutputColumn(name,headers,c){
+      const h=headers[c];
+      if(isHiddenOutputHeader(h)) return true;
+      if(name!=='主工作表'||(!isExpiryHeader(h)&&!isQtyHeader(h))) return false;
+      let pairNo=0;
+      for(let i=0;i<=c;i++) if(isExpiryHeader(headers[i])) pairNo++;
+      return pairNo>2;
+    }
     function outputColumnWidth(h){ if(h==='SKU') return 18; if(h==='入庫計畫'||h==='入庫包數') return 14; if(h==='最後可入庫日期'||h==='預估損失營業額'||h==='後台月數驗算'||h==='入庫月數驗算') return 17; if(h==='補貨箱數建議'||h==='补货数量'||h==='供貨天數') return 14; if(isExpiryHeader(h)) return 13; if(isQtyHeader(h)) return 10; if(h==='入項'||h==='可售庫存') return 12; return 11; }
     function isPlanSheet(name){ return name==='主工作表'||name==='未上架'; }
     function isFocusHeader(name,headers,c){
@@ -822,7 +830,7 @@
           else if(highlight==='green') cell.s=GREEN_ROW_STYLE;
           else if(highlight==='blue') cell.s=BLUE_ROW_STYLE;
           else cell.s=BASE_CELL_STYLE;
-          if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>6){ const previous=cell.s||BASE_CELL_STYLE; cell.s={...previous,font:{...(previous.font||{}),...MONTH_WARNING_STYLE.font},alignment:CENTER_ALIGNMENT}; }
+          if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>10){ const previous=cell.s||BASE_CELL_STYLE; cell.s={...previous,font:{...(previous.font||{}),...MONTH_WARNING_STYLE.font},alignment:CENTER_ALIGNMENT}; }
           ws[a]=cell;
         });
         if(hidden) ws['!rowsHidden']=(ws['!rowsHidden']||[]).concat(r);
@@ -842,7 +850,7 @@
       }
       ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,excelRow-1),c:headers.length-1}});
       if(!sheet.groups){ const dataEnd=Math.max(0,sheet.rows.length); ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:dataEnd,c:headers.length-1}})}; }
-      ws['!cols']=headers.map(h=>{ const col={wch:outputColumnWidth(h)}; if(isHiddenOutputHeader(h)) col.hidden=true; return col; });
+      ws['!cols']=headers.map((h,c)=>{ const col={wch:outputColumnWidth(h)}; if(isHiddenOutputColumn(name,headers,c)) col.hidden=true; return col; });
       const hiddenRows=new Set(ws['!rowsHidden']||[]);
       delete ws['!rowsHidden'];
       ws['!rows']=Array.from({length:excelRow},(_,i)=>({hpt:i===0?24:21,...(hiddenRows.has(i)?{hidden:true}:{})}));
@@ -860,7 +868,7 @@
     function excelJsRowStyle(name,headers,row,c,highlightMain){
       const h=headers[c], highlight=highlightMain?rowHighlightKindAt(headers,row,c):'';
       let style=highlight==='red'?RED_ROW_STYLE:highlight==='yellow'?YELLOW_ROW_STYLE:highlight==='green'?GREEN_ROW_STYLE:highlight==='blue'?BLUE_ROW_STYLE:BASE_CELL_STYLE;
-      if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>6) style={...style,font:{...(style.font||{}),...MONTH_WARNING_STYLE.font}};
+      if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>10) style={...style,font:{...(style.font||{}),...MONTH_WARNING_STYLE.font}};
       return style;
     }
     function createExcelJsWorkbook(){
@@ -873,7 +881,7 @@
         const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
         headers.forEach((h,c)=>{
           const cell=ws.getCell(1,c+1); cell.value=h; applyExcelJsStyle(cell,isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE);
-          ws.getColumn(c+1).width=outputColumnWidth(h); ws.getColumn(c+1).hidden=isHiddenOutputHeader(h);
+          ws.getColumn(c+1).width=outputColumnWidth(h); ws.getColumn(c+1).hidden=isHiddenOutputColumn(name,headers,c);
         });
         ws.getRow(1).height=24;
         const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), inboundMonthIdx=headers.indexOf('入庫月數驗算'), packIdx=headers.indexOf('箱入數'), sales30Idx=headers.indexOf('過去30天銷量');
@@ -921,20 +929,21 @@
     function renderTable(name){
       const table=$('previewTable'), sheet=state.sheets[name]; table.innerHTML='';
       const thead=document.createElement('thead'), headerTr=document.createElement('tr');
-      sheet.headers.forEach((h,c)=>{ const th=document.createElement('th'); th.textContent=h; if(isFocusHeader(name,sheet.headers,c)) th.classList.add('focus-header'); if(isHiddenOutputHeader(h)) th.classList.add('hidden-output-col'); headerTr.appendChild(th); });
+      sheet.headers.forEach((h,c)=>{ const th=document.createElement('th'); th.textContent=h; if(isFocusHeader(name,sheet.headers,c)) th.classList.add('focus-header'); if(isHiddenOutputColumn(name,sheet.headers,c)) th.classList.add('hidden-output-col'); headerTr.appendChild(th); });
       thead.appendChild(headerTr); table.appendChild(thead);
       const tbody=document.createElement('tbody');
       const addDataRow=(row)=>{
         const tr=document.createElement('tr');
         if(name==='主工作表'&&shouldHideSupplyRow(sheet.headers,row)) tr.hidden=true;
-        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputHeader(h)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[i])&&toNumber(row[i])>6) td.classList.add('month-warning'); tr.appendChild(td); });
+        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputColumn(name,sheet.headers,i)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[i])&&toNumber(row[i])>10) td.classList.add('month-warning'); tr.appendChild(td); });
         tbody.appendChild(tr);
       };
-      const addSection=(label)=>{ const tr=document.createElement('tr'); tr.className='section-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,sheet.headers.filter(h=>!isHiddenOutputHeader(h)).length); td.textContent=label; tr.appendChild(td); tbody.appendChild(tr); };
+      const visibleColumnCount=sheet.headers.reduce((sum,_,c)=>sum+(isHiddenOutputColumn(name,sheet.headers,c)?0:1),0);
+      const addSection=(label)=>{ const tr=document.createElement('tr'); tr.className='section-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,visibleColumnCount); td.textContent=label; tr.appendChild(td); tbody.appendChild(tr); };
       if(sheet.groups) sheet.groups.forEach(group=>{ addSection(group.label); group.rows.forEach(addDataRow); }); else sheet.rows.forEach(addDataRow);
       table.appendChild(tbody);
       const definition=SHEET_DEFINITIONS[name]||'';
-      if(definition){ const tfoot=document.createElement('tfoot'), defTr=document.createElement('tr'); defTr.className='definition-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,sheet.headers.filter(h=>!isHiddenOutputHeader(h)).length); td.textContent=definition; defTr.appendChild(td); tfoot.appendChild(defTr); table.appendChild(tfoot); }
+      if(definition){ const tfoot=document.createElement('tfoot'), defTr=document.createElement('tr'); defTr.className='definition-row'; const td=document.createElement('td'); td.colSpan=Math.max(1,visibleColumnCount); td.textContent=definition; defTr.appendChild(td); tfoot.appendChild(defTr); table.appendChild(tfoot); }
     }
     function renderTabs(){ const tabs=$('tabs'); tabs.innerHTML=''; SHEET_ORDER.forEach(name=>{ const b=document.createElement('button'); b.className='inner-tab'+(state.activeSheet===name?' active':''); b.type='button'; b.textContent=name; b.onclick=()=>{ state.activeSheet=name; renderTabs(); renderTable(name);}; tabs.appendChild(b);}); }
     const escapeHtml=(t)=>String(t??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
