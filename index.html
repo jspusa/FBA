@@ -335,7 +335,7 @@
       <span class="step-number">4</span>
       <div><h2>產生補貨結果</h2></div>
     </div>
-    <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>💰 計算美國倉價值</button><button id="flashRestockBtn" class="btn flash-button" type="button" disabled>⚡ 光速補貨</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
+    <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>💰 計算美國倉價值</button><button id="flashRestockBtn" class="btn flash-button private-value-action" type="button" hidden disabled>⚡ 光速補貨</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
     <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1 與 2；步驟 3 為選填。</div>
     <div id="preflightPanel" class="preflight-panel">
       <div class="preflight-heading">
@@ -951,8 +951,9 @@
     const escapeHtml=(t)=>String(t??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
     function valueModeEnabled(){ return window.FBAValueMode?.isEnabled?.()||localStorage.getItem('fba-workspace:value-mode')==='open'; }
     function syncValueMode(enabled=valueModeEnabled()){
-      const button=$('calculateInventoryValueBtn'), panel=$('inventoryValuePanel');
+      const button=$('calculateInventoryValueBtn'), flashButton=$('flashRestockBtn'), panel=$('inventoryValuePanel');
       const available=enabled&&isValidCheck(preflightChecks.business);
+      flashButton.hidden=!enabled;
       button.hidden=!available;
       if(!available){ panel.hidden=true; panel.innerHTML=''; panel.dataset.shown=''; }
       else if(panel.dataset.shown==='true') panel.hidden=false;
@@ -1571,6 +1572,6 @@ async function run(options={}){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260722c"></script>
+<script src="shared-workspace.js?v=20260722d"></script>
 </body>
 </html>
