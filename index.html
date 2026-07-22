@@ -197,6 +197,8 @@
     .success-icon{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;background:var(--green);font-size:20px;font-weight:700}
     .success-copy h3{margin:0;font-size:19px;letter-spacing:-.02em}.success-copy p{margin:5px 0 0;color:var(--muted);font-size:12px}
     .download-button{padding:12px 20px;white-space:nowrap}
+    .result-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .flash-button{background:linear-gradient(135deg,#7c3aed,#2563eb)!important;color:#fff!important;border-color:#7c3aed!important;box-shadow:0 8px 22px rgba(79,70,229,.22)}
     .result-body{padding:22px 24px 28px}
     .result-guide{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.6}
     .tool-pills{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
@@ -228,7 +230,7 @@
       .upload-grid{grid-template-columns:1fr}.upload-card:last-child{grid-column:auto}.action-card{grid-template-columns:1fr}.action-buttons,.run-button{width:100%}.action-buttons .btn{flex:1}
       .audit-grid{grid-template-columns:1fr}
       .issue-head{align-items:flex-start;flex-direction:column}.issue-count{align-self:flex-start}
-      .result-hero{align-items:stretch;flex-direction:column}.download-button{width:100%}
+      .result-hero{align-items:stretch;flex-direction:column}.result-actions{justify-content:stretch}.download-button,.flash-button{width:100%}
     }
     @media(max-width:520px){
       .brand-copy span{display:none}.upload-card,.action-card{padding:20px;border-radius:22px}.card-head{grid-template-rows:auto auto;min-height:90px}.source-access{align-self:auto;margin-top:0}
@@ -379,7 +381,7 @@
   <section id="resultCard" class="card" style="display:none;">
     <div class="result-hero">
       <div class="success-copy"><div class="success-icon">✓</div><div><h3>補貨結果已整理完成</h3><p id="resultFilename">可先預覽各工作表，再下載 Excel。</p></div></div>
-      <button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button>
+      <div class="result-actions"><button id="flashRestockBtn" class="btn flash-button" type="button" disabled>⚡ 光速補貨</button><button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button></div>
     </div>
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
@@ -1002,7 +1004,7 @@ async function run(){
         state.activeSheet='主工作表';
         createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
         $('resultFilename').textContent=`${state.filename} 已準備完成，可先預覽再下載。`;
-        $('resultCard').style.display=''; $('downloadBtn').disabled=false;
+        $('resultCard').style.display=''; $('downloadBtn').disabled=false; $('flashRestockBtn').disabled=false;
         setStatus('整理完成。請往下預覽，或直接下載整理完成的 Excel。',false,'ok');
         $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
       }catch(e){
@@ -1012,6 +1014,49 @@ async function run(){
       }
     }
 
+
+    function quickRestockRows(){
+      const sheet=state.sheets?.['主工作表'];
+      if(!sheet) throw new Error('請先完成補貨整理。');
+      const headers=sheet.headers||[], skuIdx=headers.indexOf('SKU'), planIdx=headers.indexOf('入庫計畫'), suggestionIdx=headers.indexOf('補貨箱數建議'), packIdx=headers.indexOf('箱入數');
+      const expireIdx=headers.findIndex(isExpiryHeader), qtyIdx=expireIdx===-1?-1:headers.findIndex((h,i)=>i>expireIdx&&isQtyHeader(h));
+      if([skuIdx,planIdx,suggestionIdx,packIdx,expireIdx,qtyIdx].some(i=>i<0)) throw new Error('主工作表缺少光速補貨需要的欄位。');
+      const picked=[];
+      for(const row of sheet.rows||[]){
+        const sku=String(row[skuIdx]??'').trim(), expiry=String(row[expireIdx]??'').trim();
+        const suggestion=Math.round(toNumber(row[suggestionIdx])), firstQty=Math.round(toNumber(row[qtyIdx])), pack=Math.round(toNumber(row[packIdx]));
+        let boxes=Math.round(toNumber(row[planIdx]));
+        if(!boxes&&suggestion>=5&&firstQty>=suggestion) boxes=suggestion;
+        if(!sku||!expiry||!pack||boxes<5||firstQty<boxes) continue;
+        picked.push({sku,boxes,units:boxes*pack,expiry,source:toNumber(row[planIdx])>0?'主表自動入庫計畫':'補貨建議'});
+        if(picked.length===25) break;
+      }
+      if(!picked.length) throw new Error('目前沒有符合光速補貨條件的品項：需至少 5 箱，且第一批效期庫存足夠。');
+      return picked;
+    }
+    async function downloadQuickRestockList(rows){
+      const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('光速補貨');
+      ws.addRow(['SKU','入庫計畫','入庫包數','EXPIRE','選取依據']); rows.forEach(row=>ws.addRow([row.sku,row.boxes,row.units,row.expiry,row.source]));
+      ws.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4F46E5'}};cell.alignment={horizontal:'center'};});
+      ws.columns=[{width:20},{width:14},{width:14},{width:14},{width:20}]; ws.views=[{state:'frozen',ySplit:1}];
+      const buf=await wb.xlsx.writeBuffer(), blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url;a.download=`光速補貨清單_${todayStr()}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
+    }
+    async function runFlashRestock(){
+      const button=$('flashRestockBtn');
+      try{
+        button.disabled=true; setStatus('正在挑選最多 25 個可直接入庫的 SKU…',false,'working');
+        const rows=quickRestockRows(); await downloadQuickRestockList(rows);
+        const value=['SKU\t入庫計畫\t入庫包數\tEXPIRE',...rows.map(r=>`${r.sku}\t${r.boxes}\t${r.units}\t${r.expiry}`)].join('\n');
+        let batch={};try{batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'{}')}catch{}
+        const payload={batchId:batch.id||'',value,rows,updatedAt:Date.now(),autoDownload:true};
+        localStorage.setItem('fba-workspace:inbound-data',JSON.stringify({batchId:payload.batchId,value,updatedAt:payload.updatedAt}));
+        localStorage.setItem('fba-workspace:form:inbound-plan.html',JSON.stringify({batchId:payload.batchId,state:{pasteInput:value,amazonPageText:''},updatedAt:payload.updatedAt}));
+        localStorage.setItem('fba-workspace:flash-restock',JSON.stringify(payload));
+        setStatus(`已選出 ${rows.length} 個 SKU，正在帶入入庫計畫並下載 Amazon 模板…`,false,'ok');
+        setTimeout(()=>{location.href='inbound-plan.html?flash=1'},450);
+      }catch(error){setStatus(error?.message||'光速補貨產生失敗。',true);button.disabled=false;}
+    }
 
     const restockFiles = { helium:null, inventory:null, business:null };
     const validationTokens = { helium:0, inventory:0, business:0 };
@@ -1345,7 +1390,7 @@ async function run(){
     }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
-      $('downloadBtn').disabled=true; $('resultCard').style.display='none';
+      $('downloadBtn').disabled=true; $('flashRestockBtn').disabled=true; $('resultCard').style.display='none';
       $('inventoryValuePanel').hidden=true; $('inventoryValuePanel').innerHTML=''; $('inventoryValuePanel').dataset.shown='';
     }
     function updateWorkflowState(resetMessage=true){
@@ -1485,6 +1530,7 @@ async function run(){
       setStatus(input.checked?`${source} 的 ${sku} 已確認完畢。`:`已取消 ${source} 的 ${sku} 確認。`,false,'ready');
     });
     $('runBtn').addEventListener('click', run);
+    $('flashRestockBtn').addEventListener('click',runFlashRestock);
     $('calculateInventoryValueBtn').addEventListener('click',calculateInventoryValue);
     $('downloadBtn').addEventListener('click', async()=>{
       if(!state.workbook) return;
@@ -1511,6 +1557,6 @@ async function run(){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260721a"></script>
+<script src="shared-workspace.js?v=20260722a"></script>
 </body>
 </html>
