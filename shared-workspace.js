@@ -229,6 +229,11 @@
     body.fba-night header,body.fba-night .site-header{background:rgba(5,6,8,.94)!important;border-color:#29303d!important}
     body.fba-night .card,body.fba-night article,body.fba-night .tool-card,body.fba-night .upload-card,body.fba-night .action-card,body.fba-night .preflight-panel,body.fba-night .result-body,body.fba-night .email-preview,body.fba-night .private-value-panel,body.fba-night .advanced-panel,body.fba-night .drawer-section{background:#101217!important;color:#f5f7ff!important;border-color:#29303d!important;box-shadow:0 18px 48px rgba(0,0,0,.42)!important}
     body.fba-night input,body.fba-night textarea,body.fba-night select,body.fba-night table,body.fba-night th,body.fba-night td,body.fba-night .drop,body.fba-night .tool-table-wrap{background:#0b0d12!important;color:#eef2ff!important;border-color:#29303d!important}
+    body.fba-night ::selection{background:#fde68a!important;color:#111827!important}
+    body.fba-night .confirm-panel{background:#111827!important;border-color:#374151!important;color:#f8fafc!important}
+    body.fba-night .confirm-panel.complete{background:#082f1c!important;border-color:#22c55e!important;color:#dcfce7!important}
+    body.fba-night .confirm-check,body.fba-night .confirm-check span,body.fba-night .confirm-check strong{color:#f8fafc!important}
+    body.fba-night .confirm-panel.complete .confirm-check,body.fba-night .confirm-panel.complete .confirm-check span,body.fba-night .confirm-panel.complete .confirm-check strong{color:#dcfce7!important}
     body.fba-night .btn:not(.primary),body.fba-night button:not(.primary):not(.top-tab):not(.inner-tab){background:#171b23;color:#eef2ff;border-color:#343c4b}
     body.fba-night .primary,body.fba-night .top-tab.active,body.fba-night .inner-tab.active{background:linear-gradient(135deg,#7c3aed,#2563eb)!important;color:#fff!important;border-color:#8b5cf6!important}
     body.fba-night a{color:#a9c1ff}body.fba-night .hint,body.fba-night .small,body.fba-night .note,body.fba-night .result-guide{color:#aab3c5!important}
