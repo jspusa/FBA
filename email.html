@@ -156,7 +156,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <label class="confirm-check"><input id="confirmPickup" type="checkbox" /> <span>我已確認 Pickup Date 是正確日期：<strong id="pickupConfirmText">尚未選擇</strong></span></label>
         <label class="confirm-check"><input id="confirmTrucks" type="checkbox" /> <span>我已確認本次貨件分成 <strong id="truckConfirmText">尚未填寫</strong> 車。</span></label>
       </div>
-      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">產生信件</button> <button id="buildCasualEmailBtn" class="btn" type="button" hidden>產生口語信件</button> <button id="copyRichEmailBtn" class="btn" type="button" disabled>複製 Email 表格版本</button></div></div>
+      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">一鍵產生並複製 Email</button> <button id="buildCasualEmailBtn" class="btn" type="button" hidden>一鍵產生並複製口語 Email</button></div></div>
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
       <div id="emailPreview" class="email-preview" style="margin-top:8px"></div>
     </div>
@@ -223,17 +223,26 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     emailHtml=casual
       ? `<div><p><strong>Subject:</strong> Yo — ${m}/${d} Pickup Game Plan</p><p>Wassup bro!</p><p>Quick heads-up: this load is locked in, split across ${trucks} trucks, and ready to roll — ${data.rows.length} SKUs, ${data.totalCtn} cartons, ${data.totalQuantity} units. Whole squad showed up.</p><p><strong>Pickup:</strong> ${fullDate}</p><p>Here’s the lineup:</p>${table}<p>That’s the whole play. Holler if anything looks wild; otherwise, we’re good to roll.</p><p>Appreciate you!</p></div>`
       : `<div><p><strong>Subject:</strong> ${m}/${d} Pickup – Shipment Details</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p>Pickup Date: ${fullDate}</p><p>SKU / CTN / Quantity / Expiry Date:</p>${table}</div>`;
-    $('emailPreview').innerHTML=emailHtml; $('emailMeta').textContent=`已產生${casual?'口語':''}信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false;
-  } catch(error) { emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=error.message; $('copyRichEmailBtn').disabled=true; }}
-  $('buildEmailBtn').addEventListener('click',()=>buildEmail(false));
-  $('buildCasualEmailBtn').addEventListener('click',()=>buildEmail(true));
-  $('copyRichEmailBtn').addEventListener('click', async()=>{ if(!emailHtml)return; const div=document.createElement('div');div.innerHTML=emailHtml; await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([div.textContent],{type:'text/plain'}),'text/html':new Blob([emailHtml],{type:'text/html'})})]);$('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; });
+    $('emailPreview').innerHTML=emailHtml; $('emailMeta').textContent=`已產生${casual?'口語':''}信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`;return true;
+  } catch(error) { emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=error.message;return false; }}
+  async function copyEmail(){
+    if(!emailHtml)return false;const div=document.createElement('div');div.innerHTML=emailHtml;const plain=div.textContent||'';
+    try{if(window.ClipboardItem&&navigator.clipboard?.write)await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([plain],{type:'text/plain'}),'text/html':new Blob([emailHtml],{type:'text/html'})})]);else await navigator.clipboard.writeText(plain);$('emailMeta').textContent='信件已產生並複製，可直接貼到 Gmail／Outlook。';return true}catch(error){$('emailMeta').textContent='信件已產生，但瀏覽器未允許自動複製；請直接複製下方內容。';return false}
+  }
+  async function buildAndCopy(casual){if(buildEmail(casual))await copyEmail()}
+  function syncFlashConfirmations(){
+    let flash=null,batch=null;try{flash=JSON.parse(localStorage.getItem('fba-workspace:flash-mode')||'null');batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null')}catch{}
+    if(!flash||flash.batchId&&batch?.id&&flash.batchId!==batch.id)return;
+    $('confirmPickup').checked=true;$('confirmTrucks').checked=true;updateConfirmationLabels();
+  }
+  $('buildEmailBtn').addEventListener('click',()=>buildAndCopy(false));
+  $('buildCasualEmailBtn').addEventListener('click',()=>buildAndCopy(true));
   window.addEventListener('fba-value-mode-changed',syncSecretEmailActions);
   window.addEventListener('fba-bro-mode-changed',syncSecretEmailActions);
-  window.addEventListener('fba-workspace-ready',syncSecretEmailActions);
+  window.addEventListener('fba-workspace-ready',()=>{syncSecretEmailActions();syncFlashConfirmations()});
   syncSecretEmailActions();
 })();
 </script>
-<script src="shared-workspace.js?v=20260722a"></script>
+<script src="shared-workspace.js?v=20260722b"></script>
 </body>
 </html>
