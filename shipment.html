@@ -168,7 +168,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   const table = document.getElementById('shipmentTable');
   const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 
-  document.getElementById('parseShipmentBtn').addEventListener('click', () => {
+  function generatePalletTable(){
     try {
       const cleaned = text.value.trim();
       if (!cleaned) throw new Error('尚未貼上任何內容。請從 Amazon 貨件頁複製完整文字後再試一次。');
@@ -195,9 +195,16 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       status.className = 'workspace-source warn';
       status.textContent = error.message;
     }
+  }
+  document.getElementById('parseShipmentBtn').addEventListener('click',generatePalletTable);
+  let flashTimer=0;
+  text.addEventListener('input',()=>{
+    let flash=null;try{flash=JSON.parse(localStorage.getItem('fba-workspace:flash-mode')||'null')}catch{}
+    if(!flash||!text.value.trim())return;
+    clearTimeout(flashTimer);flashTimer=setTimeout(generatePalletTable,180);
   });
 })();
 </script>
-<script src="shared-workspace.js?v=20260722a"></script>
+<script src="shared-workspace.js?v=20260722b"></script>
 </body>
 </html>
