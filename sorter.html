@@ -1474,6 +1474,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const mm = String(stamp.getMonth()+1).padStart(2,'0');
     const dd = String(stamp.getDate()).padStart(2,'0');
     saveAs(blob, `FBA_Sorted_${yyyy}${mm}${dd}.zip`);
+    setTimeout(()=>{ location.href='email.html'; },650);
   }
 
   function clearByType(type){
@@ -1625,6 +1626,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260722a"></script>
+<script src="shared-workspace.js?v=20260722b"></script>
 </body>
 </html>
