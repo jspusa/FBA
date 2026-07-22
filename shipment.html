@@ -130,7 +130,7 @@ main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!i
 textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:14px!important;background:var(--surface-soft)!important;padding:12px!important;font:inherit}textarea:focus,input:focus,select:focus{outline:3px solid rgba(0,113,227,.16)!important;border-color:var(--blue)!important}
 .tool-table-wrap,.preview{border-radius:16px}.confirm-panel{margin-top:14px;padding:14px 16px;border-radius:16px;background:#f5faff;border:1px solid #d6eaff}.confirm-check{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.45}.confirm-check+.confirm-check{margin-top:10px}.confirm-check input{margin-top:2px;min-width:auto}.field-help{display:block;margin-top:5px;color:var(--muted);font-size:11px}
 .pallet-action{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}.pallet-capacity{display:flex;align-items:center;gap:10px;padding:9px 12px 9px 16px;border:1px solid rgba(0,0,0,.09);border-radius:18px;background:#f7f7f9;color:#3a3a3c;font-size:14px;font-weight:700}.pallet-capacity input{width:82px!important;padding:9px 8px!important;text-align:center;background:#fff!important;font-weight:800}.pallet-help{flex-basis:100%;margin-top:-5px;color:var(--muted);font-size:11px}
-.shipment-instruction{margin-bottom:12px;padding:13px 15px;border-radius:14px;background:#f5faff;border:1px solid #d6eaff;color:#475467;font-size:13px;line-height:1.65}.shipment-instruction strong{color:var(--blue);font-weight:850}.pallet-key{background:#eaf8ee!important;color:#176b2c!important;font-weight:800}.pallet-table th,.pallet-table td{white-space:nowrap}
+.shipment-instruction{margin-bottom:12px;padding:13px 15px;border-radius:14px;background:#f5faff;border:1px solid #d6eaff;color:#475467;font-size:13px;line-height:1.65}.shipment-instruction strong{color:var(--blue);font-weight:850}.pallet-table th,.pallet-table td{white-space:nowrap}.pallet-group-primary{background:#176b2c!important;color:#fff!important;text-align:center!important;font-weight:900!important;letter-spacing:.04em}.pallet-group-audit{background:#475467!important;color:#fff!important;text-align:center!important;font-weight:850!important;letter-spacing:.04em}.pallet-primary{background:#eefaf1!important;color:#14532d!important;font-weight:800}.pallet-audit{background:#f7f8fa!important;color:#475467!important}.pallet-divider{border-right:4px solid #86d69e!important}.weight-copy-cell{display:flex;align-items:center;justify-content:space-between;gap:9px}.copy-weight{padding:5px 9px!important;min-width:52px;border:1px solid #86d69e!important;background:#fff!important;color:#176b2c!important;font-size:11px!important;font-weight:850!important}.copy-weight.copied{background:#176b2c!important;color:#fff!important}
 @media(max-width:860px){.header-inner{padding:12px 18px;align-items:flex-start;flex-direction:column}.top-tabs{width:100%}main{padding:38px 16px 56px!important}.brand-copy span{display:none}.tool-grid-3{grid-template-columns:1fr!important}}
 </style>
 <link rel="stylesheet" href="workspace-shell.css" />
@@ -146,7 +146,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <textarea id="shipmentText" aria-label="Amazon 貨件頁面完整文字" style="width:100%;min-height:220px" placeholder="Amazon 貨件頁面完整內容"></textarea>
       <div class="pallet-action">
         <label class="pallet-capacity" for="cartonsPerPallet"><span>每</span><input id="cartonsPerPallet" aria-label="每棧板箱數" type="number" min="1" max="999" step="1" value="30" data-preserve-on-new-batch /><span>箱／棧板</span></label>
-        <button id="parseShipmentBtn" class="btn primary" type="button">產生棧板表</button>
         <span class="pallet-help">預設每 30 箱一個棧板；本批次規則不同時可直接修改。</span>
       </div>
       <div id="shipmentStatus" class="workspace-source" aria-live="assertive">請先貼上 Amazon 貨件頁完整文字。</div>
@@ -188,7 +187,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       status.textContent = `成功辨識 ${rows.length} 筆貨件，並以每棧板 ${cartonsPerPallet} 箱計算。`;
       const headers = ['貨件','高度','棧板數','平均每棧板重量(lb)','包裝箱(CTN)','重量(lb)','棧板計算過程'];
       table.className = 'pallet-table';
-      table.innerHTML = '<thead><tr>' + headers.map((h,index) => `<th class="${index<4?'pallet-key':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map((cell,index) => `<td class="${index<4?'pallet-key':''}">${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      table.innerHTML = '<thead><tr><th class="pallet-group-primary pallet-divider" colspan="4">補貨作業區</th><th class="pallet-group-audit" colspan="3">計算複查區</th></tr><tr>' + headers.map((h,index) => `<th class="${index<4?'pallet-primary':'pallet-audit'} ${index===3?'pallet-divider':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map((cell,index) => index===3?`<td class="pallet-primary pallet-divider"><div class="weight-copy-cell"><strong>${escapeHtml(cell)}</strong><button type="button" class="copy-weight" data-copy-weight="${escapeHtml(cell)}">複製</button></div></td>`:`<td class="${index<4?'pallet-primary':'pallet-audit'}">${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
     } catch (error) {
       card.style.display = 'none';
       table.innerHTML = '';
@@ -196,15 +195,21 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       status.textContent = error.message;
     }
   }
-  document.getElementById('parseShipmentBtn').addEventListener('click',generatePalletTable);
-  let flashTimer=0;
+  let parseTimer=0;
   text.addEventListener('input',()=>{
-    let flash=null;try{flash=JSON.parse(localStorage.getItem('fba-workspace:flash-mode')||'null')}catch{}
-    if(!flash||!text.value.trim())return;
-    clearTimeout(flashTimer);flashTimer=setTimeout(generatePalletTable,180);
+    clearTimeout(parseTimer);
+    if(!text.value.trim()){card.style.display='none';table.innerHTML='';status.className='workspace-source';status.textContent='請先貼上 Amazon 貨件頁完整文字。';return}
+    parseTimer=setTimeout(generatePalletTable,220);
+  });
+  capacity.addEventListener('input',()=>{clearTimeout(parseTimer);if(text.value.trim())parseTimer=setTimeout(generatePalletTable,180)});
+  table.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-copy-weight]');if(!button)return;
+    const value=button.dataset.copyWeight;
+    try{await navigator.clipboard.writeText(value)}catch{const helper=document.createElement('textarea');helper.value=value;helper.style.position='fixed';helper.style.opacity='0';document.body.appendChild(helper);helper.select();document.execCommand('copy');helper.remove()}
+    button.textContent='已複製';button.classList.add('copied');setTimeout(()=>{button.textContent='複製';button.classList.remove('copied')},1200);
   });
 })();
 </script>
-<script src="shared-workspace.js?v=20260722c"></script>
+<script src="shared-workspace.js?v=20260722d"></script>
 </body>
 </html>
