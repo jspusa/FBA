@@ -335,7 +335,7 @@
       <span class="step-number">4</span>
       <div><h2>產生補貨結果</h2></div>
     </div>
-    <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>計算美國倉價值</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
+    <div class="action-buttons"><button id="calculateInventoryValueBtn" class="btn secondary private-value-action" type="button" hidden disabled>💰 計算美國倉價值</button><button id="flashRestockBtn" class="btn flash-button" type="button" disabled>⚡ 光速補貨</button><button id="runBtn" class="btn primary run-button" type="button" disabled>開始整理補貨資料 →</button></div>
     <div id="status" class="tool-status" aria-live="polite">請先完成步驟 1 與 2；步驟 3 為選填。</div>
     <div id="preflightPanel" class="preflight-panel">
       <div class="preflight-heading">
@@ -381,7 +381,7 @@
   <section id="resultCard" class="card" style="display:none;">
     <div class="result-hero">
       <div class="success-copy"><div class="success-icon">✓</div><div><h3>補貨結果已整理完成</h3><p id="resultFilename">可先預覽各工作表，再下載 Excel。</p></div></div>
-      <div class="result-actions"><button id="flashRestockBtn" class="btn flash-button" type="button" disabled>⚡ 光速補貨</button><button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button></div>
+      <div class="result-actions"><button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button></div>
     </div>
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
@@ -987,7 +987,8 @@
     function buildEmailHtml(subject, recipient, trucks, parsed, pickupDate){ const rows=parsed.rows.map(r=>`<tr><td>${escapeHtml(r.sku)}</td><td>${escapeHtml(r.qty)}</td><td>${escapeHtml(r.expire)}</td></tr>`).join(''); return `<div><p><strong>Subject:</strong> ${escapeHtml(subject)}</p><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${escapeHtml(trucks)} trucks (${escapeHtml(parsed.skuCount)} SKUs / ${escapeHtml(parsed.totalCartons)} cartons).</p><p>Pickup Date: ${escapeHtml(formatPickupDate(pickupDate))}</p><p>SKU / CTN / Expiry Date:</p><table class="email-table"><thead><tr><th>SKU</th><th>CTN</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
     function buildEmail(){ try{ const parsed=parseEmailData($('emailData').value); const pickupDate=$('pickupDate').value; if(!pickupDate) throw new Error('請先選擇日期。'); const trucks=Math.max(1, Math.floor(toNumber($('truckCount').value)||5)); $('truckCount').value=trucks; const recipient=$('recipientName').value.trim()||'Tiffany'; const subject=`${formatShortDate(pickupDate)} Pickup – Shipment Details`; state.emailHtml=buildEmailHtml(subject,recipient,trucks,parsed,pickupDate); $('emailPreview').innerHTML=state.emailHtml; $('emailMeta').textContent=`已產生信件：${parsed.skuCount} SKUs / ${parsed.totalCartons} cartons / ${trucks} trucks`; $('copyRichEmailBtn').disabled=false; }catch(err){ state.emailHtml=''; $('emailPreview').innerHTML=''; $('emailMeta').textContent=err.message||'產生失敗。'; $('copyRichEmailBtn').disabled=true; }}
     async function copyRichEmail(){ if(!state.emailHtml) return; const div=document.createElement('div'); div.innerHTML=state.emailHtml; const plain=div.textContent||div.innerText||''; if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([plain],{type:'text/plain'}),'text/html':new Blob([state.emailHtml],{type:'text/html'})})]); $('emailMeta').textContent='Email 表格版本已複製，可直接貼到 Gmail / Outlook。'; } }
-async function run(){
+async function run(options={}){
+      const silent=Boolean(options?.silent);
       try{
         const heliumFile=restockFiles.helium || $('heliumFile').files[0], inventoryFile=restockFiles.inventory || $('inventoryFile').files[0], businessFile=restockFiles.business || $('businessFile').files[0];
         if(!heliumFile||!inventoryFile) throw new Error('請先完成步驟 1 與 2；Business Report 為選填。');
@@ -1002,13 +1003,17 @@ async function run(){
         state.businessData=isValidCheck(preflightChecks.business)?(preflightChecks.business.businessData||parseBusinessReport(preflightChecks.business.rows||await readWorkbookFirstSheetAsRows(businessFile)).data):{};
         state.sheets=processInventory(parseHelium(heliumRows,issueChoices.helium),inventoryRows,issueChoices.inventory,state.businessData).sheets;
         state.activeSheet='主工作表';
-        createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
-        $('resultFilename').textContent=`${state.filename} 已準備完成，可先預覽再下載。`;
-        $('resultCard').style.display=''; $('downloadBtn').disabled=false; $('flashRestockBtn').disabled=false;
-        setStatus('整理完成。請往下預覽，或直接下載整理完成的 Excel。',false,'ok');
-        $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+        if(!silent){
+          createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
+          $('resultFilename').textContent=`${state.filename} 已準備完成，可先預覽再下載。`;
+          $('resultCard').style.display=''; $('downloadBtn').disabled=false;
+          setStatus('整理完成。請往下預覽，或直接下載整理完成的 Excel。',false,'ok');
+          $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+        }
+        return true;
       }catch(e){
         setStatus(e.message||'處理失敗。',true);
+        return false;
       }finally{
         updateWorkflowState(false);
       }
@@ -1044,18 +1049,26 @@ async function run(){
     }
     async function runFlashRestock(){
       const button=$('flashRestockBtn');
+      let amazonWindow=null;
       try{
-        button.disabled=true; setStatus('正在挑選最多 25 個可直接入庫的 SKU…',false,'working');
+        button.disabled=true;
+        amazonWindow=window.open('about:blank','fba-flash-amazon');
+        if(amazonWindow){amazonWindow.document.title='光速補貨檢查中';amazonWindow.document.body.innerHTML='<p style="font:16px system-ui;padding:32px">正在檢查入庫資料；如有 Quantity 差異，此分頁會自動關閉。</p>';}
+        if(!state.sheets){
+          setStatus('正在直接整理檔案並建立光速補貨資料…',false,'working');
+          const ready=await run({silent:true});if(!ready)throw new Error('光速整理未完成，請查看上方提示。');
+        }
+        setStatus('正在挑選最多 25 個可直接入庫的 SKU…',false,'working');
         const rows=quickRestockRows(); await downloadQuickRestockList(rows);
         const value=['SKU\t入庫計畫\t入庫包數\tEXPIRE',...rows.map(r=>`${r.sku}\t${r.boxes}\t${r.units}\t${r.expiry}`)].join('\n');
         let batch={};try{batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'{}')}catch{}
-        const payload={batchId:batch.id||'',value,rows,updatedAt:Date.now(),autoDownload:true};
+        const payload={batchId:batch.id||'',value,rows,updatedAt:Date.now(),autoDownload:true,amazonWindowName:'fba-flash-amazon'};
         localStorage.setItem('fba-workspace:inbound-data',JSON.stringify({batchId:payload.batchId,value,updatedAt:payload.updatedAt}));
         localStorage.setItem('fba-workspace:form:inbound-plan.html',JSON.stringify({batchId:payload.batchId,state:{pasteInput:value,amazonPageText:''},updatedAt:payload.updatedAt}));
         localStorage.setItem('fba-workspace:flash-restock',JSON.stringify(payload));
         setStatus(`已選出 ${rows.length} 個 SKU，正在帶入入庫計畫並下載 Amazon 模板…`,false,'ok');
         setTimeout(()=>{location.href='inbound-plan.html?flash=1'},450);
-      }catch(error){setStatus(error?.message||'光速補貨產生失敗。',true);button.disabled=false;}
+      }catch(error){try{amazonWindow?.close()}catch{}setStatus(error?.message||'光速補貨產生失敗。',true);button.disabled=false;}
     }
 
     const restockFiles = { helium:null, inventory:null, business:null };
@@ -1390,7 +1403,7 @@ async function run(){
     }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
-      $('downloadBtn').disabled=true; $('flashRestockBtn').disabled=true; $('resultCard').style.display='none';
+      $('downloadBtn').disabled=true; $('resultCard').style.display='none';
       $('inventoryValuePanel').hidden=true; $('inventoryValuePanel').innerHTML=''; $('inventoryValuePanel').dataset.shown='';
     }
     function updateWorkflowState(resetMessage=true){
@@ -1410,6 +1423,7 @@ async function run(){
       $('businessCard').setAttribute('aria-busy',String(businessCheck.status==='checking'));
       const overview=renderPreflight();
       $('runBtn').disabled=!overview.ready;
+      $('flashRestockBtn').disabled=!overview.ready;
       $('calculateInventoryValueBtn').disabled=!(inventoryReady&&businessReady);
       syncValueMode();
       if(!resetMessage) return;
@@ -1557,6 +1571,6 @@ async function run(){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260722a"></script>
+<script src="shared-workspace.js?v=20260722b"></script>
 </body>
 </html>
