@@ -230,10 +230,10 @@
     body.fba-night .card,body.fba-night article,body.fba-night .tool-card,body.fba-night .upload-card,body.fba-night .action-card,body.fba-night .preflight-panel,body.fba-night .result-body,body.fba-night .email-preview,body.fba-night .private-value-panel,body.fba-night .advanced-panel,body.fba-night .drawer-section,body.fba-night .amazon-review,body.fba-night .amazon-next-step{background:#12100e!important;color:#fff7ed!important;border-color:#4a2d18!important;box-shadow:0 18px 48px rgba(0,0,0,.48)!important}
     body.fba-night input,body.fba-night textarea,body.fba-night select,body.fba-night table,body.fba-night th,body.fba-night td,body.fba-night .drop,body.fba-night .dropzone,body.fba-night .tool-table-wrap{background:#0d0a08!important;color:#fff7ed!important;border-color:#4a2d18!important}
     body.fba-night ::selection{background:#fde68a!important;color:#111827!important}
-    body.fba-night .confirm-panel{background:#111827!important;border-color:#374151!important;color:#f8fafc!important}
-    body.fba-night .confirm-panel.complete{background:#082f1c!important;border-color:#22c55e!important;color:#dcfce7!important}
+    body.fba-night .confirm-panel{background:#1a120c!important;border-color:#7c3f12!important;color:#fff7ed!important}
+    body.fba-night .confirm-panel.complete{background:#2b180c!important;border-color:#f97316!important;color:#ffedd5!important;box-shadow:0 0 0 3px rgba(249,115,22,.12)!important}
     body.fba-night .confirm-check,body.fba-night .confirm-check span,body.fba-night .confirm-check strong{color:#f8fafc!important}
-    body.fba-night .confirm-panel.complete .confirm-check,body.fba-night .confirm-panel.complete .confirm-check span,body.fba-night .confirm-panel.complete .confirm-check strong{color:#dcfce7!important}
+    body.fba-night .confirm-panel.complete .confirm-check,body.fba-night .confirm-panel.complete .confirm-check span,body.fba-night .confirm-panel.complete .confirm-check strong{color:#ffedd5!important}
     body.fba-night .btn:not(.primary),body.fba-night button:not(.primary):not(.top-tab):not(.inner-tab){background:#21170f!important;color:#fed7aa!important;border:1px solid #9a4d15!important;box-shadow:0 5px 18px rgba(249,115,22,.1)!important}
     body.fba-night .btn:not(.primary):hover,body.fba-night button:not(.primary):not(.top-tab):not(.inner-tab):hover{background:#3a1f0d!important;border-color:#fb923c!important;color:#fff7ed!important}
     body.fba-night .primary,body.fba-night .flash-button,body.fba-night .top-tab.active,body.fba-night .inner-tab.active{background:linear-gradient(135deg,#fb923c,#ea580c)!important;color:#1b0b02!important;border-color:#fdba74!important;box-shadow:0 8px 24px rgba(249,115,22,.28)!important}
