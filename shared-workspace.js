@@ -203,11 +203,12 @@
   const ensureVersionBadge = () => {
     const title = document.querySelector('.brand-copy strong');
     if (!title || title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V12.0'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V12.6'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
-    .app-header .header-inner{width:100%!important;max-width:1240px!important;min-height:64px!important;padding:12px 28px!important;box-sizing:border-box!important;align-items:center!important}
+    .app-header{padding:0!important;margin:0!important}
+    .app-header .header-inner{display:flex!important;width:100%!important;max-width:1240px!important;min-height:64px!important;padding:12px 28px!important;margin:0 auto!important;box-sizing:border-box!important;align-items:center!important;justify-content:space-between!important;gap:20px!important}
     .app-header .brand{height:40px!important;display:flex!important;align-items:center!important}.app-header .brand-mark{width:34px!important;height:34px!important;flex:0 0 34px!important}.app-header .brand-copy strong{display:flex!important;align-items:center!important;gap:7px!important;min-height:18px!important}.fba-version{display:inline-flex!important;align-items:center!important;margin:0!important;padding:2px 6px;border-radius:999px;background:#e8eef9;color:#1d4ed8;font-size:9px!important;font-weight:850;line-height:1.25;letter-spacing:.02em}
     .app-header .top-tabs{min-height:38px!important;align-items:center!important}.app-header .workspace-header-actions{min-height:40px!important}.app-header .clear-page,.app-header .clear-workspace{min-height:34px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
     .clear-workspace{appearance:none;border:1px solid rgba(36,138,61,.2);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#e8f7ed;color:#176b2c;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
