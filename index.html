@@ -1036,9 +1036,9 @@ async function run(){
     }
     async function downloadQuickRestockList(rows){
       const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('光速補貨');
-      ws.addRow(['SKU','入庫計畫','入庫包數','EXPIRE','選取依據']); rows.forEach(row=>ws.addRow([row.sku,row.boxes,row.units,row.expiry,row.source]));
+      ws.addRow(['SKU','入庫計畫','入庫包數','EXPIRE']); rows.forEach(row=>ws.addRow([row.sku,row.boxes,row.units,row.expiry]));
       ws.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4F46E5'}};cell.alignment={horizontal:'center'};});
-      ws.columns=[{width:20},{width:14},{width:14},{width:14},{width:20}]; ws.views=[{state:'frozen',ySplit:1}];
+      ws.columns=[{width:20},{width:14},{width:14},{width:14}]; ws.views=[{state:'frozen',ySplit:1}];
       const buf=await wb.xlsx.writeBuffer(), blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), url=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=url;a.download=`光速補貨清單_${todayStr()}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);
     }
