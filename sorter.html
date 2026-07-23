@@ -1473,7 +1473,12 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const yyyy = stamp.getFullYear();
     const mm = String(stamp.getMonth()+1).padStart(2,'0');
     const dd = String(stamp.getDate()).padStart(2,'0');
-    saveAs(blob, `FBA_Sorted_${yyyy}${mm}${dd}.zip`);
+    const filename = `FBA_Sorted_${yyyy}${mm}${dd}.zip`;
+    if(window.FBAWorkspaceFiles){
+      try{await window.FBAWorkspaceFiles.save('sortedZip',new File([blob],filename,{type:'application/zip',lastModified:Date.now()}))}
+      catch(error){console.warn('無法暫存 Outlook ZIP 附件',error)}
+    }
+    saveAs(blob, filename);
     setTimeout(()=>{ location.href='email.html'; },650);
   }
 
@@ -1626,6 +1631,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260722e"></script>
+<script src="shared-workspace.js?v=20260723b"></script>
 </body>
 </html>
