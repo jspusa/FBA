@@ -187,7 +187,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       status.textContent = `成功辨識 ${rows.length} 筆貨件，並以每棧板 ${cartonsPerPallet} 箱計算。`;
       const headers = ['貨件','高度','棧板數','平均每棧板重量(lb)','包裝箱(CTN)','重量(lb)','棧板計算過程'];
       table.className = 'pallet-table';
-      table.innerHTML = '<thead><tr><th class="pallet-group-primary pallet-divider" colspan="4">補貨作業區</th><th class="pallet-group-audit" colspan="3">計算複查區</th></tr><tr>' + headers.map((h,index) => `<th class="${index<4?'pallet-primary':'pallet-audit'} ${index===3?'pallet-divider':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map((cell,index) => index===3?`<td class="pallet-primary pallet-divider"><div class="weight-copy-cell"><strong>${escapeHtml(cell)}</strong><button type="button" class="copy-weight" data-copy-weight="${escapeHtml(cell)}">複製</button></div></td>`:`<td class="${index<4?'pallet-primary':'pallet-audit'}">${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      table.innerHTML = '<thead><tr><th class="pallet-group-primary pallet-divider" colspan="4">補貨作業區</th><th class="pallet-group-audit" colspan="3">計算複查區</th></tr><tr>' + headers.map((h,index) => `<th class="${index<4?'pallet-primary':'pallet-audit'} ${index===3?'pallet-divider':''}">${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>' + rows.map(row => '<tr>' + row.map((cell,index) => index===3?`<td class="pallet-primary pallet-divider"><div class="weight-copy-cell"><strong>${escapeHtml(cell)}</strong><button type="button" class="copy-weight" data-copy-weight="${escapeHtml(cell)}">複製重量</button></div></td>`:`<td class="${index<4?'pallet-primary':'pallet-audit'}">${escapeHtml(cell)}</td>`).join('') + '</tr>').join('') + '</tbody>';
     } catch (error) {
       card.style.display = 'none';
       table.innerHTML = '';
@@ -206,10 +206,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const button=event.target.closest('[data-copy-weight]');if(!button)return;
     const value=button.dataset.copyWeight;
     try{await navigator.clipboard.writeText(value)}catch{const helper=document.createElement('textarea');helper.value=value;helper.style.position='fixed';helper.style.opacity='0';document.body.appendChild(helper);helper.select();document.execCommand('copy');helper.remove()}
-    button.textContent='已複製';button.classList.add('copied');setTimeout(()=>{button.textContent='複製';button.classList.remove('copied')},1200);
+    button.textContent='已複製';button.classList.add('copied');setTimeout(()=>{button.textContent='複製重量';button.classList.remove('copied')},1200);
   });
 })();
 </script>
-<script src="shared-workspace.js?v=20260722e"></script>
+<script src="shared-workspace.js?v=20260723a"></script>
 </body>
 </html>
