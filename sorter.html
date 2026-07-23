@@ -1035,9 +1035,9 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const totalCartons = audits.reduce((sum,a)=>sum + (Number.isFinite(a.preferredCartons) ? a.preferredCartons : 0),0);
     els.shipmentSummaryBody.innerHTML = `<tr><td>${escapeHtml(dateText)}</td><td>${audits.length} 車</td><td>${totalCartons.toLocaleString('en-US')} 箱</td></tr>`;
     const summaryValid=allDatesRead&&audits.every(audit=>audit.shipmentConsistent);
-    if(summaryValid){
+    if(audits.length){
       const shipmentIds=[...new Set(audits.flatMap(audit=>audit.shipmentIds))];
-      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:dates[0],truckCount:audits.length,totalCartons,shipmentIds,updatedAt:Date.now()}));
+      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:allDatesRead?dates[0]:'',truckCount:audits.length,totalCartons,shipmentIds,shipmentConsistent:summaryValid,updatedAt:Date.now()}));
     }else{
       localStorage.removeItem(SORTER_SUMMARY_KEY);
     }
@@ -1631,6 +1631,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260723b"></script>
+<script src="shared-workspace.js?v=20260723c"></script>
 </body>
 </html>
