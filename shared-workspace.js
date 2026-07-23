@@ -6,7 +6,6 @@
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
-  const BRO_MODE_KEY = 'fba-workspace:bro-mode';
   const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
   const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
@@ -72,7 +71,7 @@
   };
 
   const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
-  const broModeEnabled = () => localStorage.getItem(BRO_MODE_KEY) === 'open';
+  localStorage.removeItem('fba-workspace:bro-mode');
   const flashModeEnabled = () => {
     const flash = readJson('fba-workspace:flash-mode');
     return Boolean(flash && (!flash.batchId || flash.batchId === batchMeta.id));
@@ -82,9 +81,8 @@
     ensureVersionBadge();
     window.dispatchEvent(new CustomEvent('fba-flash-mode-changed', { detail: { enabled: false } }));
   };
-  const nightModeEnabled = () => valueModeEnabled() || broModeEnabled();
+  const nightModeEnabled = valueModeEnabled;
   const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
-  const notifyBroMode = () => window.dispatchEvent(new CustomEvent('fba-bro-mode-changed', { detail: { enabled: broModeEnabled() } }));
   const playValueTransition = (opening, label = '') => {
     document.body.classList.toggle('fba-night', nightModeEnabled());
     document.body.classList.remove('fba-value-shake');
@@ -119,17 +117,6 @@
       localStorage.setItem(BUSINESS_REPORT_KEY, JSON.stringify({ batchId: batchMeta.id, items, fileName, updatedAt: Date.now() }));
     },
     clearBusinessReport() { localStorage.removeItem(BUSINESS_REPORT_KEY); }
-  };
-  window.FBABroMode = {
-    isEnabled: broModeEnabled,
-    setEnabled(enabled) {
-      const changed = broModeEnabled() !== Boolean(enabled);
-      if (enabled) localStorage.setItem(BRO_MODE_KEY, 'open');
-      else localStorage.removeItem(BRO_MODE_KEY);
-      if (changed) playValueTransition(Boolean(enabled), enabled ? 'BRO MODE' : 'BACK TO WORK');
-      else document.body.classList.toggle('fba-night', nightModeEnabled());
-      notifyBroMode();
-    }
   };
   window.FBAFlashMode = { isEnabled: flashModeEnabled };
 
@@ -228,7 +215,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.9'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.0'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -310,6 +297,9 @@
     body.fba-night .drawer-section summary{background:#171b23!important;color:#eef2ff!important}
     body.fba-night .fba-version{background:#3a1f0d!important;color:#fdba74!important;border:1px solid #9a4d15!important}
     body.fba-night .pallet-group-primary{background:#166534!important;color:#f0fdf4!important}body.fba-night .pallet-group-audit{background:#374151!important;color:#f8fafc!important}body.fba-night .pallet-primary{background:#102416!important;color:#bbf7d0!important}body.fba-night .pallet-audit{background:#171717!important;color:#d1d5db!important}body.fba-night .pallet-divider{border-right-color:#4ade80!important}
+    body.fba-night .decision-confirm:not(.confirmed){background:#3a250d!important;border-color:#d99b16!important;color:#fde68a!important}
+    body.fba-night .review-all-complete .review-confirm-column{background:#15351f!important;border-color:#347a48!important;color:#bbf7d0!important}
+    body.fba-night .pallet-table tr.weight-copied-row td{box-shadow:inset 0 2px #fb923c,inset 0 -2px #fb923c!important}body.fba-night .pallet-table tr.weight-copied-row td:first-child{background:#3a1f0d!important;color:#fdba74!important;box-shadow:inset 4px 0 #f97316,inset 0 2px #fb923c,inset 0 -2px #fb923c!important}
     @media(max-width:860px){.app-header .header-inner{height:auto!important;min-height:0!important;padding:12px 18px!important;align-items:flex-start!important}.app-header .brand{height:36px!important}.app-header .workspace-header-actions{width:100%!important;justify-content:flex-end!important}}
     @media(max-width:680px){.page-tools{margin:-8px 0 14px}.advanced-toggle{width:100%;justify-content:center}.workspace-header-actions{width:100%;justify-content:flex-end}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.fba-door-transition .fba-door,.fba-value-shake,body.fba-ui-ready main>.hero,body.fba-ui-ready main>.page-hero,body.fba-ui-ready main .upload-card,body.fba-ui-ready main>.card,body.fba-ui-ready main .tool-card,body.fba-ui-ready main .auto-detect-card{animation-duration:.01ms!important}}
@@ -324,7 +314,6 @@
   window.addEventListener('storage', event => {
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
-    if (event.key === BRO_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyBroMode(); }
     if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
   });
   const latestClear = localStorage.getItem(CLEAR_KEY);
@@ -366,5 +355,4 @@
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
   notifyValueMode();
-  notifyBroMode();
 })();
