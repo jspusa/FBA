@@ -228,7 +228,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.8'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.9'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -283,6 +283,19 @@
     body.fba-night .preflight-heading strong,body.fba-night .preflight-heading p,body.fba-night .audit-copy strong,body.fba-night .audit-copy span,body.fba-night .issue-title h2,body.fba-night .issue-title p,body.fba-night .issue-location strong,body.fba-night .issue-location span,body.fba-night .issue-current strong,body.fba-night .issue-current span,body.fba-night .option-metric,body.fba-night .option-metric b,body.fba-night .option-note,body.fba-night .diagnostic-detail,body.fba-night .diagnostic-detail code,body.fba-night .batch-stat span,body.fba-night .batch-stat strong,body.fba-night .audit-line,body.fba-night .audit-line b,body.fba-night .summary-head,body.fba-night .summary-head *,body.fba-night .tool-status,body.fba-night .final-status{color:#fff7ed!important}
     body.fba-night .preflight-badge,body.fba-night .issue-count,body.fba-night .issue-summary-pill,body.fba-night .issue-type,body.fba-night .issue-handling,body.fba-night .recommended-tag,body.fba-night .notes-count,body.fba-night .tool-pill{background:#2d2118!important;color:#fed7aa!important;border-color:#7c451f!important}
     body.fba-night .audit-icon{background:#4a3525!important;color:#fff7ed!important}
+    body.fba-night .batch-dashboard{background:linear-gradient(145deg,#17100b,#0d0906)!important;border:1px solid #6b3a1d!important;box-shadow:inset 0 1px 0 rgba(255,183,77,.08),0 18px 44px rgba(0,0,0,.34)!important}
+    body.fba-night .batch-stats{gap:12px!important}
+    body.fba-night .batch-stat{background:linear-gradient(145deg,#25170e,#18100b)!important;border:1px solid #75421f!important;box-shadow:0 8px 22px rgba(0,0,0,.22)!important}
+    body.fba-night .batch-stat span{color:#fdba74!important;font-weight:750!important;letter-spacing:.02em}
+    body.fba-night .batch-stat strong{color:#fff7ed!important;text-shadow:0 1px 12px rgba(249,115,22,.14)}
+    body.fba-night .audit-lines{gap:10px 12px!important}
+    body.fba-night .audit-line{align-items:center!important;padding:11px 13px!important;border:1px solid #4f311f!important;border-radius:12px!important;background:#120d09!important}
+    body.fba-night .audit-line span{color:#fdba74!important;font-weight:700!important}
+    body.fba-night .audit-line b{color:#fff7ed!important;font-weight:850!important}
+    body.fba-night .final-status{border:1px solid transparent!important}
+    body.fba-night .final-status.ok{background:linear-gradient(135deg,#14351f,#102919)!important;border-color:#347a48!important;color:#9af0b2!important;box-shadow:0 8px 22px rgba(21,128,61,.14)!important}
+    body.fba-night .final-status.warn{background:linear-gradient(135deg,#3a210d,#29170b)!important;border-color:#a65f1d!important;color:#ffd394!important}
+    body.fba-night .final-status.ok::first-letter{color:#4ade80}
     .fba-door-transition{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;display:flex;align-items:stretch;background:rgba(0,0,0,.18)}
     .fba-door{position:absolute;top:0;bottom:0;width:50.5%;background:linear-gradient(90deg,#090b10,#1c2230 48%,#090b10);border:1px solid #454f64;box-shadow:0 0 80px rgba(0,0,0,.9);display:grid;place-items:center}
     .fba-door.left{left:0}.fba-door.right{right:0;transform:scaleX(-1)}.fba-door span{width:18px;height:18px;border-radius:50%;background:#d6b85f;box-shadow:0 0 18px #f7dc82;position:absolute;right:24px}
