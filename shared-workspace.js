@@ -77,6 +77,11 @@
     const flash = readJson('fba-workspace:flash-mode');
     return Boolean(flash && (!flash.batchId || flash.batchId === batchMeta.id));
   };
+  const closeFlashMode = () => {
+    localStorage.removeItem('fba-workspace:flash-mode');
+    ensureVersionBadge();
+    window.dispatchEvent(new CustomEvent('fba-flash-mode-changed', { detail: { enabled: false } }));
+  };
   const nightModeEnabled = () => valueModeEnabled() || broModeEnabled();
   const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
   const notifyBroMode = () => window.dispatchEvent(new CustomEvent('fba-bro-mode-changed', { detail: { enabled: broModeEnabled() } }));
@@ -98,7 +103,10 @@
     setEnabled(enabled) {
       const changed = valueModeEnabled() !== Boolean(enabled);
       if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
-      else localStorage.removeItem(VALUE_MODE_KEY);
+      else {
+        localStorage.removeItem(VALUE_MODE_KEY);
+        closeFlashMode();
+      }
       if (changed) playValueTransition(Boolean(enabled));
       else document.body.classList.toggle('fba-night', nightModeEnabled());
       notifyValueMode();
@@ -208,18 +216,25 @@
   const ensureVersionBadge = () => {
     const title = document.querySelector('.brand-copy strong');
     if (!title) return;
-    const label = flashModeEnabled() ? '光速補貨模式' : '補貨工作台';
+    const flashEnabled = flashModeEnabled();
+    const label = flashEnabled ? '光速補貨模式' : '補貨工作台';
     const textNode = [...title.childNodes].find(node => node.nodeType === Node.TEXT_NODE);
     if (textNode) textNode.nodeValue = label;
     else title.insertBefore(document.createTextNode(label), title.firstChild);
+    const mark = document.querySelector('.brand-mark');
+    if (mark) {
+      mark.textContent = flashEnabled ? '⚡' : 'J';
+      mark.classList.toggle('flash-active', flashEnabled);
+      mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
+    }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.6'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.7'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
     .app-header{padding:0!important;margin:0!important}
     .app-header .header-inner{display:flex!important;width:100%!important;max-width:1240px!important;min-height:64px!important;padding:12px 28px!important;margin:0 auto!important;box-sizing:border-box!important;align-items:center!important;justify-content:space-between!important;gap:20px!important}
-    .app-header .brand{height:40px!important;display:flex!important;align-items:center!important}.app-header .brand-mark{width:34px!important;height:34px!important;flex:0 0 34px!important}.app-header .brand-copy strong{display:flex!important;align-items:center!important;gap:7px!important;min-height:18px!important}.fba-version{display:inline-flex!important;align-items:center!important;margin:0!important;padding:2px 6px;border-radius:999px;background:#e8eef9;color:#1d4ed8;font-size:9px!important;font-weight:850;line-height:1.25;letter-spacing:.02em}
+    .app-header .brand{height:40px!important;display:flex!important;align-items:center!important}.app-header .brand-mark{width:34px!important;height:34px!important;flex:0 0 34px!important}.app-header .brand-mark.flash-active{background:linear-gradient(145deg,#ffb21a,#f97316)!important;color:#1f1200!important;font-size:19px!important;box-shadow:0 7px 20px rgba(249,115,22,.38)!important}.app-header .brand-copy strong{display:flex!important;align-items:center!important;gap:7px!important;min-height:18px!important}.fba-version{display:inline-flex!important;align-items:center!important;margin:0!important;padding:2px 6px;border-radius:999px;background:#e8eef9;color:#1d4ed8;font-size:9px!important;font-weight:850;line-height:1.25;letter-spacing:.02em}
     .app-header .top-tabs{min-height:38px!important;align-items:center!important}.app-header .workspace-header-actions{min-height:40px!important}.app-header .clear-page,.app-header .clear-workspace{min-height:34px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
     .clear-workspace{appearance:none;border:1px solid rgba(36,138,61,.2);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:#e8f7ed;color:#176b2c;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
     .clear-workspace:hover{background:#d9f1e1;transform:translateY(-1px)}
@@ -310,13 +325,17 @@
   if (emailData) {
     const source = document.getElementById('workspaceSource');
     const summary = readJson(SORTER_SUMMARY_KEY); const current = summary?.batchId === batchMeta.id;
-    if (current && summary?.pickupDate && Number.isInteger(summary?.truckCount) && summary.truckCount > 0) {
-      document.getElementById('pickupDate').value = summary.pickupDate;
-      document.getElementById('truckCount').value = summary.truckCount;
+    const hasPickupDate = current && Boolean(summary?.pickupDate);
+    const hasTruckCount = current && Number.isInteger(summary?.truckCount) && summary.truckCount > 0;
+    if (hasPickupDate || hasTruckCount) {
+      if (hasPickupDate) document.getElementById('pickupDate').value = summary.pickupDate;
+      if (hasTruckCount) document.getElementById('truckCount').value = summary.truckCount;
       if (source) {
         const time = summary.updatedAt ? new Date(summary.updatedAt).toLocaleString('zh-TW', { hour12: false }) : '時間不明';
         const ids = Array.isArray(summary.shipmentIds) && summary.shipmentIds.length ? ` · ${summary.shipmentIds.join('、')}` : '';
-        source.className = 'workspace-source ok'; source.textContent = `已帶入本批次 FBA 整理摘要：${summary.pickupDate} · ${summary.truckCount} 車${ids} · 更新 ${time}`;
+        const dateText = hasPickupDate ? summary.pickupDate : '日期待確認';
+        const truckText = hasTruckCount ? `${summary.truckCount} 車` : '車數待確認';
+        source.className = 'workspace-source ok'; source.textContent = `已帶入本批次 FBA 整理摘要：${dateText} · ${truckText}${ids} · 更新 ${time}`;
       }
     } else if (source) {
       source.className = 'workspace-source warn'; source.textContent = '尚未取得本批次的 FBA 整理摘要；請先完成 FBA 整理，或手動填寫日期與車數後再次確認。';
