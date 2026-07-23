@@ -156,10 +156,10 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <label class="confirm-check"><input id="confirmPickup" type="checkbox" /> <span>我已確認 Pickup Date 是正確日期：<strong id="pickupConfirmText">尚未選擇</strong></span></label>
         <label class="confirm-check"><input id="confirmTrucks" type="checkbox" /> <span>我已確認本次貨件分成 <strong id="truckConfirmText">尚未填寫</strong> 車。</span></label>
       </div>
-      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">一鍵產生並複製 Email標題</button> <button id="buildCasualEmailBtn" class="btn" type="button" hidden>一鍵產生並複製口語 Email標題</button></div></div>
+      <div class="row" style="margin-top:12px"><div><button id="buildEmailBtn" class="btn primary" type="button">一鍵產生並複製 Email標題</button></div></div>
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
       <div id="emailOutput" class="email-output" hidden><section class="email-output-card"><div class="email-output-head"><div><span class="email-output-label">Email標題（主旨）：</span><div id="emailSubjectText" class="email-subject-value"></div></div><button id="copySubjectBtn" class="copy-step" type="button">複製主旨</button></div></section><section class="email-output-card email-body-card"><div class="email-output-head"><span class="email-output-label">Email內容</span><button id="copyBodyBtn" class="copy-step" type="button">複製內容</button></div><div id="emailPreview" class="email-preview"></div></section></div>
-      <div class="cc-panel"><h3>副本收件者</h3><span class="field-help">預設全選；取消不需要的姓名後，一鍵複製到 Email 副本欄。</span><div class="cc-list"><label class="cc-chip"><input type="checkbox" data-cc="danny@jasperpet.com" checked> Danny</label><label class="cc-chip"><input type="checkbox" data-cc="jayden.hsu@jasperpet.com" checked> Jayden</label><label class="cc-chip"><input type="checkbox" data-cc="ray.chen@jasperpet.com" checked> Ray</label><label class="cc-chip"><input type="checkbox" data-cc="grace.chen@jasperpet.com" checked> Grace</label><label class="cc-chip"><input type="checkbox" data-cc="mandy.niu@jasperpet.com" checked> Mandy</label><label class="cc-chip"><input type="checkbox" data-cc="min@petlifeco.com" checked> Min</label></div><div class="cc-actions"><button id="copyCcBtn" class="btn" type="button">一鍵複製副本收件者</button><span id="ccStatus" class="cc-status">已預選 6 人</span></div></div>
+      <div class="cc-panel"><h3>副本收件者</h3><span class="field-help">預設全選；取消不需要的姓名後，一鍵複製到 Email 副本欄。</span><div class="cc-list"><label class="cc-chip"><input type="checkbox" data-cc="danny@jasperpet.com" checked> Danny</label><label class="cc-chip"><input type="checkbox" data-cc="jayden.hsu@jasperpet.com" checked> Jayden</label><label class="cc-chip"><input type="checkbox" data-cc="ray.chen@jasperpet.com" checked> Ray</label><label class="cc-chip"><input type="checkbox" data-cc="miacheng@petlifeco.com" checked> Mia</label><label class="cc-chip"><input type="checkbox" data-cc="grace.chen@jasperpet.com" checked> Grace</label><label class="cc-chip"><input type="checkbox" data-cc="mandy.niu@jasperpet.com" checked> Mandy</label><label class="cc-chip"><input type="checkbox" data-cc="min@petlifeco.com" checked> Min</label></div><div class="cc-actions"><button id="copyCcBtn" class="btn" type="button">一鍵複製副本收件者</button><span id="ccStatus" class="cc-status">已預選 7 人</span></div></div>
     </div>
   </section>
 </main>
@@ -195,30 +195,20 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('recipientName').addEventListener('keydown',(event)=>{
     if(event.key!=='Enter') return;
     const command=$('recipientName').value.trim();
-    if(command!=='芝麻開門'&&command!=='芝麻關門'&&command.toLowerCase()!=='bro') return;
+    if(command!=='芝麻開門'&&command!=='芝麻關門') return;
     event.preventDefault();
-    let message='';
-    if(command.toLowerCase()==='bro'){
-      const enabled=!(window.FBABroMode?.isEnabled?.()||localStorage.getItem('fba-workspace:bro-mode')==='open');
-      if(window.FBABroMode) window.FBABroMode.setEnabled(enabled);
-      else { if(enabled)localStorage.setItem('fba-workspace:bro-mode','open');else localStorage.removeItem('fba-workspace:bro-mode');window.dispatchEvent(new CustomEvent('fba-bro-mode-changed',{detail:{enabled}})); }
-      message=enabled?'Bro 口語信件模式已開啟。':'Bro 口語信件模式已關閉。';
-    }else{
-      const enabled=command==='芝麻開門';
-      if(window.FBAValueMode) window.FBAValueMode.setEnabled(enabled);
-      else {
-        if(enabled) localStorage.setItem('fba-workspace:value-mode','open');
-        else localStorage.removeItem('fba-workspace:value-mode');
-        window.dispatchEvent(new CustomEvent('fba-value-mode-changed',{detail:{enabled}}));
-      }
-      message=enabled?'全部隱藏功能已開啟。':'價值隱藏功能已關閉。';
+    const enabled=command==='芝麻開門';
+    if(window.FBAValueMode) window.FBAValueMode.setEnabled(enabled);
+    else {
+      if(enabled) localStorage.setItem('fba-workspace:value-mode','open');
+      else localStorage.removeItem('fba-workspace:value-mode');
+      window.dispatchEvent(new CustomEvent('fba-value-mode-changed',{detail:{enabled}}));
     }
+    const message=enabled?'全部隱藏功能已開啟。':'價值隱藏功能已關閉。';
     $('recipientName').value='Tiffany';
     $('recipientName').dispatchEvent(new Event('input',{bubbles:true}));
     $('emailMeta').textContent=message;
   });
-  function secretEmailEnabled(){return Boolean(window.FBAValueMode?.isEnabled?.()||localStorage.getItem('fba-workspace:value-mode')==='open'||window.FBABroMode?.isEnabled?.()||localStorage.getItem('fba-workspace:bro-mode')==='open');}
-  function syncSecretEmailActions(){ $('buildCasualEmailBtn').hidden=!secretEmailEnabled(); }
   function parseData(value) {
     const lines=value.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(lines.length<2) throw new Error('至少需要標題列與一筆資料。');
     const split=line=>line.includes('\t')?line.split('\t').map(s=>s.trim()):line.split(/\s{2,}/).map(s=>s.trim());
@@ -229,17 +219,17 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     if(!rows.length) throw new Error('沒有成功解析到任何 SKU 資料。');
     return {rows,totalCtn:rows.reduce((sum,r)=>sum+r.ctn,0),totalQuantity:rows.reduce((sum,r)=>sum+r.quantity,0)};
   }
-  function buildEmail(casual=false){ try {
+  function buildEmail(){ try {
     const data=parseData($('emailData').value), date=$('pickupDate').value; if(!date) throw new Error('請先選擇 Pickup Date。'); if(!$('confirmPickup').checked) throw new Error('請勾選確認 Pickup Date。');
     const trucks=parsePositiveInteger($('truckCount').value,'分車數'); if(trucks>99) throw new Error('分車數不可超過 99，請重新檢查。'); if(!$('confirmTrucks').checked) throw new Error('請勾選確認分成幾車。');
     const recipient=$('recipientName').value.trim()||'Tiffany',displayDate=date.replaceAll('-','/'); const [y,m,d]=date.split('-').map(Number), dt=new Date(y,m-1,d); const fullDate=`${new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(dt)}, ${new Intl.DateTimeFormat('en-US',{month:'long'}).format(dt)} ${d}, ${y}`;
-    const rows=data.rows.map((r,index)=>`<tr><td>${index+1}</td><td>${escapeHtml(r.sku)}</td><td>${r.ctn}</td><td>${r.quantity}</td><td>${escapeHtml(r.expire)}</td></tr>`).join('');
-    const table=`<table class="email-table"><thead><tr><th>No.</th><th>SKU</th><th>CTN</th><th>Quantity</th><th>Expiry Date</th></tr></thead><tbody>${rows}</tbody></table>`;
-    emailSubject=casual?`${displayDate} Pickup Game Plan`:`${displayDate} Pickup – Shipment Details`;
-    emailHtml=casual
-      ? `<div><p>Wassup bro!</p><p>Quick heads-up: this load is locked in, split across ${trucks} trucks, and ready to roll — ${data.rows.length} SKUs, ${data.totalCtn} cartons, ${data.totalQuantity} units. Whole squad showed up.</p><p><strong>Pickup:</strong> ${fullDate}</p><p>Here’s the lineup:</p>${table}<p>That’s the whole play. Holler if anything looks wild; otherwise, we’re good to roll.</p><p>Appreciate you!</p></div>`
-      : `<div><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p><strong>Pickup Date:</strong> ${fullDate}</p>${table}</div>`;
-    const div=document.createElement('div');div.innerHTML=emailHtml;emailPlain=div.innerText||div.textContent||'';$('emailSubjectText').textContent=emailSubject;$('emailPreview').innerHTML=emailHtml;$('emailOutput').hidden=false;setCopyState();$('emailMeta').textContent=`已產生${casual?'口語':''}信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`;return true;
+    const cellStyle='padding:11px 13px;border:1px solid #bfdbfe;text-align:center;vertical-align:middle;line-height:1.55;';
+    const rows=data.rows.map((r,index)=>`<tr style="background:${index%2?'#eef6ff':'#f8fbff'}"><td style="${cellStyle}">${index+1}</td><td style="${cellStyle}font-weight:700;color:#1e3a8a;">${escapeHtml(r.sku)}</td><td style="${cellStyle}">${r.ctn}</td><td style="${cellStyle}">${r.quantity}</td><td style="${cellStyle}">${escapeHtml(r.expire)}</td></tr>`).join('');
+    const headStyle=`${cellStyle}background:#2563eb;color:#ffffff;font-weight:800;`;
+    const table=`<table class="email-table" style="width:100%;border-collapse:collapse;margin:22px auto 4px;background:#ffffff;border:1px solid #93c5fd;"><thead><tr><th style="${headStyle}">No.</th><th style="${headStyle}">SKU</th><th style="${headStyle}">CTN</th><th style="${headStyle}">Quantity</th><th style="${headStyle}">Expiry Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+    emailSubject=`${displayDate} Pickup – Shipment Details`;
+    emailHtml=`<div style="max-width:900px;margin:0 auto;padding:8px 12px;font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.75;color:#1f2937;text-align:center;"><p style="margin:0 0 16px;">Dear ${escapeHtml(recipient)},</p><p style="margin:0 0 16px;">Hope you’re doing well.</p><p style="margin:0 0 16px;">For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p style="margin:0 0 18px;"><strong>Pickup Date:</strong> ${fullDate}</p>${table}</div>`;
+    const div=document.createElement('div');div.innerHTML=emailHtml;emailPlain=div.innerText||div.textContent||'';$('emailSubjectText').textContent=emailSubject;$('emailPreview').innerHTML=emailHtml;$('emailOutput').hidden=false;setCopyState();$('emailMeta').textContent=`已產生信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`;return true;
   } catch(error) { emailHtml='';emailPlain='';emailSubject='';$('emailOutput').hidden=true;$('emailPreview').innerHTML='';setCopyState();$('emailMeta').textContent=error.message;return false; }}
   async function copyText(value){
     try{await navigator.clipboard.writeText(value);return true}catch(error){const area=document.createElement('textarea');area.value=value;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();const copied=document.execCommand('copy');area.remove();return copied}
@@ -252,24 +242,21 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const selected=[...document.querySelectorAll('[data-cc]:checked')].map(input=>input.dataset.cc);if(!selected.length){$('ccStatus').textContent='請至少選擇一位副本收件者。';return}
     const value=selected.join('\n');if(await copyText(value)){$('ccStatus').textContent=`已複製 ${selected.length} 位副本收件者。`;setCopyState()}
   }
-  async function buildAndCopy(casual){if(buildEmail(casual))await copySubject()}
+  async function buildAndCopy(){if(buildEmail())await copySubject()}
   function syncFlashConfirmations(){
     let flash=null,batch=null;try{flash=JSON.parse(localStorage.getItem('fba-workspace:flash-mode')||'null');batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null')}catch{}
     if(!flash||flash.batchId&&batch?.id&&flash.batchId!==batch.id)return;
     $('confirmPickup').checked=true;$('confirmTrucks').checked=true;updateConfirmationLabels();
   }
-  $('buildEmailBtn').addEventListener('click',()=>buildAndCopy(false));
-  $('buildCasualEmailBtn').addEventListener('click',()=>buildAndCopy(true));
+  $('buildEmailBtn').addEventListener('click',buildAndCopy);
   $('copySubjectBtn').addEventListener('click',copySubject);
   $('copyBodyBtn').addEventListener('click',copyBody);
   $('copyCcBtn').addEventListener('click',copyCcRecipients);
   document.querySelectorAll('[data-cc]').forEach(input=>input.addEventListener('change',()=>{$('ccStatus').textContent=`已選擇 ${document.querySelectorAll('[data-cc]:checked').length} 人`}));
-  window.addEventListener('fba-value-mode-changed',syncSecretEmailActions);
-  window.addEventListener('fba-bro-mode-changed',syncSecretEmailActions);
-  window.addEventListener('fba-workspace-ready',()=>{syncCalendarFromValue();updateConfirmationLabels();syncSecretEmailActions();syncFlashConfirmations()});
-  syncCalendarFromValue();updateConfirmationLabels();syncSecretEmailActions();
+  window.addEventListener('fba-workspace-ready',()=>{syncCalendarFromValue();updateConfirmationLabels();syncFlashConfirmations()});
+  syncCalendarFromValue();updateConfirmationLabels();
 })();
 </script>
-<script src="shared-workspace.js?v=20260723e"></script>
+<script src="shared-workspace.js?v=20260723f"></script>
 </body>
 </html>
