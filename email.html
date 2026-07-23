@@ -148,7 +148,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <textarea id="emailData" style="width:100%;min-height:220px" placeholder="SKU&#9;CTN&#9;Quantity&#9;EXPIRE&#10;ATS01&#9;94&#9;8460&#9;9/27"></textarea><span class="field-help">會自動帶入「入庫計畫」的四欄資料；仍可在這裡修改，Quantity 會顯示在 CTN 右側。</span>
       <div class="shipping-fields">
         <div class="field-block"><label for="pickupDateButton">Pickup Date</label><input id="pickupDate" type="hidden" /><button id="pickupDateButton" class="date-picker-button placeholder" type="button" aria-haspopup="dialog" aria-expanded="false">XXXX/XX/XX</button><div id="pickupCalendar" class="date-popover" role="dialog" aria-label="選擇 Pickup Date" hidden><div class="calendar-head"><button id="calendarPrev" class="calendar-nav" type="button" aria-label="上個月">‹</button><strong id="calendarTitle"></strong><button id="calendarNext" class="calendar-nav" type="button" aria-label="下個月">›</button></div><div class="calendar-week" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div id="calendarGrid" class="calendar-grid"></div></div><span class="field-help">會優先帶入「FBA 整理」讀到的日期，仍需在下方勾選確認。</span></div>
-        <div class="field-block"><label for="truckCountSelect">分成幾車</label><input id="truckCount" type="hidden" /><div id="truckPicker" class="truck-picker"><select id="truckCountSelect" aria-label="本次貨件車數"><option value="">請選擇</option><option value="1">1 車</option><option value="5">5 車</option><option value="other">其他</option></select><input id="truckCountOther" type="number" min="1" max="99" step="1" placeholder="手動輸入" aria-label="其他車數" hidden /></div><span class="field-help">會優先帶入本批次車數；選擇「其他」即可手動輸入。</span></div>
+        <div class="field-block"><label for="truckCount">分成幾車</label><input id="truckCount" type="number" min="1" max="99" step="1" inputmode="numeric" placeholder="輸入車數" aria-label="本次貨件車數" /><span class="field-help">會優先帶入 FBA 整理的車數，也可以直接輸入修改。</span></div>
         <div class="field-block"><label for="recipientName">收件人稱呼</label><input id="recipientName" type="text" value="Tiffany" data-preserve-on-new-batch /></div>
       </div>
       <div id="workspaceSource" class="workspace-source warn" aria-live="polite">正在確認本批次資料來源…</div>
@@ -160,7 +160,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
       <div id="emailOutput" class="email-output" hidden><section class="email-output-card"><div class="email-output-head"><div><span class="email-output-label">Email標題（主旨）：</span><div id="emailSubjectText" class="email-subject-value"></div></div><button id="copySubjectBtn" class="copy-step" type="button">複製主旨</button></div></section><section class="email-output-card email-body-card"><div class="email-output-head"><span class="email-output-label">Email內容</span><button id="copyBodyBtn" class="copy-step" type="button">複製內容</button></div><div id="emailPreview" class="email-preview"></div></section></div>
       <div class="cc-panel"><h3>副本收件者</h3><span class="field-help">預設全選；取消不需要的姓名後，一鍵複製到 Email 副本欄。</span><div class="cc-list"><label class="cc-chip"><input type="checkbox" data-cc="danny@jasperpet.com" checked> Danny</label><label class="cc-chip"><input type="checkbox" data-cc="jayden.hsu@jasperpet.com" checked> Jayden</label><label class="cc-chip"><input type="checkbox" data-cc="ray.chen@jasperpet.com" checked> Ray</label><label class="cc-chip"><input type="checkbox" data-cc="grace.chen@jasperpet.com" checked> Grace</label><label class="cc-chip"><input type="checkbox" data-cc="mandy.niu@jasperpet.com" checked> Mandy</label><label class="cc-chip"><input type="checkbox" data-cc="min@petlifeco.com" checked> Min</label></div><div class="cc-actions"><button id="copyCcBtn" class="btn" type="button">一鍵複製副本收件者</button><span id="ccStatus" class="cc-status">已預選 6 人</span></div></div>
-      <div class="outlook-panel"><h3>Outlook 桌面草稿</h3><span class="field-help">自動帶入 Tiffany、副本、主旨、內容與剛才 FBA 整理輸出的 ZIP。</span><div class="outlook-actions"><button id="outlookDraftBtn" class="btn" type="button">下載 Outlook 草稿（含 ZIP）</button><span id="outlookStatus" class="outlook-status">完成 FBA 整理後即可建立。</span></div></div>
     </div>
   </section>
 </main>
@@ -187,14 +186,11 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
   function setCalendarOpen(open){$('pickupCalendar').hidden=!open;$('pickupDateButton').setAttribute('aria-expanded',String(open));if(open)renderCalendar()}
   function syncCalendarFromValue(){const value=$('pickupDate').value;if(/^\d{4}-\d{2}-\d{2}$/.test(value)){const [year,month]=value.split('-').map(Number);calendarCursor=new Date(year,month-1,1)}updateConfirmationLabels()}
-  function syncTruckPickerFromValue(forceOther=false){const value=String($('truckCount').value||''),common=['1','5'].includes(value),other=forceOther||Boolean(value&&!common);$('truckCountSelect').value=common?value:other?'other':'';$('truckCountOther').hidden=!other;$('truckCountOther').value=common?'':value;$('truckPicker').classList.toggle('has-other',other);updateConfirmationLabels()}
   $('pickupDateButton').addEventListener('click',()=>setCalendarOpen($('pickupCalendar').hidden));
   $('calendarPrev').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar()});$('calendarNext').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar()});
   $('calendarGrid').addEventListener('click',event=>{const button=event.target.closest('[data-calendar-date]');if(!button)return;$('pickupDate').value=button.dataset.calendarDate;$('pickupDate').dispatchEvent(new Event('input',{bubbles:true}));setCalendarOpen(false)});
   document.addEventListener('click',event=>{if(!$('pickupCalendar').hidden&&!$('pickupCalendar').contains(event.target)&&!$('pickupDateButton').contains(event.target))setCalendarOpen(false)});
-  $('truckCountSelect').addEventListener('change',()=>{const value=$('truckCountSelect').value,other=value==='other';if(other){$('truckCount').value='';syncTruckPickerFromValue(true);resetConfirmation('trucks');$('truckCountOther').focus();return}$('truckCount').value=value;$('truckCount').dispatchEvent(new Event('input',{bubbles:true}))});
-  $('truckCountOther').addEventListener('input',()=>{$('truckCount').value=$('truckCountOther').value;$('truckCount').dispatchEvent(new Event('input',{bubbles:true}))});
-  $('pickupDate').addEventListener('input',()=>{syncCalendarFromValue();resetConfirmation('date')}); $('truckCount').addEventListener('input',()=>{syncTruckPickerFromValue();resetConfirmation('trucks')});
+  $('pickupDate').addEventListener('input',()=>{syncCalendarFromValue();resetConfirmation('date')}); $('truckCount').addEventListener('input',()=>{updateConfirmationLabels();resetConfirmation('trucks')});
   $('confirmPickup').addEventListener('change',updateConfirmationLabels); $('confirmTrucks').addEventListener('change',updateConfirmationLabels); updateConfirmationLabels();
   $('recipientName').addEventListener('keydown',(event)=>{
     if(event.key!=='Enter') return;
@@ -257,24 +253,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const value=selected.join('\n');if(await copyText(value)){$('ccStatus').textContent=`已複製 ${selected.length} 位副本收件者。`;setCopyState()}
   }
   async function buildAndCopy(casual){if(buildEmail(casual))await copySubject()}
-  function bytesToBase64(bytes){let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)}
-  function utf8Base64(value){return bytesToBase64(new TextEncoder().encode(String(value)))}
-  function wrapBase64(value){return value.match(/.{1,76}/g)?.join('\r\n')||''}
-  function outlookHtmlDocument(){
-    return `<!doctype html><html><head><meta charset="UTF-8"><meta name="Generator" content="FBA Workbench"><style>body{margin:0;padding:24px;background:#fff;color:#202124;font-family:Aptos,Calibri,"Segoe UI",Arial,sans-serif;font-size:11pt;line-height:1.55}p{margin:0 0 13px}.email-table{width:100%;border-collapse:collapse;margin-top:18px;font-family:Aptos,Calibri,"Segoe UI",Arial,sans-serif;font-size:10.5pt}.email-table th{padding:9px 10px;border:1px solid #c8d4e3;background:#eaf2fb;color:#173b63;text-align:left;font-weight:700}.email-table td{padding:8px 10px;border:1px solid #d9e1ea;color:#202124}.email-table tbody tr:nth-child(even){background:#f8fafc}</style></head><body>${emailHtml}</body></html>`;
-  }
-  async function createOutlookDraft(){
-    const status=$('outlookStatus');try{
-      if(!emailHtml&&!buildEmail(false))return;
-      if(!window.FBAWorkspaceFiles)throw new Error('共用附件功能尚未準備完成，請重新整理後再試。');
-      const files=await window.FBAWorkspaceFiles.loadAll(),zip=files.sortedZip;if(!zip)throw new Error('尚未取得 FBA 整理 ZIP，請先到 FBA 整理完成匯出。');
-      const cc=[...document.querySelectorAll('[data-cc]:checked')].map(input=>input.dataset.cc),boundary=`----FBA-${Date.now()}`,zipBase64=wrapBase64(bytesToBase64(new Uint8Array(await zip.arrayBuffer()))),htmlBase64=wrapBase64(utf8Base64(outlookHtmlDocument()));
-      const eml=[
-        'X-Unsent: 1','From: Jayden Hsu <jayden.hsu@jasperpet.com>','To: Tiffany Yang <tiffany.yang@petlifeco.com>',`Cc: ${cc.join(', ')}`,`Subject: =?UTF-8?B?${utf8Base64(emailSubject)}?=`,'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',htmlBase64,'',`--${boundary}`,`Content-Type: application/zip; name="${zip.name}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${zip.name}"`,'',zipBase64,'',`--${boundary}--`,''
-      ].join('\r\n');
-      const blob=new Blob([eml],{type:'message/rfc822'}),anchor=document.createElement('a');anchor.href=URL.createObjectURL(blob);anchor.download=`${$('pickupDate').value||'FBA'}_Outlook_Draft.eml`;anchor.click();setTimeout(()=>URL.revokeObjectURL(anchor.href),1500);status.textContent=`Outlook 草稿已下載並夾入 ${zip.name}；請點開下載的 .eml，即會以未寄送草稿開啟。`;
-    }catch(error){status.textContent=error.message||'無法建立 Outlook 草稿。'}
-  }
   function syncFlashConfirmations(){
     let flash=null,batch=null;try{flash=JSON.parse(localStorage.getItem('fba-workspace:flash-mode')||'null');batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null')}catch{}
     if(!flash||flash.batchId&&batch?.id&&flash.batchId!==batch.id)return;
@@ -285,14 +263,13 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('copySubjectBtn').addEventListener('click',copySubject);
   $('copyBodyBtn').addEventListener('click',copyBody);
   $('copyCcBtn').addEventListener('click',copyCcRecipients);
-  $('outlookDraftBtn').addEventListener('click',createOutlookDraft);
   document.querySelectorAll('[data-cc]').forEach(input=>input.addEventListener('change',()=>{$('ccStatus').textContent=`已選擇 ${document.querySelectorAll('[data-cc]:checked').length} 人`}));
   window.addEventListener('fba-value-mode-changed',syncSecretEmailActions);
   window.addEventListener('fba-bro-mode-changed',syncSecretEmailActions);
-  window.addEventListener('fba-workspace-ready',()=>{syncCalendarFromValue();syncTruckPickerFromValue();syncSecretEmailActions();syncFlashConfirmations()});
-  syncCalendarFromValue();syncTruckPickerFromValue();syncSecretEmailActions();
+  window.addEventListener('fba-workspace-ready',()=>{syncCalendarFromValue();updateConfirmationLabels();syncSecretEmailActions();syncFlashConfirmations()});
+  syncCalendarFromValue();updateConfirmationLabels();syncSecretEmailActions();
 })();
 </script>
-<script src="shared-workspace.js?v=20260723c"></script>
+<script src="shared-workspace.js?v=20260723d"></script>
 </body>
 </html>
