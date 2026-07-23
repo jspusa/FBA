@@ -143,6 +143,7 @@ main{max-width:1240px!important;margin:0 auto!important;padding:52px 28px 72px!i
 .active-risk-panel{margin-top:12px;padding:14px 16px;border:1px solid #ef9a9a;border-radius:16px;background:#fff2f2;color:#a11224}
 .active-risk-panel b{display:block}.active-risk-panel ul{margin:8px 0 0;padding-left:22px;line-height:1.6;font-size:13px}
 .active-risk-panel li+li,.export-warning-panel li+li{margin-top:7px}.active-risk-panel li>b,.export-warning-panel li>b{display:inline;margin-right:4px}.finding-warning{color:#8a4b00}.finding-error{color:#a11224}
+.detail-file-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.detail-file-copy h2{margin:0 0 5px!important}.detail-file-copy p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.detail-files-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:#fff}.detail-files-table{min-width:760px}.detail-files-table td,.detail-files-table th{vertical-align:middle}.detail-files-table td:nth-child(4){font-variant-numeric:tabular-nums}.detail-type{display:inline-flex;padding:5px 8px;border-radius:999px;background:#edf3ff;color:#315ea8;font-size:10px;font-weight:800;white-space:nowrap}.detail-remove{padding:6px 10px!important;border-color:#efb9c5!important;background:#fff7f8!important;color:#b42343!important;font-size:11px!important}.detail-empty{padding:18px!important;text-align:center!important;color:var(--muted)}
 .folder-risk-detail{margin-top:5px;color:var(--err);font-size:11px;line-height:1.45}
 .shipment-summary{margin-top:14px}.shipment-summary td,.shipment-summary th{text-align:center}.shipment-summary td{font-size:16px;font-weight:800}
 .btn,button{border-radius:999px!important}.btn.primary,.primary{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}.btn.primary:hover,.primary:hover{background:#0077ed!important}
@@ -157,7 +158,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <main>
 <section class="page-hero"><h1>FBA 檔案整理</h1><p>所有檔案一次丟入，自動分辨包裝箱標籤、棧板標籤、提單與 CSV。</p></section>
 
-<div class="page-tools"><button class="btn advanced-toggle" id="btnAdvancedToggle" type="button">顯示進階功能</button></div>
+<div class="page-tools"><button class="btn advanced-toggle" id="btnAdvancedToggle" type="button">顯示詳細檔案</button></div>
 
 <section id="page-sorter">
   <div class="stack">
@@ -174,7 +175,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
             <input id="inMixed" type="file" accept=".csv,application/pdf" multiple />
           </div>
         </div>
-        <div class="row advanced-detail"><div class="log" id="logMixed" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearMixed" type="button">清除此區紀錄</button></div>
+        <div class="row advanced-detail"><div class="log" id="logMixed" style="flex:1 1 auto;"></div></div>
       </div>
       <div class="batch-dashboard" id="batchDashboard">
         <div class="batch-stats">
@@ -195,6 +196,19 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       </div>
     </div>
 
+    <div class="card manual-zone file-manager-card">
+      <div class="detail-file-head">
+        <div class="detail-file-copy"><h2>詳細檔案 <span class="pill" id="detailFileCount">0 個檔案</span></h2><p>這裡顯示目前會放進 ZIP 的全部檔案；移除後會同步重算貨件摘要與檢查結果。</p></div>
+        <button class="btn danger" id="btnClearAllDetails" type="button">整區清除</button>
+      </div>
+      <div class="detail-files-wrap">
+        <table class="detail-files-table">
+          <thead><tr><th>類別</th><th>貨件／資料夾</th><th>檔案名稱</th><th>大小</th><th>操作</th></tr></thead>
+          <tbody id="detailFilesBody"><tr><td colspan="5" class="detail-empty">尚未上傳任何檔案</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card manual-zone">
       <h2>② 包裝箱標籤 <span class="pill">PDF</span></h2>
       <div class="row" style="margin-bottom:10px;">
@@ -211,7 +225,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
             <input id="inPack" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPack" type="button">清除此區</button></div>
+        <div class="row"><div class="log" id="logPack" style="flex:1 1 auto;"></div></div>
       </div>
     </div>
 
@@ -228,7 +242,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
             <input id="inCsv" type="file" accept=".csv" multiple />
           </div>
         </div>
-        <div class="row"><div class="log" id="logCsv" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearCsv" type="button">清除此區</button></div>
+        <div class="row"><div class="log" id="logCsv" style="flex:1 1 auto;"></div></div>
       </div>
     </div>
 
@@ -248,7 +262,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
             <input id="inPallet" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="row"><div class="log" id="logPallet" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearPallet" type="button">清除此區</button></div>
+        <div class="row"><div class="log" id="logPallet" style="flex:1 1 auto;"></div></div>
       </div>
     </div>
 
@@ -268,7 +282,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
             <input id="inBol" type="file" accept="application/pdf" multiple />
           </div>
         </div>
-        <div class="row"><div class="log" id="logBol" style="flex:1 1 auto;"></div><button class="btn danger" id="btnClearBol" type="button">清除此區</button></div>
+        <div class="row"><div class="log" id="logBol" style="flex:1 1 auto;"></div></div>
       </div>
     </div>
   </div>
@@ -420,11 +434,9 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     confirmRiskExport: document.getElementById('confirmRiskExport'),
     btnConfirmRiskExport: document.getElementById('btnConfirmRiskExport'),
     btnCancelRiskExport: document.getElementById('btnCancelRiskExport'),
-    btnClearCsv: document.getElementById('btnClearCsv'),
-    btnClearMixed: document.getElementById('btnClearMixed'),
-    btnClearPack: document.getElementById('btnClearPack'),
-    btnClearPallet: document.getElementById('btnClearPallet'),
-    btnClearBol: document.getElementById('btnClearBol'),
+    detailFileCount: document.getElementById('detailFileCount'),
+    detailFilesBody: document.getElementById('detailFilesBody'),
+    btnClearAllDetails: document.getElementById('btnClearAllDetails'),
     logs: {
       mixed: document.getElementById('logMixed'),
       csv: document.getElementById('logCsv'),
@@ -1077,6 +1089,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
 
   function refreshTree(){
+    refreshDetailFiles();
     if(folders.size === 0){
       els.previewBody.innerHTML = `<tr><td colspan="6" class="small">（尚未加入任何檔案）</td></tr>`;
       return;
@@ -1109,6 +1122,44 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       `);
     }
     els.previewBody.innerHTML = rows.join('');
+  }
+
+  function readableFileSize(bytes){
+    if(!Number.isFinite(bytes)) return '—';
+    if(bytes >= 1048576) return `${(bytes/1048576).toFixed(1)} MB`;
+    return `${Math.max(1,Math.round(bytes/1024))} KB`;
+  }
+
+  function refreshDetailFiles(){
+    if(!els.detailFilesBody) return;
+    const labels={csv:'CSV',pack:'包裝箱標籤',pallet:'棧板標籤',bol:'提單',other:'其他'};
+    const rows=[];
+    [...folders.entries()].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([folderName,meta])=>{
+      [...meta.files.entries()].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([filename,file])=>{
+        const type=storedFileType(filename);
+        rows.push(`<tr><td><span class="detail-type">${labels[type]||labels.other}</span></td><td><b>${escapeHtml(folderName)}</b></td><td>${escapeHtml(filename)}</td><td>${readableFileSize(file?.size)}</td><td><button class="btn detail-remove" type="button" data-remove-folder="${escapeHtml(folderName)}" data-remove-file="${escapeHtml(filename)}">移除此檔</button></td></tr>`);
+      });
+    });
+    els.detailFileCount.textContent=`${rows.length} 個檔案`;
+    els.detailFilesBody.innerHTML=rows.length?rows.join(''):'<tr><td colspan="5" class="detail-empty">尚未上傳任何檔案</td></tr>';
+  }
+
+  function removeStoredFile(folderName,filename){
+    const meta=folders.get(folderName);
+    if(!meta||!meta.files.has(filename)) return;
+    meta.files.delete(filename);
+    meta.hashes.delete(filename);
+    meta.analyses.delete(filename);
+    if(meta.files.size===0) folders.delete(folderName);
+    refreshAliasTable();refreshTree();refreshExportState();
+  }
+
+  function clearAllDetailedFiles(){
+    folders.clear();
+    batchStats={input:0,added:0,duplicate:0,unknown:0};
+    Object.values(els.logs).forEach(logBox=>{if(logBox)logBox.innerHTML=''});
+    els.bolDedupNotice.innerHTML='';
+    refreshAliasTable();refreshTree();refreshExportState();
   }
 
   function refreshAliasTable(){
@@ -1554,15 +1605,19 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     hideExportWarningPanel();
   });
   els.btnCancelRiskExport.addEventListener('click', hideExportWarningPanel);
-  els.btnClearMixed.addEventListener('click', ()=>{ els.logs.mixed.innerHTML = ''; });
-  els.btnClearCsv.addEventListener('click', ()=>clearByType('csv'));
-  els.btnClearPack.addEventListener('click', ()=>clearByType('pack'));
-  els.btnClearPallet.addEventListener('click', ()=>clearByType('pallet'));
-  els.btnClearBol.addEventListener('click', ()=>clearByType('bol'));
+  els.detailFilesBody.addEventListener('click',(event)=>{
+    const button=event.target.closest('[data-remove-folder][data-remove-file]');
+    if(!button)return;
+    removeStoredFile(button.dataset.removeFolder,button.dataset.removeFile);
+  });
+  els.btnClearAllDetails.addEventListener('click',()=>{
+    if(folders.size&& !window.confirm('要移除詳細檔案區的全部檔案嗎？'))return;
+    clearAllDetailedFiles();
+  });
   els.btnAdvancedToggle.addEventListener('click', ()=>{
     const isOpen = els.pageSorter.classList.toggle('show-advanced');
     els.btnAdvancedToggle.classList.toggle('active', isOpen);
-    els.btnAdvancedToggle.textContent = isOpen ? '隱藏進階功能' : '顯示進階功能';
+    els.btnAdvancedToggle.textContent = isOpen ? '隱藏詳細檔案' : '顯示詳細檔案';
   });
   els.btnAliasToggle.addEventListener('click', ()=>{
     els.aliasModal.classList.add('open');
@@ -1627,6 +1682,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260723h"></script>
+<script src="shared-workspace.js?v=20260723i"></script>
 </body>
 </html>
