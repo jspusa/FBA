@@ -215,7 +215,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.2'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.3'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -264,6 +264,9 @@
     body.fba-night input:focus,body.fba-night textarea:focus,body.fba-night select:focus{outline:3px solid rgba(249,115,22,.24)!important;border-color:#f97316!important}
     body.fba-night .workspace-source.ok,body.fba-night .review-progress.done{background:#2b180c!important;color:#fdba74!important;border-color:#9a4d15!important}
     body.fba-night .preflight-panel,body.fba-night .audit-item,body.fba-night .issue-head,body.fba-night .issue-body,body.fba-night .issue-table-wrap,body.fba-night .issue-option,body.fba-night .option-metric,body.fba-night .decision-confirm,body.fba-night .preflight-notes summary,body.fba-night .batch-stat,body.fba-night .final-status,body.fba-night .tool-status,body.fba-night .active-risk-panel,body.fba-night .export-warning-panel{background:#17120e!important;border-color:#5a351d!important;color:#fff7ed!important}
+    body.fba-night .issue-card.confirmed,body.fba-night .issue-card.confirmed .issue-head,body.fba-night .issue-card.confirmed .issue-body,body.fba-night .issue-card.confirmed .issue-table-wrap{background:#132117!important;border-color:#356b3d!important;color:#d1fad8!important}
+    body.fba-night .review-toggle.confirmed{background:#183221!important;border-color:#3f7d50!important;color:#c7f4d2!important;box-shadow:none!important}
+    body.fba-night .amazon-review-value b,body.fba-night .review-sku{color:#fff7ed!important}
     body.fba-night .audit-item[data-state="valid"],body.fba-night .issue-summary-pill.confirmed,body.fba-night .tool-status.ok,body.fba-night .final-status.ok{background:#172319!important;border-color:#356b3d!important;color:#d1fad8!important}
     body.fba-night .audit-item[data-state="warn"],body.fba-night .audit-item[data-state="checking"],body.fba-night .issue-summary-pill.warning,body.fba-night .tool-status.working,body.fba-night .final-status.warn{background:#2b1b0d!important;border-color:#9a5a17!important;color:#ffdda6!important}
     body.fba-night .audit-item[data-state="bad"],body.fba-night .tool-status.bad,body.fba-night .active-risk-panel{background:#2b1111!important;border-color:#9f3434!important;color:#fecaca!important}
