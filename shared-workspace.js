@@ -215,7 +215,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.0'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.1'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -299,7 +299,7 @@
     body.fba-night .pallet-group-primary{background:#166534!important;color:#f0fdf4!important}body.fba-night .pallet-group-audit{background:#374151!important;color:#f8fafc!important}body.fba-night .pallet-primary{background:#102416!important;color:#bbf7d0!important}body.fba-night .pallet-audit{background:#171717!important;color:#d1d5db!important}body.fba-night .pallet-divider{border-right-color:#4ade80!important}
     body.fba-night .decision-confirm:not(.confirmed){background:#3a250d!important;border-color:#d99b16!important;color:#fde68a!important}
     body.fba-night .review-all-complete .review-confirm-column{background:#15351f!important;border-color:#347a48!important;color:#bbf7d0!important}
-    body.fba-night .pallet-table tr.weight-copied-row td{box-shadow:inset 0 2px #fb923c,inset 0 -2px #fb923c!important}body.fba-night .pallet-table tr.weight-copied-row td:first-child{background:#3a1f0d!important;color:#fdba74!important;box-shadow:inset 4px 0 #f97316,inset 0 2px #fb923c,inset 0 -2px #fb923c!important}
+    body.fba-night .pallet-table tr.weight-copied-row td:nth-child(-n+4){box-shadow:inset 0 2px #fb923c,inset 0 -2px #fb923c!important}body.fba-night .pallet-table tr.weight-copied-row td:first-child{background:#3a1f0d!important;color:#fdba74!important;box-shadow:inset 4px 0 #f97316,inset 0 2px #fb923c,inset 0 -2px #fb923c!important}body.fba-night .pallet-table tr.weight-copied-row td:nth-child(4){border-right-color:#f97316!important;box-shadow:inset -3px 0 #f97316,inset 0 2px #fb923c,inset 0 -2px #fb923c!important}
     @media(max-width:860px){.app-header .header-inner{height:auto!important;min-height:0!important;padding:12px 18px!important;align-items:flex-start!important}.app-header .brand{height:36px!important}.app-header .workspace-header-actions{width:100%!important;justify-content:flex-end!important}}
     @media(max-width:680px){.page-tools{margin:-8px 0 14px}.advanced-toggle{width:100%;justify-content:center}.workspace-header-actions{width:100%;justify-content:flex-end}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.fba-door-transition .fba-door,.fba-value-shake,body.fba-ui-ready main>.hero,body.fba-ui-ready main>.page-hero,body.fba-ui-ready main .upload-card,body.fba-ui-ready main>.card,body.fba-ui-ready main .tool-card,body.fba-ui-ready main .auto-detect-card{animation-duration:.01ms!important}}
