@@ -53,7 +53,7 @@
   };
   window.FBAWorkspaceFiles = {
     async save(kind, file) {
-      if (!file || !['helium', 'inventory', 'business'].includes(kind)) return;
+      if (!file || !['helium', 'inventory', 'business', 'sortedZip'].includes(kind)) return;
       await restockRequest('readwrite', store => store.put({
         kind, batchId: batchMeta.id, name: file.name, type: file.type,
         lastModified: file.lastModified, blob: file
@@ -73,6 +73,10 @@
 
   const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
   const broModeEnabled = () => localStorage.getItem(BRO_MODE_KEY) === 'open';
+  const flashModeEnabled = () => {
+    const flash = readJson('fba-workspace:flash-mode');
+    return Boolean(flash && (!flash.batchId || flash.batchId === batchMeta.id));
+  };
   const nightModeEnabled = () => valueModeEnabled() || broModeEnabled();
   const notifyValueMode = () => window.dispatchEvent(new CustomEvent('fba-value-mode-changed', { detail: { enabled: valueModeEnabled() } }));
   const notifyBroMode = () => window.dispatchEvent(new CustomEvent('fba-bro-mode-changed', { detail: { enabled: broModeEnabled() } }));
@@ -119,6 +123,7 @@
       notifyBroMode();
     }
   };
+  window.FBAFlashMode = { isEnabled: flashModeEnabled };
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
     .filter(el => el.id && !el.matches('[data-no-persist]'));
@@ -202,8 +207,13 @@
   };
   const ensureVersionBadge = () => {
     const title = document.querySelector('.brand-copy strong');
-    if (!title || title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.0'; title.appendChild(badge);
+    if (!title) return;
+    const label = flashModeEnabled() ? '光速補貨模式' : '補貨工作台';
+    const textNode = [...title.childNodes].find(node => node.nodeType === Node.TEXT_NODE);
+    if (textNode) textNode.nodeValue = label;
+    else title.insertBefore(document.createTextNode(label), title.firstChild);
+    if (title.querySelector('.fba-version')) return;
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.6'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -280,6 +290,7 @@
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
     if (event.key === BRO_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyBroMode(); }
+    if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
   });
   const latestClear = localStorage.getItem(CLEAR_KEY);
   if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
