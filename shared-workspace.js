@@ -53,7 +53,7 @@
   };
   window.FBAWorkspaceFiles = {
     async save(kind, file) {
-      if (!file || !['helium', 'inventory', 'business', 'sortedZip'].includes(kind)) return;
+      if (!file || !['helium', 'inventory', 'business'].includes(kind)) return;
       await restockRequest('readwrite', store => store.put({
         kind, batchId: batchMeta.id, name: file.name, type: file.type,
         lastModified: file.lastModified, blob: file
@@ -228,7 +228,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.7'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.8'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -276,6 +276,13 @@
     body.fba-night .top-tabs{background:#17100b!important;border:1px solid #3f2817!important}body.fba-night .top-tab{color:#d6b79d!important}body.fba-night .top-tab:hover{background:#2b180c!important;color:#fff7ed!important}
     body.fba-night input:focus,body.fba-night textarea:focus,body.fba-night select:focus{outline:3px solid rgba(249,115,22,.24)!important;border-color:#f97316!important}
     body.fba-night .workspace-source.ok,body.fba-night .review-progress.done{background:#2b180c!important;color:#fdba74!important;border-color:#9a4d15!important}
+    body.fba-night .preflight-panel,body.fba-night .audit-item,body.fba-night .issue-head,body.fba-night .issue-body,body.fba-night .issue-table-wrap,body.fba-night .issue-option,body.fba-night .option-metric,body.fba-night .decision-confirm,body.fba-night .preflight-notes summary,body.fba-night .batch-stat,body.fba-night .final-status,body.fba-night .tool-status,body.fba-night .active-risk-panel,body.fba-night .export-warning-panel{background:#17120e!important;border-color:#5a351d!important;color:#fff7ed!important}
+    body.fba-night .audit-item[data-state="valid"],body.fba-night .issue-summary-pill.confirmed,body.fba-night .tool-status.ok,body.fba-night .final-status.ok{background:#172319!important;border-color:#356b3d!important;color:#d1fad8!important}
+    body.fba-night .audit-item[data-state="warn"],body.fba-night .audit-item[data-state="checking"],body.fba-night .issue-summary-pill.warning,body.fba-night .tool-status.working,body.fba-night .final-status.warn{background:#2b1b0d!important;border-color:#9a5a17!important;color:#ffdda6!important}
+    body.fba-night .audit-item[data-state="bad"],body.fba-night .tool-status.bad,body.fba-night .active-risk-panel{background:#2b1111!important;border-color:#9f3434!important;color:#fecaca!important}
+    body.fba-night .preflight-heading strong,body.fba-night .preflight-heading p,body.fba-night .audit-copy strong,body.fba-night .audit-copy span,body.fba-night .issue-title h2,body.fba-night .issue-title p,body.fba-night .issue-location strong,body.fba-night .issue-location span,body.fba-night .issue-current strong,body.fba-night .issue-current span,body.fba-night .option-metric,body.fba-night .option-metric b,body.fba-night .option-note,body.fba-night .diagnostic-detail,body.fba-night .diagnostic-detail code,body.fba-night .batch-stat span,body.fba-night .batch-stat strong,body.fba-night .audit-line,body.fba-night .audit-line b,body.fba-night .summary-head,body.fba-night .summary-head *,body.fba-night .tool-status,body.fba-night .final-status{color:#fff7ed!important}
+    body.fba-night .preflight-badge,body.fba-night .issue-count,body.fba-night .issue-summary-pill,body.fba-night .issue-type,body.fba-night .issue-handling,body.fba-night .recommended-tag,body.fba-night .notes-count,body.fba-night .tool-pill{background:#2d2118!important;color:#fed7aa!important;border-color:#7c451f!important}
+    body.fba-night .audit-icon{background:#4a3525!important;color:#fff7ed!important}
     .fba-door-transition{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden;display:flex;align-items:stretch;background:rgba(0,0,0,.18)}
     .fba-door{position:absolute;top:0;bottom:0;width:50.5%;background:linear-gradient(90deg,#090b10,#1c2230 48%,#090b10);border:1px solid #454f64;box-shadow:0 0 80px rgba(0,0,0,.9);display:grid;place-items:center}
     .fba-door.left{left:0}.fba-door.right{right:0;transform:scaleX(-1)}.fba-door span{width:18px;height:18px;border-radius:50%;background:#d6b85f;box-shadow:0 0 18px #f7dc82;position:absolute;right:24px}
