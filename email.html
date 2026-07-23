@@ -187,12 +187,12 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
   function setCalendarOpen(open){$('pickupCalendar').hidden=!open;$('pickupDateButton').setAttribute('aria-expanded',String(open));if(open)renderCalendar()}
   function syncCalendarFromValue(){const value=$('pickupDate').value;if(/^\d{4}-\d{2}-\d{2}$/.test(value)){const [year,month]=value.split('-').map(Number);calendarCursor=new Date(year,month-1,1)}updateConfirmationLabels()}
-  function syncTruckPickerFromValue(){const value=String($('truckCount').value||''),common=['1','5'].includes(value);$('truckCountSelect').value=common?value:value?'other':'';$('truckCountOther').hidden=!value||common;$('truckCountOther').value=common?'':value;$('truckPicker').classList.toggle('has-other',Boolean(value&&!common));updateConfirmationLabels()}
+  function syncTruckPickerFromValue(forceOther=false){const value=String($('truckCount').value||''),common=['1','5'].includes(value),other=forceOther||Boolean(value&&!common);$('truckCountSelect').value=common?value:other?'other':'';$('truckCountOther').hidden=!other;$('truckCountOther').value=common?'':value;$('truckPicker').classList.toggle('has-other',other);updateConfirmationLabels()}
   $('pickupDateButton').addEventListener('click',()=>setCalendarOpen($('pickupCalendar').hidden));
   $('calendarPrev').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar()});$('calendarNext').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar()});
   $('calendarGrid').addEventListener('click',event=>{const button=event.target.closest('[data-calendar-date]');if(!button)return;$('pickupDate').value=button.dataset.calendarDate;$('pickupDate').dispatchEvent(new Event('input',{bubbles:true}));setCalendarOpen(false)});
   document.addEventListener('click',event=>{if(!$('pickupCalendar').hidden&&!$('pickupCalendar').contains(event.target)&&!$('pickupDateButton').contains(event.target))setCalendarOpen(false)});
-  $('truckCountSelect').addEventListener('change',()=>{const value=$('truckCountSelect').value,other=value==='other';$('truckCountOther').hidden=!other;$('truckPicker').classList.toggle('has-other',other);$('truckCount').value=other?$('truckCountOther').value:value;$('truckCount').dispatchEvent(new Event('input',{bubbles:true}));if(other)$('truckCountOther').focus()});
+  $('truckCountSelect').addEventListener('change',()=>{const value=$('truckCountSelect').value,other=value==='other';if(other){$('truckCount').value='';syncTruckPickerFromValue(true);resetConfirmation('trucks');$('truckCountOther').focus();return}$('truckCount').value=value;$('truckCount').dispatchEvent(new Event('input',{bubbles:true}))});
   $('truckCountOther').addEventListener('input',()=>{$('truckCount').value=$('truckCountOther').value;$('truckCount').dispatchEvent(new Event('input',{bubbles:true}))});
   $('pickupDate').addEventListener('input',()=>{syncCalendarFromValue();resetConfirmation('date')}); $('truckCount').addEventListener('input',()=>{syncTruckPickerFromValue();resetConfirmation('trucks')});
   $('confirmPickup').addEventListener('change',updateConfirmationLabels); $('confirmTrucks').addEventListener('change',updateConfirmationLabels); updateConfirmationLabels();
@@ -242,7 +242,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     emailSubject=casual?`${displayDate} Pickup Game Plan`:`${displayDate} Pickup – Shipment Details`;
     emailHtml=casual
       ? `<div><p>Wassup bro!</p><p>Quick heads-up: this load is locked in, split across ${trucks} trucks, and ready to roll — ${data.rows.length} SKUs, ${data.totalCtn} cartons, ${data.totalQuantity} units. Whole squad showed up.</p><p><strong>Pickup:</strong> ${fullDate}</p><p>Here’s the lineup:</p>${table}<p>That’s the whole play. Holler if anything looks wild; otherwise, we’re good to roll.</p><p>Appreciate you!</p></div>`
-      : `<div><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p>Pickup Date: ${fullDate}</p><p>SKU / CTN / Quantity / Expiry Date:</p>${table}</div>`;
+      : `<div><p>Dear ${escapeHtml(recipient)},</p><p>Hope you’re doing well.</p><p>For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p><strong>Pickup Date:</strong> ${fullDate}</p>${table}</div>`;
     const div=document.createElement('div');div.innerHTML=emailHtml;emailPlain=div.innerText||div.textContent||'';$('emailSubjectText').textContent=emailSubject;$('emailPreview').innerHTML=emailHtml;$('emailOutput').hidden=false;setCopyState();$('emailMeta').textContent=`已產生${casual?'口語':''}信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`;return true;
   } catch(error) { emailHtml='';emailPlain='';emailSubject='';$('emailOutput').hidden=true;$('emailPreview').innerHTML='';setCopyState();$('emailMeta').textContent=error.message;return false; }}
   async function copyText(value){
@@ -260,14 +260,17 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   function bytesToBase64(bytes){let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)}
   function utf8Base64(value){return bytesToBase64(new TextEncoder().encode(String(value)))}
   function wrapBase64(value){return value.match(/.{1,76}/g)?.join('\r\n')||''}
+  function outlookHtmlDocument(){
+    return `<!doctype html><html><head><meta charset="UTF-8"><meta name="Generator" content="FBA Workbench"><style>body{margin:0;padding:24px;background:#fff;color:#202124;font-family:Aptos,Calibri,"Segoe UI",Arial,sans-serif;font-size:11pt;line-height:1.55}p{margin:0 0 13px}.email-table{width:100%;border-collapse:collapse;margin-top:18px;font-family:Aptos,Calibri,"Segoe UI",Arial,sans-serif;font-size:10.5pt}.email-table th{padding:9px 10px;border:1px solid #c8d4e3;background:#eaf2fb;color:#173b63;text-align:left;font-weight:700}.email-table td{padding:8px 10px;border:1px solid #d9e1ea;color:#202124}.email-table tbody tr:nth-child(even){background:#f8fafc}</style></head><body>${emailHtml}</body></html>`;
+  }
   async function createOutlookDraft(){
     const status=$('outlookStatus');try{
       if(!emailHtml&&!buildEmail(false))return;
       if(!window.FBAWorkspaceFiles)throw new Error('共用附件功能尚未準備完成，請重新整理後再試。');
       const files=await window.FBAWorkspaceFiles.loadAll(),zip=files.sortedZip;if(!zip)throw new Error('尚未取得 FBA 整理 ZIP，請先到 FBA 整理完成匯出。');
-      const cc=[...document.querySelectorAll('[data-cc]:checked')].map(input=>input.dataset.cc),boundary=`----FBA-${Date.now()}`,zipBase64=wrapBase64(bytesToBase64(new Uint8Array(await zip.arrayBuffer()))),htmlBase64=wrapBase64(utf8Base64(emailHtml));
+      const cc=[...document.querySelectorAll('[data-cc]:checked')].map(input=>input.dataset.cc),boundary=`----FBA-${Date.now()}`,zipBase64=wrapBase64(bytesToBase64(new Uint8Array(await zip.arrayBuffer()))),htmlBase64=wrapBase64(utf8Base64(outlookHtmlDocument()));
       const eml=[
-        'X-Unsent: 1','To: tiffany.yang@petlifeco.com',`Cc: ${cc.join(', ')}`,`Subject: =?UTF-8?B?${utf8Base64(emailSubject)}?=`,'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',htmlBase64,'',`--${boundary}`,`Content-Type: application/zip; name="${zip.name}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${zip.name}"`,'',zipBase64,'',`--${boundary}--`,''
+        'X-Unsent: 1','From: Jayden Hsu <jayden.hsu@jasperpet.com>','To: Tiffany Yang <tiffany.yang@petlifeco.com>',`Cc: ${cc.join(', ')}`,`Subject: =?UTF-8?B?${utf8Base64(emailSubject)}?=`,'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',htmlBase64,'',`--${boundary}`,`Content-Type: application/zip; name="${zip.name}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${zip.name}"`,'',zipBase64,'',`--${boundary}--`,''
       ].join('\r\n');
       const blob=new Blob([eml],{type:'message/rfc822'}),anchor=document.createElement('a');anchor.href=URL.createObjectURL(blob);anchor.download=`${$('pickupDate').value||'FBA'}_Outlook_Draft.eml`;anchor.click();setTimeout(()=>URL.revokeObjectURL(anchor.href),1500);status.textContent=`Outlook 草稿已下載並夾入 ${zip.name}；請點開下載的 .eml，即會以未寄送草稿開啟。`;
     }catch(error){status.textContent=error.message||'無法建立 Outlook 草稿。'}
@@ -290,6 +293,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   syncCalendarFromValue();syncTruckPickerFromValue();syncSecretEmailActions();
 })();
 </script>
-<script src="shared-workspace.js?v=20260723b"></script>
+<script src="shared-workspace.js?v=20260723c"></script>
 </body>
 </html>
