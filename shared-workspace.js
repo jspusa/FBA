@@ -203,7 +203,7 @@
   const ensureVersionBadge = () => {
     const title = document.querySelector('.brand-copy strong');
     if (!title || title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V12.6'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V13.0'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
