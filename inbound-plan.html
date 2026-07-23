@@ -29,6 +29,7 @@ details.backup{margin:0 0 18px;border:1px solid var(--line);border-radius:12px;b
 .review-all-inline{margin-left:7px!important;padding:4px 8px!important;min-width:auto!important;border-radius:8px!important;background:#f59e0b!important;color:#111827!important;border:1px solid #d97706!important;font-size:11px!important;vertical-align:middle}.review-all-inline[hidden]{display:none!important}
 .amazon-review{margin-top:18px;padding:22px;border:1px solid #bfdbfe;border-radius:20px;background:#f8fbff}.amazon-review[hidden]{display:none}.amazon-review h3{margin:0 0 6px}.amazon-review>p{margin:0 0 14px;font-size:13px}.amazon-review textarea{min-height:230px}.amazon-review-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}.amazon-review-status{font-size:13px;font-weight:750}.amazon-review-status.ok{color:#067647}.amazon-review-status.err{color:#b42318}.amazon-review-table{margin-top:14px;overflow:auto}.amazon-review-table table{min-width:940px;background:#fff}.amazon-review-table td,.amazon-review-table th{font-size:12px}.amazon-review-table tr.match td{background:#ecfdf3}.amazon-review-table tr.mismatch td,.amazon-review-table tr.extra td{background:#fff1f0}.amazon-review-table .check-good{color:#067647;font-weight:850}.amazon-review-table .check-bad{color:#b42318;font-weight:850}
 .inbound-value-panel{margin-top:18px;padding:18px;border:1px solid #bfdbfe;border-radius:16px;background:#f5faff}.inbound-value-panel h3{margin:0 0 5px;font-size:17px}.inbound-value-panel p{margin:0 0 12px;font-size:12px}.inbound-value-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.inbound-value-summary strong{padding:7px 10px;border-radius:999px;background:#dbeafe;color:#174e83;font-size:12px}.inbound-value-table{overflow:auto}.inbound-value-table table{min-width:650px;background:#fff}.inbound-value-total td{background:#ecfdf3;color:#05603a;font-weight:850}
+.inventory-deduction-status{margin-top:12px;padding:11px 13px;border-radius:12px;background:#f2f4f7;color:#475467;font-size:13px;line-height:1.5}.inventory-deduction-status.ok{background:#ecfdf3;color:#067647}.inventory-deduction-status.err{background:#fff1f0;color:#b42318}.inventory-deduction-result{margin-top:14px;overflow:auto}.inventory-deduction-result table{min-width:920px;background:#fff}.inventory-deduction-result th{background:#eff6ff;color:#174e83}.inventory-deduction-result .number-change{font-weight:850;color:#067647}.inventory-source-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.shared-inventory-button{background:#e8f7ed!important;color:#176b2c!important;border:1px solid #b7ebc7!important}.download-inventory-button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:700px){.qty-choice-grid{grid-template-columns:1fr}.amazon-next-step{align-items:flex-start;flex-direction:column}}
 @media(max-width:700px){.drawer-body{grid-template-columns:1fr}.review-pair{grid-template-columns:1fr}.preview table{min-width:1260px}}
 
@@ -79,10 +80,24 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         <div id="inventoryDropzone" class="dropzone" onclick="document.getElementById('inventoryFile').click()">
           <strong>將美國倉 Inventory 拉到這裡</strong><small>或點此選擇檔案</small><div id="inventoryFileName" class="filename"></div>
         </div>
-        <div class="actions"><button class="secondary" type="button" onclick="loadInventoryFile()">讀取並比對</button><button class="secondary" type="button" onclick="clearInventory()">清除美國倉資料</button></div>
+        <div class="actions"><button class="shared-inventory-button" type="button" onclick="loadSharedInventoryForComparison()">一鍵讀取補貨整合 Inventory</button><button class="secondary" type="button" onclick="loadInventoryFile()">讀取並比對</button><button class="secondary" type="button" onclick="clearInventory()">清除美國倉資料</button></div>
         <div class="note">箱入數不同時，可逐筆選擇採用台灣表單或美國倉資料；輸出總數會同步重算。</div>
         <div id="inventoryStatus" class="db-status">尚未載入美國倉 Inventory，目前全部採用台灣產品資料。</div>
         <div id="inventoryCompare" class="compare-wrap"></div>
+      </div>
+    </details>
+    <details class="drawer-section" id="inventoryDeductionPanel">
+      <summary>出貨後 Inventory：扣除本次入庫計畫</summary>
+      <div class="backup-body">
+        <div class="note" style="margin:0 0 12px">依 Amazon 入庫 Excel 自動產生器中的 SKU、入庫箱數與效期，扣除 Inventory 對應效期 QTY，並同步更新總箱數與總包數。</div>
+        <div class="inventory-source-actions"><button class="shared-inventory-button" type="button" onclick="loadSharedInventoryForDeduction()">一鍵抓取補貨整合 Inventory</button></div>
+        <input id="deductionInventoryFile" type="file" accept=".xlsx,.xlsm,.xls" hidden>
+        <div id="deductionInventoryDropzone" class="dropzone" onclick="document.getElementById('deductionInventoryFile').click()">
+          <strong>或將 Inventory Excel 拉到這裡</strong><small>點此也可自行選擇檔案</small><div id="deductionInventoryFileName" class="filename"></div>
+        </div>
+        <div class="actions"><button class="primary" type="button" onclick="buildPostShipmentInventory()">計算出貨後庫存</button><button id="downloadPostShipmentInventoryBtn" class="secondary download-inventory-button" type="button" onclick="downloadPostShipmentInventory()" disabled>下載新 Inventory Excel</button></div>
+        <div id="inventoryDeductionStatus" class="inventory-deduction-status">請先帶入 Inventory，並在上方貼上本週入庫計畫。</div>
+        <div id="inventoryDeductionResult" class="inventory-deduction-result"></div>
       </div>
     </details>
   </div>
@@ -145,7 +160,7 @@ function renderCatalogMeta(source='內建產品資料庫'){
 }
 let REVIEWED={};
 function toggleExtraDrawer(force){const panel=document.getElementById('extraDrawer'),button=document.getElementById('btnAdvancedToggle'),open=typeof force==='boolean'?force:panel.hidden;panel.hidden=!open;panel.setAttribute('aria-hidden',String(!open));button.classList.toggle('active',open);button.textContent=open?'隱藏進階功能':'顯示進階功能';}
-function bindDropzone(zoneId,inputId,nameId){const z=document.getElementById(zoneId),i=document.getElementById(inputId),n=document.getElementById(nameId);['dragenter','dragover'].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.add('dragover')}));['dragleave','drop'].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.remove('dragover')}));z.addEventListener('drop',e=>{if(e.dataTransfer.files.length){i.files=e.dataTransfer.files;n.textContent=e.dataTransfer.files[0].name}});i.addEventListener('change',()=>{n.textContent=i.files?.[0]?.name||''});}
+function bindDropzone(zoneId,inputId,nameId){const z=document.getElementById(zoneId),i=document.getElementById(inputId),n=document.getElementById(nameId);['dragenter','dragover'].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.add('dragover')}));['dragleave','drop'].forEach(ev=>z.addEventListener(ev,e=>{e.preventDefault();z.classList.remove('dragover')}));z.addEventListener('drop',e=>{if(e.dataTransfer.files.length){i.files=e.dataTransfer.files;n.textContent=e.dataTransfer.files[0].name;i.dispatchEvent(new Event('change',{bubbles:true}))}});i.addEventListener('change',()=>{n.textContent=i.files?.[0]?.name||''});}
 function fmtExpiry(dt){return `${String(dt.getUTCMonth()+1).padStart(2,'0')}/${String(dt.getUTCDate()).padStart(2,'0')}/${dt.getUTCFullYear()}`}
 function saveReviewed(){localStorage.setItem('fba-workspace:inbound-reviewed',JSON.stringify(REVIEWED))}
 function toggleReview(key,checked){REVIEWED[key]=checked;saveReviewed();renderPreview()}
@@ -156,6 +171,8 @@ const WANTED_SHEETS=new Set(['AMZ所有SKU','2026','罐頭']);
 let INVENTORY_UNITS={};
 let UNIT_SELECTION={}; // 'tw' 或 'us'，只記錄有差異的 SKU
 let INVENTORY_META={fileName:'',loaded:false};
+let DEDUCTION_INVENTORY_FILE=null;
+let DEDUCTION_OUTPUT=null;
 const normHeader=v=>String(v??'').replace(/[\s\u3000\r\n]+/g,'').toLowerCase();
 const normSheet=v=>String(v??'').replace(/[\s\u3000]+/g,'');
 function asNumber(v){if(typeof v==='number'&&Number.isFinite(v))return v;const m=String(v??'').replace(/,/g,'').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
@@ -233,17 +250,65 @@ function renderInventoryComparison(){
  diffs.forEach(sku=>{const tw=CATALOG[sku].units,us=INVENTORY_UNITS[sku],sel=UNIT_SELECTION[sku]||'tw';h+=`<tr><td>${sku}</td><td>${tw}</td><td>${us}</td><td><span class="pill warn">${us-tw>0?'+':''}${us-tw}</span></td><td><div class="choice"><label><input type="radio" name="u_${sku}" ${sel==='tw'?'checked':''} onchange="setUnitChoice('${sku}','tw')">台灣</label><label><input type="radio" name="u_${sku}" ${sel==='us'?'checked':''} onchange="setUnitChoice('${sku}','us')">美國倉</label></div></td></tr>`});
  el.innerHTML=h+'</tbody></table>';
 }
-async function loadInventoryFile(){
- const input=document.getElementById('inventoryFile'),status=document.getElementById('inventoryStatus');
- try{if(typeof XLSX==='undefined')throw new Error('Excel 讀取元件尚未載入，請確認網路後重新整理');if(!input.files||!input.files[0])throw new Error('請先選擇美國倉 Inventory Excel');
-  const data=await input.files[0].arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:false});const {found,sheetUsed,skipped,duplicates}=extractInventory(wb);
-  INVENTORY_UNITS=found;INVENTORY_META={fileName:input.files[0].name,loaded:true};
+async function processInventoryComparisonFile(file){
+ const status=document.getElementById('inventoryStatus');
+ try{if(typeof XLSX==='undefined')throw new Error('Excel 讀取元件尚未載入，請確認網路後重新整理');if(!file)throw new Error('請先選擇美國倉 Inventory Excel');
+  const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:false});const {found,sheetUsed,skipped,duplicates}=extractInventory(wb);
+  INVENTORY_UNITS=found;INVENTORY_META={fileName:file.name,loaded:true};document.getElementById('inventoryFileName').textContent=file.name;
   Object.keys(found).forEach(sku=>{if(CATALOG[sku]&&CATALOG[sku].units!==found[sku]&&!UNIT_SELECTION[sku])UNIT_SELECTION[sku]='tw'});
   const st=inventoryStats();status.className='db-status ok';status.textContent=`已讀取 ${sheetUsed}：${st.total} 個 SKU。共同且一致 ${st.same}、箱入數不同 ${st.diff}、僅美國倉有 ${st.usOnly}、僅台灣資料有 ${st.twOnly}。略過 ${skipped} 筆無效資料${duplicates?`，遇到 ${duplicates} 筆重複 SKU（採最後一筆）`:''}。`;
   renderInventoryComparison();renderPreview();
  }catch(e){status.className='db-status err';status.textContent=e.message}
 }
+async function loadInventoryFile(){const input=document.getElementById('inventoryFile');await processInventoryComparisonFile(input.files?.[0])}
+async function sharedInventoryFile(){if(!window.FBAWorkspaceFiles)throw new Error('共用檔案尚未準備完成，請重新整理後再試。');const files=await window.FBAWorkspaceFiles.loadAll();if(!files.inventory)throw new Error('補貨整合尚未加入本批次 Inventory 檔案。');return files.inventory}
+async function loadSharedInventoryForComparison(){const status=document.getElementById('inventoryStatus');try{const file=await sharedInventoryFile();await processInventoryComparisonFile(file)}catch(error){status.className='db-status err';status.textContent=error.message}}
 function clearInventory(){INVENTORY_UNITS={};UNIT_SELECTION={};INVENTORY_META={fileName:'',loaded:false};document.getElementById('inventoryFile').value='';document.getElementById('inventoryFileName').textContent='';const status=document.getElementById('inventoryStatus');status.className='db-status';status.textContent='尚未載入美國倉 Inventory，目前全部採用台灣產品資料。';renderInventoryComparison();renderPreview()}
+
+function setDeductionInventoryFile(file,label=''){
+ if(!file)throw new Error('請先選擇 Inventory Excel。');DEDUCTION_INVENTORY_FILE=file;DEDUCTION_OUTPUT=null;
+ document.getElementById('deductionInventoryFileName').textContent=`${label?`${label} · `:''}${file.name}`;
+ document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';
+ const status=document.getElementById('inventoryDeductionStatus');status.className='inventory-deduction-status ok';status.textContent=`已帶入 ${file.name}，可開始計算出貨後庫存。`;
+}
+async function loadSharedInventoryForDeduction(){const status=document.getElementById('inventoryDeductionStatus');try{setDeductionInventoryFile(await sharedInventoryFile(),'補貨整合')}catch(error){status.className='inventory-deduction-status err';status.textContent=error.message}}
+function inventoryNumericCell(cell){const value=cell?.value;if(typeof value==='number'&&Number.isFinite(value))return value;if(value&&typeof value==='object'&&Number.isFinite(value.result))return Number(value.result);const parsed=Number(String(cell?.text??value??'').replace(/,/g,''));return Number.isFinite(parsed)?parsed:NaN}
+function inventoryExpiryDescriptor(value,text=''){
+ const shown=String(text??'').trim();let match=shown.match(/^(\d{1,2})\/(\d{2}|\d{4})$/);if(match)return{year:match[2].length===2?2000+Number(match[2]):Number(match[2]),month:Number(match[1]),day:null,label:shown};
+ match=shown.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);if(match)return{year:match[3].length===2?2000+Number(match[3]):Number(match[3]),month:Number(match[1]),day:Number(match[2]),label:shown};
+ let date=null;if(value instanceof Date&&!Number.isNaN(value.getTime()))date=value;else if(typeof value==='number'&&Number.isFinite(value))date=new Date(Date.UTC(1899,11,30)+Math.round(value)*86400000);else if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(shown)){const [year,month,day]=shown.split('-').map(Number);return{year,month,day,label:shown}}
+ if(date)return{year:date.getUTCFullYear(),month:date.getUTCMonth()+1,day:date.getUTCDate(),label:shown||`${date.getUTCMonth()+1}/${date.getUTCDate()}/${date.getUTCFullYear()}`};return null;
+}
+function expiryMatches(left,right){return Boolean(left&&right&&left.year===right.year&&left.month===right.month&&(left.day==null||right.day==null||left.day===right.day))}
+function findExcelInventoryLayout(workbook){
+ for(const worksheet of workbook.worksheets){for(let r=1;r<=Math.min(15,worksheet.rowCount);r++){const headers=[];for(let c=1;c<=worksheet.columnCount;c++)headers.push(normHeader(worksheet.getCell(r,c).text));const sku=headers.findIndex(h=>h==='sku'||h.includes('merchantsku'))+1,pack=headers.findIndex(h=>h.includes('箱入數')||h.includes('unitsperbox')||h.includes('casepack'))+1,total=headers.findIndex(h=>h.includes('總箱數')||h.includes('总箱数')||h==='totalcartons')+1,totalUnits=headers.findIndex(h=>h.includes('總包數')||h.includes('总包数')||h==='totalunits')+1;if(!sku||!pack||!total)continue;const pairs=[];for(let c=1;c<=headers.length;c++){if(headers[c-1]!=='expire'&&!headers[c-1].includes('expiry'))continue;let qty=0;for(let q=c+1;q<=Math.min(headers.length,c+2);q++)if(headers[q-1]==='qty'||headers[q-1].includes('效期qty')){qty=q;break}if(qty)pairs.push({expire:c,qty})}if(pairs.length)return{worksheet,headerRow:r,sku,pack,total,totalUnits,pairs}}
+ }
+ throw new Error('Inventory 找不到 SKU、箱入數、總箱數與 EXPIRE／QTY 欄位。');
+}
+function outboundExpiryDescriptor(row){const text=String(row.expiryText||'');const parsed=inventoryExpiryDescriptor(row.expiry,text);return parsed||{year:row.expiry.getUTCFullYear(),month:row.expiry.getUTCMonth()+1,day:row.expiry.getUTCDate(),label:text}}
+function renderInventoryDeduction(details){
+ const panel=document.getElementById('inventoryDeductionResult');let html='<table><thead><tr><th>SKU</th><th>Excel 列</th><th>出貨效期</th><th>扣除箱數</th><th>效期 QTY</th><th>總箱數</th><th>出貨後總包數</th></tr></thead><tbody>';
+ details.forEach(item=>{html+=`<tr><td><b>${escapeCatalogHtml(item.sku)}</b></td><td>第 ${item.rowNumber} 列</td><td>${escapeCatalogHtml(item.expiry)}</td><td class="number-change">−${formatCount(item.deducted)}</td><td>${formatCount(item.qtyBefore)} → <b>${formatCount(item.qtyAfter)}</b></td><td>${formatCount(item.totalBefore)} → <b>${formatCount(item.totalAfter)}</b></td><td>${formatCount(item.unitsAfter)}</td></tr>`});
+ panel.innerHTML=html+'</tbody></table>';
+}
+async function buildPostShipmentInventory(){
+ const status=document.getElementById('inventoryDeductionStatus');try{
+  if(typeof ExcelJS==='undefined')throw new Error('Excel 輸出元件尚未載入，請重新整理後再試。');if(!DEDUCTION_INVENTORY_FILE)throw new Error('請先帶入補貨整合 Inventory，或自行選擇 Inventory Excel。');
+  const outboundRows=rowsData(), grouped=new Map();outboundRows.forEach(row=>{const expiry=outboundExpiryDescriptor(row),key=`${row.sku}|${expiry.year}-${expiry.month}-${expiry.day??'M'}`;if(!grouped.has(key))grouped.set(key,{sku:row.sku,expiry,boxes:0});grouped.get(key).boxes+=row.boxes});
+  const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(await DEDUCTION_INVENTORY_FILE.arrayBuffer());const layout=findExcelInventoryLayout(workbook),{worksheet}=layout,rowIndex=new Map();
+  for(let r=layout.headerRow+1;r<=worksheet.rowCount;r++){const sku=String(worksheet.getCell(r,layout.sku).text||'').trim().toUpperCase();if(!sku)continue;if(!rowIndex.has(sku))rowIndex.set(sku,[]);rowIndex.get(sku).push(r)}
+  const plans=[],plannedByRow=new Map();for(const outbound of grouped.values()){
+   const skuRows=rowIndex.get(outbound.sku)||[];if(!skuRows.length)throw new Error(`${outbound.sku} 在 Inventory 找不到資料列。`);const batches=[];
+   skuRows.forEach(rowNumber=>layout.pairs.forEach(pair=>{const expiryCell=worksheet.getCell(rowNumber,pair.expire),expiry=inventoryExpiryDescriptor(expiryCell.value,expiryCell.text),qtyCell=worksheet.getCell(rowNumber,pair.qty),qty=inventoryNumericCell(qtyCell);if(expiryMatches(expiry,outbound.expiry)&&Number.isFinite(qty)&&qty>0)batches.push({rowNumber,expiryCell,qtyCell,expiry,qty})}));
+   const available=batches.reduce((sum,batch)=>sum+batch.qty,0);if(!batches.length)throw new Error(`${outbound.sku} 找不到效期 ${outbound.expiry.label} 的庫存批次。`);if(available<outbound.boxes)throw new Error(`${outbound.sku} 效期 ${outbound.expiry.label} 僅剩 ${formatCount(available)} 箱，不足扣除 ${formatCount(outbound.boxes)} 箱。`);
+   let remaining=outbound.boxes;batches.forEach(batch=>{if(remaining<=0)return;const deducted=Math.min(remaining,batch.qty),totalCell=worksheet.getCell(batch.rowNumber,layout.total),originalTotal=inventoryNumericCell(totalCell),alreadyPlanned=plannedByRow.get(batch.rowNumber)||0,totalBefore=originalTotal-alreadyPlanned,pack=inventoryNumericCell(worksheet.getCell(batch.rowNumber,layout.pack));if(!Number.isFinite(totalBefore)||totalBefore<deducted)throw new Error(`${outbound.sku} 第 ${batch.rowNumber} 列總箱數不足，請先修正 Inventory。`);plans.push({...batch,sku:outbound.sku,deducted,totalCell,totalBefore,pack});plannedByRow.set(batch.rowNumber,alreadyPlanned+deducted);remaining-=deducted});
+  }
+  const details=[];plans.forEach(plan=>{const qtyAfter=plan.qty-plan.deducted,totalAfter=plan.totalBefore-plan.deducted,unitsAfter=Number.isFinite(plan.pack)?totalAfter*plan.pack:0;plan.qtyCell.value=qtyAfter;plan.totalCell.value=totalAfter;if(layout.totalUnits){const unitsCell=worksheet.getCell(plan.rowNumber,layout.totalUnits),existing=unitsCell.value,formula=existing&&typeof existing==='object'&&existing.formula?existing.formula:`A${plan.rowNumber}*C${plan.rowNumber}`;unitsCell.value={formula,result:unitsAfter}}details.push({sku:plan.sku,rowNumber:plan.rowNumber,expiry:plan.expiry.label||plan.expiryCell.text,deducted:plan.deducted,qtyBefore:plan.qty,qtyAfter,totalBefore:plan.totalBefore,totalAfter,unitsAfter})});
+  const now=new Date(),shortYear=String(now.getFullYear()).slice(-2),sheetName=`${now.getMonth()+1}-${now.getDate()}-${shortYear}`;worksheet.name=sheetName;worksheet.getCell(1,2).value=`${now.getMonth()+1}/${now.getDate()}/${shortYear}`;workbook.calcProperties.fullCalcOnLoad=true;workbook.calcProperties.forceFullCalc=true;
+  const buffer=await workbook.xlsx.writeBuffer(),filename=`Inventory_after_shipment_${now.toISOString().slice(0,10)}.xlsx`;DEDUCTION_OUTPUT={buffer,filename,details};renderInventoryDeduction(details);document.getElementById('downloadPostShipmentInventoryBtn').disabled=false;status.className='inventory-deduction-status ok';status.textContent=`已扣除 ${grouped.size} 個 SKU、共 ${formatCount([...grouped.values()].reduce((sum,item)=>sum+item.boxes,0))} 箱。請核對下表後下載新 Inventory。`;
+ }catch(error){DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';status.className='inventory-deduction-status err';status.textContent=error.message||'無法產生出貨後 Inventory。'}
+}
+function downloadPostShipmentInventory(){if(!DEDUCTION_OUTPUT)return;const blob=new Blob([DEDUCTION_OUTPUT.buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),anchor=document.createElement('a');anchor.href=URL.createObjectURL(blob);anchor.download=DEDUCTION_OUTPUT.filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(anchor.href),1000)}
 
 async function updateCatalogFromFile(){const input=document.getElementById('catalogFile'),status=document.getElementById('catalogStatus');try{if(typeof XLSX==='undefined')throw new Error('Excel 讀取元件尚未載入，請確認網路後重新整理');if(!input.files||!input.files[0])throw new Error('請先選擇產品資訊 Excel');const data=await input.files[0].arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:false});const {found,matched,skipped}=extractCatalog(wb);const before=new Set(Object.keys(BUILTIN_CATALOG));const added=Object.keys(found).filter(k=>!before.has(k)).length;const updated=Object.keys(found).filter(k=>before.has(k)).length;CATALOG={...BUILTIN_CATALOG,...found};renderCatalogMeta(`自訂資料：${input.files[0].name}`);renderInventoryComparison();status.className='db-status ok';status.textContent=`已讀取 ${matched.map(x=>x.trim()).join('、')}：匯入 ${Object.keys(found).length} 個 SKU（新增 ${added}、覆蓋 ${updated}），略過 ${skipped} 筆不完整資料。現在資料庫共 ${Object.keys(CATALOG).length} 個 SKU。`;renderPreview()}catch(e){status.className='db-status err';status.textContent=e.message}}
 function resetCatalog(){CATALOG={...BUILTIN_CATALOG};renderCatalogMeta();renderInventoryComparison();const status=document.getElementById('catalogStatus');status.className='db-status';status.textContent=`已恢復內建產品資料庫，共 ${Object.keys(CATALOG).length} 個 SKU。`;document.getElementById('catalogFile').value='';document.getElementById('catalogFileName').textContent='';renderPreview()}
@@ -483,7 +548,7 @@ document.getElementById('calculateInboundValueBtn').addEventListener('click',cal
 window.addEventListener('fba-value-mode-changed',event=>syncInboundValueMode(Boolean(event.detail?.enabled)));
 window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mode')syncInboundValueMode(event.newValue==='open')});
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
-renderCatalogMeta();document.getElementById('pasteInput').addEventListener('input',()=>{clearInboundValueResult();renderPreview()});bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');syncInboundValueMode();
+renderCatalogMeta();document.getElementById('pasteInput').addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260722e"></script>
+<script src="shared-workspace.js?v=20260723a"></script>
 </body></html>
