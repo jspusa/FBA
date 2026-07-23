@@ -223,12 +223,12 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     const data=parseData($('emailData').value), date=$('pickupDate').value; if(!date) throw new Error('請先選擇 Pickup Date。'); if(!$('confirmPickup').checked) throw new Error('請勾選確認 Pickup Date。');
     const trucks=parsePositiveInteger($('truckCount').value,'分車數'); if(trucks>99) throw new Error('分車數不可超過 99，請重新檢查。'); if(!$('confirmTrucks').checked) throw new Error('請勾選確認分成幾車。');
     const recipient=$('recipientName').value.trim()||'Tiffany',displayDate=date.replaceAll('-','/'); const [y,m,d]=date.split('-').map(Number), dt=new Date(y,m-1,d); const fullDate=`${new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(dt)}, ${new Intl.DateTimeFormat('en-US',{month:'long'}).format(dt)} ${d}, ${y}`;
-    const cellStyle='padding:11px 13px;border:1px solid #bfdbfe;text-align:center;vertical-align:middle;line-height:1.55;';
+    const cellStyle='padding:7px 10px;border:1px solid #bfdbfe;text-align:center;vertical-align:middle;line-height:1.4;font-size:13px;white-space:nowrap;';
     const rows=data.rows.map((r,index)=>`<tr style="background:${index%2?'#eef6ff':'#f8fbff'}"><td style="${cellStyle}">${index+1}</td><td style="${cellStyle}font-weight:700;color:#1e3a8a;">${escapeHtml(r.sku)}</td><td style="${cellStyle}">${r.ctn}</td><td style="${cellStyle}">${r.quantity}</td><td style="${cellStyle}">${escapeHtml(r.expire)}</td></tr>`).join('');
     const headStyle=`${cellStyle}background:#2563eb;color:#ffffff;font-weight:800;`;
-    const table=`<table class="email-table" style="width:100%;border-collapse:collapse;margin:22px auto 4px;background:#ffffff;border:1px solid #93c5fd;"><thead><tr><th style="${headStyle}">No.</th><th style="${headStyle}">SKU</th><th style="${headStyle}">CTN</th><th style="${headStyle}">Quantity</th><th style="${headStyle}">Expiry Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const table=`<table class="email-table" style="width:auto;max-width:100%;border-collapse:collapse;margin:20px auto 4px;background:#ffffff;border:1px solid #93c5fd;mso-table-lspace:0pt;mso-table-rspace:0pt;"><thead><tr><th style="${headStyle}">No.</th><th style="${headStyle}">SKU</th><th style="${headStyle}">CTN</th><th style="${headStyle}">Quantity</th><th style="${headStyle}">Expiry Date</th></tr></thead><tbody>${rows}</tbody></table>`;
     emailSubject=`${displayDate} Pickup – Shipment Details`;
-    emailHtml=`<div style="max-width:900px;margin:0 auto;padding:8px 12px;font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.75;color:#1f2937;text-align:center;"><p style="margin:0 0 16px;">Dear ${escapeHtml(recipient)},</p><p style="margin:0 0 16px;">Hope you’re doing well.</p><p style="margin:0 0 16px;">For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p style="margin:0 0 18px;"><strong>Pickup Date:</strong> ${fullDate}</p>${table}</div>`;
+    emailHtml=`<div style="max-width:900px;margin:0 auto;padding:8px 12px;font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.7;color:#1f2937;text-align:left;"><p style="margin:0 0 14px;">Dear ${escapeHtml(recipient)},</p><p style="margin:0 0 14px;">Hope you’re doing well.</p><p style="margin:0 0 14px;">For this shipment, the cargo has been split into ${trucks} trucks (${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units).</p><p style="margin:0 0 16px;"><strong>Pickup Date:</strong> ${fullDate}</p>${table}</div>`;
     const div=document.createElement('div');div.innerHTML=emailHtml;emailPlain=div.innerText||div.textContent||'';$('emailSubjectText').textContent=emailSubject;$('emailPreview').innerHTML=emailHtml;$('emailOutput').hidden=false;setCopyState();$('emailMeta').textContent=`已產生信件：${data.rows.length} SKUs / ${data.totalCtn} cartons / ${data.totalQuantity} units / ${trucks} trucks`;return true;
   } catch(error) { emailHtml='';emailPlain='';emailSubject='';$('emailOutput').hidden=true;$('emailPreview').innerHTML='';setCopyState();$('emailMeta').textContent=error.message;return false; }}
   async function copyText(value){
@@ -257,6 +257,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   syncCalendarFromValue();updateConfirmationLabels();
 })();
 </script>
-<script src="shared-workspace.js?v=20260723g"></script>
+<script src="shared-workspace.js?v=20260723h"></script>
 </body>
 </html>
