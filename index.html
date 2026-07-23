@@ -143,6 +143,11 @@
     .preflight-warnings.hidden{display:none}
     .issue-card{margin-top:18px;padding:0;overflow:hidden}
     .issue-card[hidden]{display:none}
+    .issue-card.confirmed{border-color:#b9ddc4;background:#f3fbf5}
+    .issue-card.confirmed .issue-head{background:linear-gradient(180deg,#eaf7ee 0%,#f6fcf8 100%);border-bottom-color:#cce5d3}
+    .issue-card.confirmed .issue-body{background:#f6fcf8}
+    .issue-card.confirmed .issue-count{background:#dff2e5;color:#176b38}
+    .issue-card.confirmed .issue-table-wrap{border-color:#cce5d3}
     .issue-head{padding:23px 26px 19px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fffaf0 0%,#fff 100%)}
     .issue-title{display:flex;align-items:flex-start;gap:13px;min-width:0}
     .issue-title h2{margin:0;font-size:21px;letter-spacing:-.025em}
@@ -1214,6 +1219,7 @@ async function run(options={}){
       const decisionCount=items.filter(item=>item.kind!=='diagnostic').length, diagnosticCount=items.length-decisionCount;
       $('issueCount').textContent=`${items.length} 項`;
       const confirmedCount=items.filter(item=>item.kind!=='diagnostic'&&Boolean(issueConfirmations[item.kind==='helium-duplicate'?'helium':'inventory']?.[item.sku])).length;
+      card.classList.toggle('confirmed',decisionCount>0&&confirmedCount===decisionCount&&diagnosticCount===0);
       if(decisionCount){
         if(confirmedCount===decisionCount) summary.appendChild(createIssueElement('span','issue-summary-pill confirmed',`${decisionCount} 項已確認完畢`));
         else summary.appendChild(createIssueElement('span','issue-summary-pill choice',`${confirmedCount} / ${decisionCount} 項已確認；可先切換再勾選`));
@@ -1572,6 +1578,6 @@ async function run(options={}){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260723h"></script>
+<script src="shared-workspace.js?v=20260723i"></script>
 </body>
 </html>
