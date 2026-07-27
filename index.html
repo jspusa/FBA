@@ -141,11 +141,7 @@
     .preflight-warnings{margin-top:11px;padding:11px 13px;border-radius:12px;background:#fff8e8;color:#774900;font-size:11px;line-height:1.5}
     .preflight-warnings div+div{margin-top:4px}
     .preflight-warnings.hidden{display:none}
-    .reservation-guard{margin-top:16px;padding:16px 18px;border:1px solid #f0bd68;border-radius:16px;background:#fff8e8;color:#6f4200}
-    .reservation-guard[hidden]{display:none}.reservation-guard.ok{border-color:#9bd0aa;background:#eef9f1;color:#176b38}.reservation-guard.bad{border-color:#e8a3a0;background:#fff1f0;color:#9f241d}
-    .reservation-guard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.reservation-guard-head strong{display:block;font-size:14px}.reservation-guard-head span{display:block;margin-top:4px;font-size:12px;line-height:1.5}
-    .reservation-guard-badge{flex:0 0 auto;padding:5px 9px;border-radius:999px;background:#ffe2a8;color:#7a4600;font-size:11px;font-weight:850}.reservation-guard.ok .reservation-guard-badge{background:#d8f2df;color:#176b38}.reservation-guard.bad .reservation-guard-badge{background:#ffd8d5;color:#9f241d}
-    .reservation-guard-table{margin-top:12px;overflow:auto;border:1px solid rgba(111,66,0,.16);border-radius:12px;background:#fff}.reservation-guard-table table{min-width:720px}.reservation-guard-table th,.reservation-guard-table td{padding:9px 10px;font-size:11px;text-align:left}.reservation-guard-table th{background:#fff2cf;color:#6f4200}.reservation-guard-table td:last-child{font-weight:800}
+    .inventory-latest-reminder{margin:10px 0 0;padding:10px 12px;border:1px solid #ecd49b;border-radius:11px;background:#fff9ea;color:#725019;font-size:11px;font-weight:700;line-height:1.5}
     .issue-card{margin-top:18px;padding:0;overflow:hidden}
     .issue-card[hidden]{display:none}
     .issue-card.confirmed{border-color:#b9ddc4;background:#f3fbf5}
@@ -307,6 +303,7 @@
           <span class="access-note">SharePoint 組織內直連</span>
         </div>
       </div>
+      <div class="inventory-latest-reminder">提醒：補貨請使用美國倉最新提供的 Inventory 檔案。</div>
       <div class="drop" id="dropInventory">
         <div class="file-icon" data-label="XLSX"></div>
         <div class="drop-title">拖曳 Excel 到這裡</div>
@@ -360,7 +357,6 @@
       </div>
       <div id="preflightWarnings" class="preflight-warnings hidden" aria-live="polite"></div>
     </div>
-    <div id="inventoryReservationPanel" class="reservation-guard" hidden aria-live="assertive"></div>
   </section>
 
   <section id="issueCard" class="card issue-card" hidden>
@@ -438,7 +434,6 @@
     const RED_URGENT_CLEARABLE_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'7F1D1D'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'16A34A'}},bottom:{style:'medium',color:{rgb:'16A34A'}},left:{style:'medium',color:{rgb:'D97706'}},right:{style:'medium',color:{rgb:'D97706'}}}};
     const MONTH_WARNING_STYLE = {font:{color:{rgb:'D70015'},bold:true},alignment:CENTER_ALIGNMENT};
     const state = { workbook:null, filename:"", sheets:null, activeSheet:"主工作表", shipmentRows:[], emailHtml:"", businessData:{} };
-    let reservationGuard = { active:false, blocked:false, appliedBoxes:0, reflectedBoxes:0, details:[], batches:0 };
     const toIsoDate=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const nextFridayStr=()=>{ const n=new Date(); const day=n.getDay(); let off=(5-day+7)%7; if(off===0||off===1) off+=7; const t=new Date(n); t.setDate(n.getDate()+off); return toIsoDate(t); };
     const todayStr=()=>toIsoDate(new Date());
@@ -1318,15 +1313,14 @@ async function run(options={}){
         pairText.textContent='等待兩份檔案'; pairText.title='等待兩份檔案'; pairIcon.textContent=pairItem.dataset.state==='bad'?'!':'↔';
       }
       const requiredValid=isValidCheck(helium)&&isValidCheck(inventory);
-      const ready=requiredValid&&business.status!=='checking'&&pair&&pair.matched>0&&!reservationGuard.blocked;
+      const ready=requiredValid&&business.status!=='checking'&&pair&&pair.matched>0;
       const issues=getIssueItems(pairDiagnostics), decisionCount=issues.filter(item=>item.kind!=='diagnostic').length, diagnosticCount=issues.length-decisionCount;
       const badge=$('preflightBadge'), summary=$('preflightSummary');
       badge.className='preflight-badge';
       if(helium.status==='checking'||inventory.status==='checking'||business.status==='checking'){
         badge.textContent='檢查中'; badge.classList.add('checking'); summary.textContent='正在確認檔案內容，完成前不會開放整理。';
-      }else if(helium.status==='invalid'||inventory.status==='invalid'||(pair&&pair.matched===0)||reservationGuard.blocked){
+      }else if(helium.status==='invalid'||inventory.status==='invalid'||(pair&&pair.matched===0)){
         badge.textContent='需要修正'; badge.classList.add('bad'); summary.textContent=pair&&pair.matched===0?'兩份檔案沒有共同 SKU，可能選到不同批次或錯誤檔案。':'至少一份檔案未通過必要格式檢查。';
-        if(reservationGuard.blocked) summary.textContent='上次補貨紀錄無法和目前 Inventory 安全對應，已停止整理，避免重複補貨。';
       }else if(ready){
         const heliumDone=!(helium.decisions||[]).length||decisionsConfirmed('helium',helium), inventoryDone=!(inventory.decisions||[]).length||decisionsConfirmed('inventory',inventory);
         const allDecisionsDone=decisionCount>0&&diagnosticCount===0&&heliumDone&&inventoryDone;
@@ -1339,105 +1333,7 @@ async function run(options={}){
       const warningBox=$('preflightWarnings'); warningBox.innerHTML=''; warningBox.classList.add('hidden');
       renderIssueCard(issues);
       renderPreflightNotes();
-      renderReservationGuard();
       return {ready,issues,pair,decisionCount,diagnosticCount};
-    }
-    function inventoryDateKey(value){
-      const date=parseExpiryDate(value);
-      if(!date)return '';
-      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-    }
-    function currentBatchId(){
-      try{return JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'{}').id||''}catch{return ''}
-    }
-    function buildInventorySnapshot(rows,fileName=''){
-      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers),items={};
-      for(let r=2;r<rows.length;r++){
-        const row=rows[r]||[],sku=fixSku(row[cols.skuIdx]);
-        if(!sku||isInventorySummarySku(sku))continue;
-        if(!items[sku])items[sku]={total:0,lots:{}};
-        items[sku].total+=Math.max(0,Math.round(toNumber(row[cols.totalCartonsIdx])));
-        cols.expiryPairs.forEach(pair=>{
-          const key=inventoryDateKey(row[pair.expiryIdx]),qty=Math.max(0,Math.round(toNumber(row[pair.qtyIdx])));
-          if(key&&qty)items[sku].lots[key]=(items[sku].lots[key]||0)+qty;
-        });
-      }
-      const snapshot={batchId:currentBatchId(),fileName,createdAt:Date.now(),items};
-      localStorage.setItem('fba-workspace:inventory-snapshot',JSON.stringify(snapshot));
-      return snapshot;
-    }
-    function reconcileReservedInventory(sourceRows,file){
-      const rows=sourceRows.map(row=>Array.isArray(row)?[...row]:row),api=window.FBAReservationLedger;
-      reservationGuard={active:false,blocked:false,appliedBoxes:0,reflectedBoxes:0,details:[],batches:0};
-      if(!api){buildInventorySnapshot(rows,file?.name||'');return rows}
-      const ledger=api.read(),batchId=currentBatchId(),pending=(ledger.batches||[]).filter(entry=>entry.status==='pending'&&entry.batchId!==batchId);
-      if(!pending.length){buildInventorySnapshot(rows,file?.name||'');return rows}
-      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers);
-      reservationGuard.active=true;reservationGuard.batches=pending.length;
-      pending.forEach(entry=>{
-        let batchApplied=0,batchUnresolved=0;
-        (entry.items||[]).forEach(item=>{
-          const sku=fixSku(item.sku),baseline=Number(entry.baseline?.[sku]?.lots?.[item.expiryKey]),planned=Math.max(0,Math.round(Number(item.boxes)||0));
-          if(!Number.isFinite(baseline)){
-            batchUnresolved++;reservationGuard.blocked=true;
-            reservationGuard.details.push({batch:entry.createdAt,sku,expiry:item.expiryText||item.expiryKey,planned,current:'—',deducted:'—',state:'缺少上批庫存基準'});
-            return;
-          }
-          const cells=[];
-          for(let r=2;r<rows.length;r++){
-            const row=rows[r]||[];
-            if(fixSku(row[cols.skuIdx])!==sku)continue;
-            cols.expiryPairs.forEach(pair=>{
-              if(inventoryDateKey(row[pair.expiryIdx])!==item.expiryKey)return;
-              const qty=Math.max(0,Math.round(toNumber(row[pair.qtyIdx])));
-              if(qty>0)cells.push({rowIndex:r,qtyIdx:pair.qtyIdx,qty});
-            });
-          }
-          const current=cells.reduce((sum,cell)=>sum+cell.qty,0),expected=Math.max(0,baseline-planned);
-          if(current<=expected){
-            reservationGuard.reflectedBoxes+=planned;
-            reservationGuard.details.push({batch:entry.createdAt,sku,expiry:item.expiryText||item.expiryKey,planned,current,deducted:0,state:'Inventory 已反映'});
-            return;
-          }
-          const missing=Math.min(planned,current-expected);
-          if(missing<=0||!cells.length){
-            batchUnresolved++;reservationGuard.blocked=true;
-            reservationGuard.details.push({batch:entry.createdAt,sku,expiry:item.expiryText||item.expiryKey,planned,current,deducted:'—',state:'找不到可安全扣除的效期批次'});
-            return;
-          }
-          let remaining=missing;
-          cells.forEach(cell=>{
-            if(remaining<=0)return;
-            const deducted=Math.min(remaining,Math.max(0,Math.round(toNumber(rows[cell.rowIndex][cell.qtyIdx]))));
-            rows[cell.rowIndex][cell.qtyIdx]=Math.max(0,Math.round(toNumber(rows[cell.rowIndex][cell.qtyIdx]))-deducted);
-            rows[cell.rowIndex][cols.totalCartonsIdx]=Math.max(0,Math.round(toNumber(rows[cell.rowIndex][cols.totalCartonsIdx]))-deducted);
-            remaining-=deducted;
-          });
-          if(remaining>0){
-            batchUnresolved++;reservationGuard.blocked=true;
-            reservationGuard.details.push({batch:entry.createdAt,sku,expiry:item.expiryText||item.expiryKey,planned,current,deducted:missing-remaining,state:'庫存不足以完成防重複扣除'});
-          }else{
-            batchApplied+=missing;reservationGuard.appliedBoxes+=missing;
-            reservationGuard.details.push({batch:entry.createdAt,sku,expiry:item.expiryText||item.expiryKey,planned,current,deducted:missing,state:'已自動暫扣'});
-          }
-        });
-        if(batchApplied===0&&batchUnresolved===0){
-          entry.status='reflected';entry.reflectedAt=Date.now();
-        }
-        entry.lastCheckedAt=Date.now();
-      });
-      api.save(ledger);
-      buildInventorySnapshot(rows,file?.name||'');
-      return rows;
-    }
-    function renderReservationGuard(){
-      const panel=$('inventoryReservationPanel');
-      if(!reservationGuard.active){panel.hidden=true;panel.innerHTML='';return}
-      panel.hidden=false;panel.className=`reservation-guard${reservationGuard.blocked?' bad':reservationGuard.appliedBoxes?'':' ok'}`;
-      const title=reservationGuard.blocked?'無法安全核對上次補貨，已停止整理':reservationGuard.appliedBoxes?'已攔截 Inventory 時間差，套用防重複扣除':'Inventory 已反映上次補貨';
-      const copy=reservationGuard.blocked?'至少一筆上次補貨無法依 SKU＋效期對應目前庫存，系統不開放整理或匯出。':reservationGuard.appliedBoxes?`偵測到 ${reservationGuard.batches} 個尚未結案批次；已先暫扣 ${reservationGuard.appliedBoxes} 箱，再計算本次補貨。美國倉更新 Inventory 後，系統會自動辨識並停止暫扣。`:`上次補貨的預留箱數已出現在目前 Inventory 的扣減中，不會再次扣除。`;
-      const rows=reservationGuard.details.map(item=>`<tr><td>${escapeHtml(new Date(item.batch).toLocaleDateString('zh-TW'))}</td><td>${escapeHtml(item.sku)}</td><td>${escapeHtml(item.expiry)}</td><td>${escapeHtml(item.planned)}</td><td>${escapeHtml(item.current)}</td><td>${escapeHtml(item.deducted)}</td><td>${escapeHtml(item.state)}</td></tr>`).join('');
-      panel.innerHTML=`<div class="reservation-guard-head"><div><strong>${title}</strong><span>${copy}</span></div><b class="reservation-guard-badge">${reservationGuard.blocked?'禁止繼續':reservationGuard.appliedBoxes?'防重複已啟用':'自動核對通過'}</b></div><div class="reservation-guard-table"><table><thead><tr><th>上批日期</th><th>SKU</th><th>效期</th><th>上批箱數</th><th>目前 QTY</th><th>本次暫扣</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     async function validateHeliumFile(file){
       const rows=await readCsvAsRows(file), parsed=parseHelium(rows);
@@ -1450,7 +1346,6 @@ async function run(options={}){
     }
     async function validateInventoryFile(file){
       const rows=await readWorkbookFirstSheetAsRows(file);
-      reservationGuard={active:false,blocked:false,appliedBoxes:0,reflectedBoxes:0,details:[],batches:0};
       if(rows.length<3) throw new Error('Inventory Excel 沒有足夠的資料列。');
       const headers=trimTrailingEmpty(rows[1]).map(h=>String(h??''));
       const cols=detectInventoryColumns(headers);
@@ -1504,8 +1399,7 @@ async function run(options={}){
       groups.forEach((options,sku)=>{ if(options.length>1) decisions.push({id:`inventory-${sku}`,kind:'inventory-duplicate',source:'Inventory',sku,options,defaultChoice:'all',location:`Excel 第 ${options.map(option=>option._sourceRow).join('、')} 列`}); });
       const stale=freshnessWarning(file,'Inventory Excel',7);
       if(stale) diagnostics.push({id:'inventory-file-age',kind:'diagnostic',label:'檔案日期',source:'Inventory',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      const adjustedRows=reconcileReservedInventory(rows,file);
-      return {rows:adjustedRows,rawRows:rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',pairCount:cols.expiryPairs.length,pairs:expiryPairStats}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}${reservationGuard.appliedBoxes?` · 防重複暫扣 ${reservationGuard.appliedBoxes} 箱`:''}`};
+      return {rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',pairCount:cols.expiryPairs.length,pairs:expiryPairStats}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}`};
     }
     async function validateBusinessFile(file){
       const rows=await readWorkbookFirstSheetAsRows(file), parsed=parseBusinessReport(rows);
@@ -1628,10 +1522,6 @@ async function run(options={}){
       preflightChecks[which]=emptyCheck();
       $({helium:'heliumFile',inventory:'inventoryFile',business:'businessFile'}[which]).value='';
       if(which==='business'){ state.businessData={}; if(window.FBAValueMode)window.FBAValueMode.clearBusinessReport(); else localStorage.removeItem('fba-workspace:business-report'); }
-      if(which==='inventory'){
-        localStorage.removeItem('fba-workspace:inventory-snapshot');
-        reservationGuard={active:false,blocked:false,appliedBoxes:0,reflectedBoxes:0,details:[],batches:0};
-      }
       if(window.FBAWorkspaceFiles) void window.FBAWorkspaceFiles.remove(which);
       renderFileLog(which); resetGeneratedResult(); updateWorkflowState();
     }
@@ -1690,6 +1580,6 @@ async function run(options={}){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260727a"></script>
+<script src="shared-workspace.js?v=20260727b"></script>
 </body>
 </html>
