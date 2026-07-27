@@ -506,8 +506,11 @@ async function exportExcel(){
     cell.style={...JSON.parse(JSON.stringify(cell.style||{})),numFmt:formats[c-1]};
    }
   });
-  const buf=await wb.xlsx.writeBuffer(); const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`Amazon入庫模板_${new Date().toISOString().slice(0,10)}.xlsx`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  status.className='ok'; status.textContent=`已產生 ${rows.length} 筆資料的 Excel。`;
+  const buf=await wb.xlsx.writeBuffer();
+  if(!window.FBAReservationLedger)throw new Error('補貨防重複機制尚未載入，請重新整理後再下載。');
+  const reservation=window.FBAReservationLedger.record(rows);
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`Amazon入庫模板_${new Date().toISOString().slice(0,10)}.xlsx`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  status.className='ok'; status.textContent=`已產生 ${rows.length} 筆資料的 Excel，並登記 ${reservation.items.length} 組 SKU／效期預留；下次 Inventory 尚未扣除時會自動防重複。`;
   return true;
  }catch(e){status.className='err';status.textContent=e.message;return false;}
 }
@@ -556,5 +559,5 @@ window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mo
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
 renderCatalogMeta();document.getElementById('pasteInput').addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260723i"></script>
+<script src="shared-workspace.js?v=20260727a"></script>
 </body></html>
