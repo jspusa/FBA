@@ -7,6 +7,8 @@
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
   const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
+  const INVENTORY_SNAPSHOT_KEY = 'fba-workspace:inventory-snapshot';
+  const RESERVATION_LEDGER_KEY = 'fba-restock-reservation-ledger:v1';
   const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
   const RESTOCK_DB = 'fba-restock-files';
@@ -70,7 +72,21 @@
     }
   };
 
-  const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
+  const modeCookieEnabled = () => document.cookie.split(';').some(item => item.trim() === 'fba_value_mode=open');
+  const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open'
+    || sessionStorage.getItem(VALUE_MODE_KEY) === 'open'
+    || modeCookieEnabled();
+  const persistValueMode = enabled => {
+    if (enabled) {
+      localStorage.setItem(VALUE_MODE_KEY, 'open');
+      sessionStorage.setItem(VALUE_MODE_KEY, 'open');
+      document.cookie = 'fba_value_mode=open; Path=/; SameSite=Lax';
+    } else {
+      localStorage.removeItem(VALUE_MODE_KEY);
+      sessionStorage.removeItem(VALUE_MODE_KEY);
+      document.cookie = 'fba_value_mode=; Max-Age=0; Path=/; SameSite=Lax';
+    }
+  };
   localStorage.removeItem('fba-workspace:bro-mode');
   const flashModeEnabled = () => {
     const flash = readJson('fba-workspace:flash-mode');
@@ -100,9 +116,8 @@
     isEnabled: valueModeEnabled,
     setEnabled(enabled) {
       const changed = valueModeEnabled() !== Boolean(enabled);
-      if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
-      else {
-        localStorage.removeItem(VALUE_MODE_KEY);
+      persistValueMode(Boolean(enabled));
+      if (!enabled) {
         closeFlashMode();
       }
       if (changed) playValueTransition(Boolean(enabled));
@@ -119,6 +134,64 @@
     clearBusinessReport() { localStorage.removeItem(BUSINESS_REPORT_KEY); }
   };
   window.FBAFlashMode = { isEnabled: flashModeEnabled };
+  const readReservationLedger = () => {
+    const ledger = readJson(RESERVATION_LEDGER_KEY, { version: 1, batches: [] });
+    return ledger && Array.isArray(ledger.batches) ? ledger : { version: 1, batches: [] };
+  };
+  const writeReservationLedger = ledger => localStorage.setItem(RESERVATION_LEDGER_KEY, JSON.stringify({
+    version: 1,
+    updatedAt: Date.now(),
+    batches: (ledger.batches || []).slice(-20)
+  }));
+  const expiryKey = value => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  window.FBAReservationLedger = {
+    key: RESERVATION_LEDGER_KEY,
+    snapshotKey: INVENTORY_SNAPSHOT_KEY,
+    read: readReservationLedger,
+    save: writeReservationLedger,
+    record(rows) {
+      const snapshot = readJson(INVENTORY_SNAPSHOT_KEY);
+      if (!snapshot?.batchId || snapshot.batchId !== batchMeta.id || !snapshot.items) {
+        throw new Error('找不到本批次的 Inventory 庫存基準，為避免重複補貨，請先回到「補貨整合」重新帶入 Inventory。');
+      }
+      const grouped = new Map();
+      (rows || []).forEach(row => {
+        const sku = String(row.sku || '').trim().toUpperCase();
+        const key = expiryKey(row.expiry);
+        const boxes = Math.max(0, Math.round(Number(row.boxes) || 0));
+        if (!sku || !key || !boxes) return;
+        const id = `${sku}|${key}`;
+        if (!grouped.has(id)) grouped.set(id, { sku, expiryKey: key, expiryText: String(row.expiryText || ''), boxes: 0 });
+        grouped.get(id).boxes += boxes;
+      });
+      const items = [...grouped.values()];
+      if (!items.length) throw new Error('沒有可登記的補貨 SKU、箱數與效期。');
+      const ledger = readReservationLedger();
+      const existingIndex = ledger.batches.findIndex(entry => entry.batchId === batchMeta.id);
+      const existing = existingIndex >= 0 ? ledger.batches[existingIndex] : null;
+      const entry = {
+        id: existing?.id || makeId(),
+        batchId: batchMeta.id,
+        createdAt: existing?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        sourceInventoryName: snapshot.fileName || '',
+        baseline: snapshot.items,
+        items,
+        status: 'pending'
+      };
+      if (existingIndex >= 0) ledger.batches.splice(existingIndex, 1, entry);
+      else ledger.batches.push(entry);
+      writeReservationLedger(ledger);
+      return entry;
+    }
+  };
 
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
     .filter(el => el.id && !el.matches('[data-no-persist]'));
@@ -167,6 +240,7 @@
     localStorage.removeItem(FORM_KEY);
     if (PAGE === 'index.html') {
       localStorage.removeItem(BUSINESS_REPORT_KEY);
+      localStorage.removeItem(INVENTORY_SNAPSHOT_KEY);
       await deleteRestockDatabase();
     } else if (PAGE === 'inbound-plan.html') {
       localStorage.removeItem(SHARED_INBOUND_KEY);
@@ -215,7 +289,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.3'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.4'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -309,6 +383,7 @@
     `;
   document.head.appendChild(style);
   ensureVersionBadge();
+  if (valueModeEnabled()) persistValueMode(true);
   document.body.classList.toggle('fba-night', nightModeEnabled());
   requestAnimationFrame(() => document.body.classList.add('fba-ui-ready'));
   const resetButton = ensureResetButton();
@@ -318,6 +393,16 @@
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
     if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
+  });
+  window.addEventListener('pageshow', () => {
+    document.body.classList.toggle('fba-night', nightModeEnabled());
+    notifyValueMode();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      document.body.classList.toggle('fba-night', nightModeEnabled());
+      notifyValueMode();
+    }
   });
   const latestClear = localStorage.getItem(CLEAR_KEY);
   if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
