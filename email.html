@@ -168,6 +168,12 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   const $ = id => document.getElementById(id);
   const escapeHtml = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
   const parsePositiveInteger = (value, label) => { const raw=String(value??'').trim(); const number=Number(raw); if(!/^\d+$/.test(raw)||!Number.isInteger(number)||number<1) throw new Error(`${label}必須是正整數。`); return number; };
+  const isValidIsoDate = value => {
+    const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!match)return false;
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(Date.UTC(year,month-1,day));
+    return month>=1&&month<=12&&day>=1&&day<=31&&date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;
+  };
   let emailHtml = '', emailPlain='', emailSubject='', calendarCursor=new Date();
   function setCopyState(kind=''){
     [['subject','copySubjectBtn','複製主旨'],['body','copyBodyBtn','複製內容']].forEach(([name,id,label])=>{const button=$(id);button.classList.toggle('copied',name===kind);button.textContent=name===kind?'已複製':label});
@@ -185,7 +191,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     for(let day=1;day<=days;day++){const iso=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,classes=['calendar-day'];if(iso===selected)classes.push('selected');if(year===today.getFullYear()&&month===today.getMonth()&&day===today.getDate())classes.push('today');html+=`<button class="${classes.join(' ')}" type="button" data-calendar-date="${iso}">${day}</button>`}$('calendarGrid').innerHTML=html;
   }
   function setCalendarOpen(open){$('pickupCalendar').hidden=!open;$('pickupDateButton').setAttribute('aria-expanded',String(open));if(open)renderCalendar()}
-  function syncCalendarFromValue(){const value=$('pickupDate').value;if(/^\d{4}-\d{2}-\d{2}$/.test(value)){const [year,month]=value.split('-').map(Number);calendarCursor=new Date(year,month-1,1)}updateConfirmationLabels()}
+  function syncCalendarFromValue(){const value=$('pickupDate').value;if(isValidIsoDate(value)){const [year,month]=value.split('-').map(Number);calendarCursor=new Date(year,month-1,1)}else if(value){$('pickupDate').value=''}updateConfirmationLabels()}
   $('pickupDateButton').addEventListener('click',()=>setCalendarOpen($('pickupCalendar').hidden));
   $('calendarPrev').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar()});$('calendarNext').addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar()});
   $('calendarGrid').addEventListener('click',event=>{const button=event.target.closest('[data-calendar-date]');if(!button)return;$('pickupDate').value=button.dataset.calendarDate;$('pickupDate').dispatchEvent(new Event('input',{bubbles:true}));setCalendarOpen(false)});
@@ -220,7 +226,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     return {rows,totalCtn:rows.reduce((sum,r)=>sum+r.ctn,0),totalQuantity:rows.reduce((sum,r)=>sum+r.quantity,0)};
   }
   function buildEmail(){ try {
-    const data=parseData($('emailData').value), date=$('pickupDate').value; if(!date) throw new Error('請先選擇 Pickup Date。'); if(!$('confirmPickup').checked) throw new Error('請勾選確認 Pickup Date。');
+    const data=parseData($('emailData').value), date=$('pickupDate').value; if(!isValidIsoDate(date)) throw new Error('請先選擇正確的 Pickup Date。'); if(!$('confirmPickup').checked) throw new Error('請勾選確認 Pickup Date。');
     const trucks=parsePositiveInteger($('truckCount').value,'分車數'); if(trucks>99) throw new Error('分車數不可超過 99，請重新檢查。'); if(!$('confirmTrucks').checked) throw new Error('請勾選確認分成幾車。');
     const recipient=$('recipientName').value.trim()||'Tiffany',displayDate=date.replaceAll('-','/'); const [y,m,d]=date.split('-').map(Number), dt=new Date(y,m-1,d); const fullDate=`${new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(dt)}, ${new Intl.DateTimeFormat('en-US',{month:'long'}).format(dt)} ${d}, ${y}`;
     const cellStyle='padding:7px 10px;border:1px solid #bfdbfe;text-align:center;vertical-align:middle;line-height:1.4;font-size:13px;white-space:nowrap;';
@@ -262,6 +268,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   syncCalendarFromValue();updateConfirmationLabels();
 })();
 </script>
-<script src="shared-workspace.js?v=20260729d"></script>
+<script src="shared-workspace.js?v=20260729f"></script>
 </body>
 </html>
