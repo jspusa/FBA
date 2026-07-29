@@ -10,7 +10,11 @@
   const SORTER_DB = 'fba-workspace';
   const RESTOCK_DB = 'fba-restock-files';
   const RESTOCK_STORE = 'files';
+  const FORM_STATE_DB = 'fba-workspace-state';
+  const FORM_STATE_STORE = 'forms';
   let isClearing = false;
+  let isRestoring = true;
+  let latestFormUpdate = 0;
 
   const makeId = () => globalThis.crypto?.randomUUID?.()
     || `batch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -43,6 +47,28 @@
       return await new Promise((resolve, reject) => {
         const tx = db.transaction(RESTOCK_STORE, mode);
         const store = tx.objectStore(RESTOCK_STORE);
+        const request = action(store);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } finally { db.close(); }
+  };
+  const openFormStateDb = () => new Promise((resolve, reject) => {
+    if (!globalThis.indexedDB) return reject(new Error('瀏覽器不支援表單暫存'));
+    const request = indexedDB.open(FORM_STATE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(FORM_STATE_STORE)) db.createObjectStore(FORM_STATE_STORE, { keyPath: 'page' });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const formStateRequest = async (mode, action) => {
+    const db = await openFormStateDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(FORM_STATE_STORE, mode);
+        const store = tx.objectStore(FORM_STATE_STORE);
         const request = action(store);
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -145,9 +171,13 @@
     else el.value = value ?? '';
   };
   const save = () => {
+    if (isClearing || isRestoring) return;
     const state = {};
     fields().forEach(el => { state[fieldKey(el)] = read(el); });
-    localStorage.setItem(FORM_KEY, JSON.stringify({ batchId: batchMeta.id, state, updatedAt: Date.now() }));
+    const payload = { page: PAGE, batchId: batchMeta.id, state, updatedAt: Date.now() };
+    latestFormUpdate = payload.updatedAt;
+    localStorage.setItem(FORM_KEY, JSON.stringify(payload));
+    void formStateRequest('readwrite', store => store.put(payload)).catch(() => {});
     const inbound = document.getElementById('pasteInput');
     if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({ batchId: batchMeta.id, value: inbound.value, updatedAt: Date.now() }));
     batchMeta.updatedAt = Date.now();
@@ -169,12 +199,17 @@
     const request = indexedDB.deleteDatabase(RESTOCK_DB);
     request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
+  const deleteFormStateDatabase = () => new Promise(resolve => {
+    if (!globalThis.indexedDB) return resolve();
+    const request = indexedDB.deleteDatabase(FORM_STATE_DB);
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
+  });
   const reloadAfterClear = () => { isClearing = true; clearCurrentPage(); location.reload(); };
   const startNewBatch = async () => {
     if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
     isClearing = true;
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
-    await Promise.all([deleteSorterDatabase(), deleteRestockDatabase()]);
+    await Promise.all([deleteSorterDatabase(), deleteRestockDatabase(), deleteFormStateDatabase()]);
     localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
   };
@@ -182,6 +217,7 @@
     if (!window.confirm('確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。')) return;
     isClearing = true;
     localStorage.removeItem(FORM_KEY);
+    await formStateRequest('readwrite', store => store.delete(PAGE)).catch(() => {});
     if (PAGE === 'index.html') {
       localStorage.removeItem(BUSINESS_REPORT_KEY);
       await deleteRestockDatabase();
@@ -232,7 +268,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.6'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.7'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -348,6 +384,7 @@
     }
   });
   const savedForm = readJson(FORM_KEY, {});
+  latestFormUpdate = Number(savedForm?.updatedAt) || 0;
   const savedState = savedForm?.batchId ? (savedForm.batchId === batchMeta.id ? savedForm.state || {} : {}) : savedForm;
   const restoredFields = fields().filter(el => Object.prototype.hasOwnProperty.call(savedState || {}, fieldKey(el)));
   restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
@@ -384,6 +421,39 @@
   restoredFields
     .filter(el => el.type === 'checkbox' || el.type === 'radio')
     .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
+  isRestoring = false;
+  if (savedForm?.batchId === batchMeta.id && savedForm.state) {
+    void formStateRequest('readwrite', store => store.put({
+      page: PAGE,
+      batchId: batchMeta.id,
+      state: savedForm.state,
+      updatedAt: latestFormUpdate || Date.now()
+    })).catch(() => {});
+  }
+  void formStateRequest('readonly', store => store.get(PAGE)).then(record => {
+    if (!record || record.batchId !== batchMeta.id || !record.state || Number(record.updatedAt) <= latestFormUpdate) return;
+    isRestoring = true;
+    const restored = fields().filter(el => Object.prototype.hasOwnProperty.call(record.state, fieldKey(el)));
+    restored.forEach(el => write(el, record.state[fieldKey(el)]));
+    restored.forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+    restored
+      .filter(el => el.type === 'checkbox' || el.type === 'radio')
+      .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
+    latestFormUpdate = Number(record.updatedAt) || Date.now();
+    localStorage.setItem(FORM_KEY, JSON.stringify({
+      page: PAGE,
+      batchId: batchMeta.id,
+      state: record.state,
+      updatedAt: latestFormUpdate
+    }));
+    const inbound = document.getElementById('pasteInput');
+    if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({
+      batchId: batchMeta.id,
+      value: inbound.value,
+      updatedAt: latestFormUpdate
+    }));
+    isRestoring = false;
+  }).catch(() => { isRestoring = false; });
   document.querySelectorAll('.top-tabs a[href]').forEach(link => {
     link.addEventListener('click', () => { if (!isClearing) save(); }, { capture: true });
   });
