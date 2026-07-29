@@ -378,6 +378,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   const folders = new Map();
   const SORTER_DB = 'fba-workspace';
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const SORTER_HANDOFF_KEY = 'fba-workspace:sorter-handoff';
   const SORTER_EXPORT_KEY = 'fba-workspace:sorter-export';
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   let restoringWorkspace = true;
@@ -688,15 +689,22 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   function normalizeShipmentDate(value){
     if(!value) return null;
     const raw=String(value).replace(/,/g,' ').replace(/\s+/g,' ').trim();
+    const validDate=(year,month,day)=>{
+      year=Number(year);month=Number(month);day=Number(day);
+      if(!Number.isInteger(year)||year<2000||year>2099||!Number.isInteger(month)||month<1||month>12||!Number.isInteger(day)||day<1||day>31)return null;
+      const candidate=new Date(Date.UTC(year,month-1,day));
+      if(candidate.getUTCFullYear()!==year||candidate.getUTCMonth()!==month-1||candidate.getUTCDate()!==day)return null;
+      return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    };
     let match = raw.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
-    if(match) return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+    if(match) return validDate(match[1],match[2],match[3]);
     match = raw.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
-    if(match) return `${match[3]}-${match[1].padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+    if(match) return validDate(match[3],match[1],match[2]);
     match = raw.match(/\b(JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\s+(\d{1,2})\s+(20\d{2})\b/i);
     if(match){
       const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
       const month=months[match[1].slice(0,3).toUpperCase()];
-      return `${match[3]}-${String(month).padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+      return validDate(match[3],month,match[2]);
     }
     match = raw.match(/\b(\d{1,2})[-\/.](\d{1,2})\b/);
     if(match){
@@ -704,7 +712,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       let year=now.getFullYear();
       const candidate=new Date(year,Number(match[1])-1,Number(match[2]));
       if(candidate.getTime()<now.getTime()-120*86400000)year++;
-      return `${year}-${match[1].padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+      return validDate(year,match[1],match[2]);
     }
     return null;
   }
@@ -792,7 +800,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
         return {
           type,
           shipmentId:parsed.shipmentId || shipmentMatch?.[1] || shipmentValue || inferFolderKey(file.name),
-          shipmentDate:parsed.shipmentDate || normalizeShipmentDate(dateMatch?.[1]) || (dateIndex >= 0 ? normalizeShipmentDate(values[dateIndex]) : null),
+          shipmentDate:normalizeShipmentDate(parsed.shipmentDate) || normalizeShipmentDate(dateMatch?.[1]) || (dateIndex >= 0 ? normalizeShipmentDate(values[dateIndex]) : null),
           cartons:Number.isFinite(parsed.cartons) ? parsed.cartons : cartons,
           palletCount:Number.isFinite(parsed.palletCount) ? parsed.palletCount : (stackable != null && unstackable != null ? stackable + unstackable : null),
           units:Number.isFinite(parsed.units) ? parsed.units : units
@@ -996,7 +1004,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       }
     }
 
-    const dates = [...new Set(audits.map(a=>a.shipmentDate).filter(Boolean))];
+    const dates = [...new Set(audits.map(a=>normalizeShipmentDate(a.shipmentDate)).filter(Boolean))];
     if(dates.length > 1) add('error',`本批次 BOL 出貨日期確定不一致（${dates.join('、')}）。`);
     const seen=new Set();
     return findings.filter(finding=>{
@@ -1059,16 +1067,19 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     els.activeRiskPanel.classList.toggle('is-hidden', findings.length === 0);
     els.activeRiskList.innerHTML = findings.map(finding=>findingHtml(finding)).join('');
 
-    const dates = [...new Set(audits.map(a=>a.shipmentDate).filter(Boolean))];
+    const validAuditDates = audits.map(a=>normalizeShipmentDate(a.shipmentDate));
+    const dates = [...new Set(validAuditDates.filter(Boolean))];
     const hasSingleDate = dates.length === 1;
-    const allDatesRead = hasSingleDate && audits.every(a=>a.shipmentDate);
+    const allDatesRead = hasSingleDate && validAuditDates.every(Boolean);
     const dateText = hasSingleDate ? dates[0].replaceAll('-','/') : (dates.length > 1 ? `不一致：${dates.join('、')}` : '—');
     const totalCartons = audits.reduce((sum,a)=>sum + (Number.isFinite(a.preferredCartons) ? a.preferredCartons : 0),0);
     els.shipmentSummaryBody.innerHTML = `<tr><td>${escapeHtml(dateText)}</td><td>${audits.length} 車</td><td>${totalCartons.toLocaleString('en-US')} 箱</td></tr>`;
     const summaryValid=allDatesRead&&audits.every(audit=>audit.shipmentConsistent);
     if(audits.length){
       const shipmentIds=[...new Set(audits.flatMap(audit=>audit.shipmentIds))];
-      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:hasSingleDate?dates[0]:'',truckCount:audits.length,totalCartons,shipmentIds,shipmentConsistent:summaryValid,updatedAt:Date.now()}));
+      const summary={batchId:currentBatchId(),pickupDate:hasSingleDate?dates[0]:'',truckCount:audits.length,totalCartons,shipmentIds,shipmentConsistent:summaryValid,updatedAt:Date.now()};
+      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify(summary));
+      sessionStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify(summary));
     }else{
       localStorage.removeItem(SORTER_SUMMARY_KEY);
     }
@@ -1563,6 +1574,14 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       const dd = String(stamp.getDate()).padStart(2,'0');
       const filename = `FBA_Sorted_${yyyy}${mm}${dd}.zip`;
       renderOperationalSummary();
+      try{
+        const summary=JSON.parse(localStorage.getItem(SORTER_SUMMARY_KEY)||'null');
+        if(summary?.batchId===currentBatchId()){
+          const handoff={...summary,pickupDate:normalizeShipmentDate(summary.pickupDate)||'',truckCount:Number.isInteger(summary.truckCount)&&summary.truckCount>0?summary.truckCount:null,exportedAt:Date.now()};
+          localStorage.setItem(SORTER_HANDOFF_KEY,JSON.stringify(handoff));
+          sessionStorage.setItem(SORTER_HANDOFF_KEY,JSON.stringify(handoff));
+        }
+      }catch{}
       localStorage.setItem(SORTER_EXPORT_KEY,JSON.stringify({batchId:currentBatchId(),filename,exportedAt:Date.now()}));
       saveAs(blob, filename);
       els.btnExport.textContent='本批次已匯出';
@@ -1728,6 +1747,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260729d"></script>
+<script src="shared-workspace.js?v=20260729f"></script>
 </body>
 </html>
