@@ -543,13 +543,17 @@ async function consumeFlashRestock(){
 }
 const INBOUND_DRAFT_KEY='fba-workspace:inbound-draft:v1';
 const SHARED_INBOUND_KEY='fba-workspace:inbound-data';
+const LATEST_INBOUND_KEY='fba-workspace:inbound-latest:v1';
 const inboundDraftInput=document.getElementById('pasteInput');
 function saveInboundDraft(){
  try{
   const updatedAt=Date.now(),value=inboundDraftInput.value;
   const batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null');
-  localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify({batchId:batch?.id||'',value,updatedAt}));
-  if(batch?.id)localStorage.setItem(SHARED_INBOUND_KEY,JSON.stringify({batchId:batch.id,value,updatedAt}));
+  const payload={batchId:batch?.id||'',value,updatedAt};
+  localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify(payload));
+  localStorage.setItem(SHARED_INBOUND_KEY,JSON.stringify(payload));
+  localStorage.setItem(LATEST_INBOUND_KEY,JSON.stringify(payload));
+  sessionStorage.setItem(LATEST_INBOUND_KEY,JSON.stringify(payload));
  }catch{}
 }
 function restoreInboundDraft(){
@@ -584,5 +588,5 @@ window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mo
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
 renderCatalogMeta();inboundDraftInput.addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});renderPreview();bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260729h"></script>
+<script src="shared-workspace.js?v=20260729i"></script>
 </body></html>
