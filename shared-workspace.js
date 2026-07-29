@@ -194,6 +194,21 @@
     batchMeta.updatedAt = Date.now();
     localStorage.setItem(BATCH_META_KEY, JSON.stringify(batchMeta));
   };
+  const applySharedInboundToEmail = () => {
+    const emailData = document.getElementById('emailData');
+    if (!emailData) return false;
+    const sharedInbound = readJson(SHARED_INBOUND_KEY);
+    if (sharedInbound?.batchId === batchMeta.id && sharedInbound.value?.trim()) {
+      emailData.value = sharedInbound.value;
+      return true;
+    }
+    const legacy = localStorage.getItem(SHARED_INBOUND_KEY) || '';
+    if (legacy.trim() && !legacy.trim().startsWith('{')) {
+      emailData.value = legacy;
+      return true;
+    }
+    return false;
+  };
   const applySorterSummaryToEmail = () => {
     const emailData = document.getElementById('emailData');
     if (!emailData) return false;
@@ -313,7 +328,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.0'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.1'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -435,12 +450,7 @@
   restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
 
   const emailData = document.getElementById('emailData');
-  const sharedInbound = readJson(SHARED_INBOUND_KEY);
-  if (emailData && sharedInbound?.batchId === batchMeta.id && sharedInbound.value?.trim()) emailData.value = sharedInbound.value;
-  else if (emailData && typeof localStorage.getItem(SHARED_INBOUND_KEY) === 'string') {
-    const legacy = localStorage.getItem(SHARED_INBOUND_KEY) || '';
-    if (legacy.trim() && !legacy.trim().startsWith('{')) emailData.value = legacy;
-  }
+  applySharedInboundToEmail();
   if (emailData) {
     const source = document.getElementById('workspaceSource');
     const candidates = [readJson(SORTER_SUMMARY_KEY), readJson(SORTER_HANDOFF_KEY)]
@@ -467,6 +477,7 @@
   fields().forEach(el => { el.addEventListener('input', save); el.addEventListener('change', save); });
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
   restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
+  applySharedInboundToEmail();
   applySorterSummaryToEmail();
   restoredFields
     .filter(el => el.type === 'checkbox' || el.type === 'radio')
@@ -485,8 +496,10 @@
     isRestoring = true;
     const restored = fields().filter(el => Object.prototype.hasOwnProperty.call(record.state, fieldKey(el)));
     restored.forEach(el => write(el, record.state[fieldKey(el)]));
+    applySharedInboundToEmail();
     applySorterSummaryToEmail();
     restored.forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+    applySharedInboundToEmail();
     restored
       .filter(el => el.type === 'checkbox' || el.type === 'radio')
       .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
