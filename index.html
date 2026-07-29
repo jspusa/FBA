@@ -141,7 +141,6 @@
     .preflight-warnings{margin-top:11px;padding:11px 13px;border-radius:12px;background:#fff8e8;color:#774900;font-size:11px;line-height:1.5}
     .preflight-warnings div+div{margin-top:4px}
     .preflight-warnings.hidden{display:none}
-    .inventory-latest-reminder{margin:10px 0 0;padding:10px 12px;border:1px solid #ecd49b;border-radius:11px;background:#fff9ea;color:#725019;font-size:11px;font-weight:700;line-height:1.5}
     .issue-card{margin-top:18px;padding:0;overflow:hidden}
     .issue-card[hidden]{display:none}
     .issue-card.confirmed{border-color:#b9ddc4;background:#f3fbf5}
@@ -303,7 +302,6 @@
           <span class="access-note">SharePoint 組織內直連</span>
         </div>
       </div>
-      <div class="inventory-latest-reminder">提醒：補貨請使用美國倉最新提供的 Inventory 檔案。</div>
       <div class="drop" id="dropInventory">
         <div class="file-icon" data-label="XLSX"></div>
         <div class="drop-title">拖曳 Excel 到這裡</div>
@@ -1677,6 +1675,6 @@ async function run(options={}){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260729g"></script>
+<script src="shared-workspace.js?v=20260729h"></script>
 </body>
 </html>
