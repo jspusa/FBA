@@ -3,6 +3,7 @@
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const SORTER_EXPORT_KEY = 'fba-workspace:sorter-export';
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
@@ -183,6 +184,26 @@
     batchMeta.updatedAt = Date.now();
     localStorage.setItem(BATCH_META_KEY, JSON.stringify(batchMeta));
   };
+  const applySorterSummaryToEmail = () => {
+    const emailData = document.getElementById('emailData');
+    if (!emailData) return false;
+    const summary = readJson(SORTER_SUMMARY_KEY);
+    if (summary?.batchId !== batchMeta.id) return false;
+    const pickupDate = document.getElementById('pickupDate');
+    const truckCount = document.getElementById('truckCount');
+    const hasPickupDate = Boolean(summary.pickupDate);
+    const hasTruckCount = Number.isInteger(summary.truckCount) && summary.truckCount > 0;
+    if (hasPickupDate && pickupDate) pickupDate.value = summary.pickupDate;
+    if (hasTruckCount && truckCount) truckCount.value = summary.truckCount;
+    const source = document.getElementById('workspaceSource');
+    if (source && (hasPickupDate || hasTruckCount)) {
+      const time = summary.updatedAt ? new Date(summary.updatedAt).toLocaleString('zh-TW', { hour12: false }) : '時間不明';
+      const ids = Array.isArray(summary.shipmentIds) && summary.shipmentIds.length ? ` · ${summary.shipmentIds.join('、')}` : '';
+      source.className = 'workspace-source ok';
+      source.textContent = `已帶入本批次 FBA 整理摘要：${hasPickupDate ? summary.pickupDate : '日期待確認'} · ${hasTruckCount ? `${summary.truckCount} 車` : '車數待確認'}${ids} · 更新 ${time}`;
+    }
+    return hasPickupDate || hasTruckCount;
+  };
   const clearCurrentPage = () => {
     fields().forEach(el => {
       if (!el.matches('[data-preserve-on-new-batch]')) write(el, el.type === 'checkbox' || el.type === 'radio' ? false : '');
@@ -228,6 +249,7 @@
       localStorage.removeItem('fba-workspace:quantity-choices');
     } else if (PAGE === 'sorter.html') {
       localStorage.removeItem(SORTER_SUMMARY_KEY);
+      localStorage.removeItem(SORTER_EXPORT_KEY);
       await deleteSorterDatabase();
     }
     location.reload();
@@ -269,7 +291,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.8'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.9'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -419,6 +441,7 @@
   fields().forEach(el => { el.addEventListener('input', save); el.addEventListener('change', save); });
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
   restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
+  applySorterSummaryToEmail();
   restoredFields
     .filter(el => el.type === 'checkbox' || el.type === 'radio')
     .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
@@ -436,6 +459,7 @@
     isRestoring = true;
     const restored = fields().filter(el => Object.prototype.hasOwnProperty.call(record.state, fieldKey(el)));
     restored.forEach(el => write(el, record.state[fieldKey(el)]));
+    applySorterSummaryToEmail();
     restored.forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
     restored
       .filter(el => el.type === 'checkbox' || el.type === 'radio')
