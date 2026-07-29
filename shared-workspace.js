@@ -3,6 +3,7 @@
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const SORTER_HANDOFF_KEY = 'fba-workspace:sorter-handoff';
   const SORTER_EXPORT_KEY = 'fba-workspace:sorter-export';
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   const CLEAR_KEY = 'fba-workspace:clear-at';
@@ -22,6 +23,15 @@
   const readJson = (key, fallback = null) => {
     try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
     catch { return fallback; }
+  };
+  const validIsoDate = value => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return '';
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return month >= 1 && month <= 12 && day >= 1 && day <= 31
+      && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+      ? `${match[1]}-${match[2]}-${match[3]}` : '';
   };
   const ensureBatchMeta = () => {
     const existing = readJson(BATCH_META_KEY);
@@ -187,20 +197,30 @@
   const applySorterSummaryToEmail = () => {
     const emailData = document.getElementById('emailData');
     if (!emailData) return false;
-    const summary = readJson(SORTER_SUMMARY_KEY);
+    const candidates = [
+      readJson(SORTER_SUMMARY_KEY),
+      readJson(SORTER_HANDOFF_KEY),
+      (() => { try { return JSON.parse(sessionStorage.getItem(SORTER_HANDOFF_KEY) || 'null'); } catch { return null; } })()
+    ].filter(item => item?.batchId === batchMeta.id);
+    const summary = candidates.sort((a, b) => Number(b.exportedAt || b.updatedAt || 0) - Number(a.exportedAt || a.updatedAt || 0))[0];
     if (summary?.batchId !== batchMeta.id) return false;
     const pickupDate = document.getElementById('pickupDate');
     const truckCount = document.getElementById('truckCount');
-    const hasPickupDate = Boolean(summary.pickupDate);
+    const normalizedPickupDate = validIsoDate(summary.pickupDate);
+    const hasPickupDate = Boolean(normalizedPickupDate);
     const hasTruckCount = Number.isInteger(summary.truckCount) && summary.truckCount > 0;
-    if (hasPickupDate && pickupDate) pickupDate.value = summary.pickupDate;
-    if (hasTruckCount && truckCount) truckCount.value = summary.truckCount;
+    if (hasPickupDate && pickupDate) {
+      pickupDate.value = normalizedPickupDate;
+    }
+    if (hasTruckCount && truckCount) {
+      truckCount.value = summary.truckCount;
+    }
     const source = document.getElementById('workspaceSource');
     if (source && (hasPickupDate || hasTruckCount)) {
       const time = summary.updatedAt ? new Date(summary.updatedAt).toLocaleString('zh-TW', { hour12: false }) : '時間不明';
       const ids = Array.isArray(summary.shipmentIds) && summary.shipmentIds.length ? ` · ${summary.shipmentIds.join('、')}` : '';
       source.className = 'workspace-source ok';
-      source.textContent = `已帶入本批次 FBA 整理摘要：${hasPickupDate ? summary.pickupDate : '日期待確認'} · ${hasTruckCount ? `${summary.truckCount} 車` : '車數待確認'}${ids} · 更新 ${time}`;
+      source.textContent = `已帶入本批次 FBA 整理摘要：${hasPickupDate ? normalizedPickupDate : '日期待確認'} · ${hasTruckCount ? `${summary.truckCount} 車` : '車數待確認'}${ids} · 更新 ${time}`;
     }
     return hasPickupDate || hasTruckCount;
   };
@@ -249,6 +269,8 @@
       localStorage.removeItem('fba-workspace:quantity-choices');
     } else if (PAGE === 'sorter.html') {
       localStorage.removeItem(SORTER_SUMMARY_KEY);
+      localStorage.removeItem(SORTER_HANDOFF_KEY);
+      sessionStorage.removeItem(SORTER_HANDOFF_KEY);
       localStorage.removeItem(SORTER_EXPORT_KEY);
       await deleteSorterDatabase();
     }
@@ -291,7 +313,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.9'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.0'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -421,16 +443,20 @@
   }
   if (emailData) {
     const source = document.getElementById('workspaceSource');
-    const summary = readJson(SORTER_SUMMARY_KEY); const current = summary?.batchId === batchMeta.id;
-    const hasPickupDate = current && Boolean(summary?.pickupDate);
+    const candidates = [readJson(SORTER_SUMMARY_KEY), readJson(SORTER_HANDOFF_KEY)]
+      .filter(item => item?.batchId === batchMeta.id)
+      .sort((a, b) => Number(b.exportedAt || b.updatedAt || 0) - Number(a.exportedAt || a.updatedAt || 0));
+    const summary = candidates[0]; const current = summary?.batchId === batchMeta.id;
+    const normalizedPickupDate = current ? validIsoDate(summary?.pickupDate) : '';
+    const hasPickupDate = Boolean(normalizedPickupDate);
     const hasTruckCount = current && Number.isInteger(summary?.truckCount) && summary.truckCount > 0;
     if (hasPickupDate || hasTruckCount) {
-      if (hasPickupDate) document.getElementById('pickupDate').value = summary.pickupDate;
+      if (hasPickupDate) document.getElementById('pickupDate').value = normalizedPickupDate;
       if (hasTruckCount) document.getElementById('truckCount').value = summary.truckCount;
       if (source) {
         const time = summary.updatedAt ? new Date(summary.updatedAt).toLocaleString('zh-TW', { hour12: false }) : '時間不明';
         const ids = Array.isArray(summary.shipmentIds) && summary.shipmentIds.length ? ` · ${summary.shipmentIds.join('、')}` : '';
-        const dateText = hasPickupDate ? summary.pickupDate : '日期待確認';
+        const dateText = hasPickupDate ? normalizedPickupDate : '日期待確認';
         const truckText = hasTruckCount ? `${summary.truckCount} 車` : '車數待確認';
         source.className = 'workspace-source ok'; source.textContent = `已帶入本批次 FBA 整理摘要：${dateText} · ${truckText}${ids} · 更新 ${time}`;
       }
