@@ -7,7 +7,6 @@
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
   const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
-  const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
   const RESTOCK_DB = 'fba-restock-files';
   const RESTOCK_STORE = 'files';
@@ -135,8 +134,11 @@
   localStorage.removeItem('fba-restock-reservation-ledger:v1');
   localStorage.removeItem('fba-workspace:inventory-snapshot');
 
+  const fieldKey = el => el.id
+    || (el.dataset.persistKey ? `data:${el.dataset.persistKey}` : '')
+    || (el.dataset.cc ? `cc:${el.dataset.cc}` : '');
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
-    .filter(el => el.id && !el.matches('[data-no-persist]'));
+    .filter(el => fieldKey(el) && !el.matches('[data-no-persist]'));
   const read = el => (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
   const write = (el, value) => {
     if (el.type === 'checkbox' || el.type === 'radio') el.checked = Boolean(value);
@@ -144,7 +146,7 @@
   };
   const save = () => {
     const state = {};
-    fields().forEach(el => { state[el.id] = read(el); });
+    fields().forEach(el => { state[fieldKey(el)] = read(el); });
     localStorage.setItem(FORM_KEY, JSON.stringify({ batchId: batchMeta.id, state, updatedAt: Date.now() }));
     const inbound = document.getElementById('pasteInput');
     if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({ batchId: batchMeta.id, value: inbound.value, updatedAt: Date.now() }));
@@ -230,7 +232,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.5'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.6'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -345,13 +347,10 @@
       notifyValueMode();
     }
   });
-  const latestClear = localStorage.getItem(CLEAR_KEY);
-  if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
-    sessionStorage.setItem(SEEN_CLEAR_KEY, latestClear); clearCurrentPage();
-  }
   const savedForm = readJson(FORM_KEY, {});
   const savedState = savedForm?.batchId ? (savedForm.batchId === batchMeta.id ? savedForm.state || {} : {}) : savedForm;
-  fields().forEach(el => { if (Object.prototype.hasOwnProperty.call(savedState || {}, el.id)) write(el, savedState[el.id]); });
+  const restoredFields = fields().filter(el => Object.prototype.hasOwnProperty.call(savedState || {}, fieldKey(el)));
+  restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
 
   const emailData = document.getElementById('emailData');
   const sharedInbound = readJson(SHARED_INBOUND_KEY);
@@ -381,7 +380,15 @@
   }
   fields().forEach(el => { el.addEventListener('input', save); el.addEventListener('change', save); });
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+  restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
+  restoredFields
+    .filter(el => el.type === 'checkbox' || el.type === 'radio')
+    .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
+  document.querySelectorAll('.top-tabs a[href]').forEach(link => {
+    link.addEventListener('click', () => { if (!isClearing) save(); }, { capture: true });
+  });
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
+  window.addEventListener('beforeunload', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
   notifyValueMode();
 })();
