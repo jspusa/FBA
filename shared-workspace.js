@@ -194,20 +194,48 @@
     batchMeta.updatedAt = Date.now();
     localStorage.setItem(BATCH_META_KEY, JSON.stringify(batchMeta));
   };
-  const applySharedInboundToEmail = () => {
-    const emailData = document.getElementById('emailData');
-    if (!emailData) return false;
-    const sharedInbound = readJson(SHARED_INBOUND_KEY);
-    if (sharedInbound?.batchId === batchMeta.id && sharedInbound.value?.trim()) {
-      emailData.value = sharedInbound.value;
-      return true;
+  const latestInboundPayload = () => {
+    const candidates = [];
+    const shared = readJson(SHARED_INBOUND_KEY);
+    if (shared?.batchId === batchMeta.id && typeof shared.value === 'string' && shared.value.trim()) {
+      candidates.push(shared);
+    }
+    const draft = readJson('fba-workspace:inbound-draft:v1');
+    if ((!draft?.batchId || draft.batchId === batchMeta.id) && typeof draft?.value === 'string' && draft.value.trim()) {
+      candidates.push(draft);
+    }
+    const inboundForm = readJson('fba-workspace:form:inbound-plan.html');
+    const inboundFormState = inboundForm?.batchId
+      ? (inboundForm.batchId === batchMeta.id ? inboundForm.state : null)
+      : inboundForm;
+    if (typeof inboundFormState?.pasteInput === 'string' && inboundFormState.pasteInput.trim()) {
+      candidates.push({
+        batchId: batchMeta.id,
+        value: inboundFormState.pasteInput,
+        updatedAt: Number(inboundForm?.updatedAt) || 0
+      });
     }
     const legacy = localStorage.getItem(SHARED_INBOUND_KEY) || '';
     if (legacy.trim() && !legacy.trim().startsWith('{')) {
-      emailData.value = legacy;
-      return true;
+      candidates.push({ batchId: batchMeta.id, value: legacy, updatedAt: 0 });
     }
-    return false;
+    return candidates.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))[0] || null;
+  };
+  const applySharedInboundToEmail = () => {
+    const emailData = document.getElementById('emailData');
+    if (!emailData) return false;
+    const inbound = latestInboundPayload();
+    if (!inbound?.value?.trim()) return false;
+    const appliedAt = Number(emailData.dataset.inboundUpdatedAt || 0);
+    if (emailData.value !== inbound.value || appliedAt < Number(inbound.updatedAt || 0)) {
+      emailData.value = inbound.value;
+      emailData.dataset.inboundUpdatedAt = String(Number(inbound.updatedAt || Date.now()));
+      emailData.dispatchEvent(new CustomEvent('fba-inbound-applied', {
+        bubbles: true,
+        detail: { updatedAt: Number(inbound.updatedAt || 0) }
+      }));
+    }
+    return true;
   };
   const applySorterSummaryToEmail = () => {
     const emailData = document.getElementById('emailData');
@@ -328,7 +356,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.1'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.2'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -432,15 +460,20 @@
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
     if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
+    if (event.key === SHARED_INBOUND_KEY || event.key === 'fba-workspace:inbound-draft:v1' || event.key === 'fba-workspace:form:inbound-plan.html') {
+      applySharedInboundToEmail();
+    }
   });
   window.addEventListener('pageshow', () => {
     document.body.classList.toggle('fba-night', nightModeEnabled());
     notifyValueMode();
+    applySharedInboundToEmail();
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       document.body.classList.toggle('fba-night', nightModeEnabled());
       notifyValueMode();
+      applySharedInboundToEmail();
     }
   });
   const savedForm = readJson(FORM_KEY, {});
@@ -516,6 +549,7 @@
       value: inbound.value,
       updatedAt: latestFormUpdate
     }));
+    applySharedInboundToEmail();
     isRestoring = false;
   }).catch(() => { isRestoring = false; });
   document.querySelectorAll('.top-tabs a[href]').forEach(link => {
