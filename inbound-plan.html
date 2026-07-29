@@ -542,9 +542,15 @@ async function consumeFlashRestock(){
  }catch(error){closeFlashAmazon(payload);const status=document.getElementById('status');status.className='err';status.textContent=`光速補貨已帶入，但自動下載前發現問題：${error.message}`}
 }
 const INBOUND_DRAFT_KEY='fba-workspace:inbound-draft:v1';
+const SHARED_INBOUND_KEY='fba-workspace:inbound-data';
 const inboundDraftInput=document.getElementById('pasteInput');
 function saveInboundDraft(){
- try{localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify({value:inboundDraftInput.value,updatedAt:Date.now()}))}catch{}
+ try{
+  const updatedAt=Date.now(),value=inboundDraftInput.value;
+  localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify({value,updatedAt}));
+  const batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null');
+  if(batch?.id)localStorage.setItem(SHARED_INBOUND_KEY,JSON.stringify({batchId:batch.id,value,updatedAt}));
+ }catch{}
 }
 function restoreInboundDraft(){
  try{
@@ -570,5 +576,5 @@ window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mo
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
 renderCatalogMeta();inboundDraftInput.addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});renderPreview();bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260729f"></script>
+<script src="shared-workspace.js?v=20260729g"></script>
 </body></html>
