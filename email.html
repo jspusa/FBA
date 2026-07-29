@@ -253,10 +253,15 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('copyBodyBtn').addEventListener('click',copyBody);
   $('copyCcBtn').addEventListener('click',copyCcRecipients);
   document.querySelectorAll('[data-cc]').forEach(input=>input.addEventListener('change',()=>{$('ccStatus').textContent=`已選擇 ${document.querySelectorAll('[data-cc]:checked').length} 人`}));
-  window.addEventListener('fba-workspace-ready',()=>{syncCalendarFromValue();updateConfirmationLabels();syncFlashConfirmations()});
+  window.addEventListener('fba-workspace-ready',()=>{
+    syncCalendarFromValue();
+    updateConfirmationLabels();
+    syncFlashConfirmations();
+    if($('emailData').value.trim()&&$('pickupDate').value&&$('truckCount').value&&$('confirmPickup').checked&&$('confirmTrucks').checked)buildEmail();
+  });
   syncCalendarFromValue();updateConfirmationLabels();
 })();
 </script>
-<script src="shared-workspace.js?v=20260723i"></script>
+<script src="shared-workspace.js?v=20260729c"></script>
 </body>
 </html>
