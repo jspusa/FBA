@@ -2,6 +2,7 @@
   const PAGE = location.pathname.split('/').pop() || 'index.html';
   const FORM_KEY = `fba-workspace:form:${PAGE}`;
   const SHARED_INBOUND_KEY = 'fba-workspace:inbound-data';
+  const LATEST_INBOUND_KEY = 'fba-workspace:inbound-latest:v1';
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
   const SORTER_HANDOFF_KEY = 'fba-workspace:sorter-handoff';
   const SORTER_EXPORT_KEY = 'fba-workspace:sorter-export';
@@ -190,24 +191,37 @@
     localStorage.setItem(FORM_KEY, JSON.stringify(payload));
     void formStateRequest('readwrite', store => store.put(payload)).catch(() => {});
     const inbound = document.getElementById('pasteInput');
-    if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({ batchId: batchMeta.id, value: inbound.value, updatedAt: Date.now() }));
+    if (inbound) {
+      const inboundPayload = { batchId: batchMeta.id, value: inbound.value, updatedAt: Date.now() };
+      const serializedInbound = JSON.stringify(inboundPayload);
+      localStorage.setItem(SHARED_INBOUND_KEY, serializedInbound);
+      localStorage.setItem(LATEST_INBOUND_KEY, serializedInbound);
+      sessionStorage.setItem(LATEST_INBOUND_KEY, serializedInbound);
+    }
     batchMeta.updatedAt = Date.now();
     localStorage.setItem(BATCH_META_KEY, JSON.stringify(batchMeta));
   };
   const latestInboundPayload = () => {
     const candidates = [];
+    const latest = readJson(LATEST_INBOUND_KEY);
+    if (typeof latest?.value === 'string' && latest.value.trim()) {
+      candidates.push(latest);
+    }
+    let sessionLatest = null;
+    try { sessionLatest = JSON.parse(sessionStorage.getItem(LATEST_INBOUND_KEY) || 'null'); } catch {}
+    if (typeof sessionLatest?.value === 'string' && sessionLatest.value.trim()) {
+      candidates.push(sessionLatest);
+    }
     const shared = readJson(SHARED_INBOUND_KEY);
-    if (shared?.batchId === batchMeta.id && typeof shared.value === 'string' && shared.value.trim()) {
+    if (typeof shared?.value === 'string' && shared.value.trim()) {
       candidates.push(shared);
     }
     const draft = readJson('fba-workspace:inbound-draft:v1');
-    if ((!draft?.batchId || draft.batchId === batchMeta.id) && typeof draft?.value === 'string' && draft.value.trim()) {
+    if (typeof draft?.value === 'string' && draft.value.trim()) {
       candidates.push(draft);
     }
     const inboundForm = readJson('fba-workspace:form:inbound-plan.html');
-    const inboundFormState = inboundForm?.batchId
-      ? (inboundForm.batchId === batchMeta.id ? inboundForm.state : null)
-      : inboundForm;
+    const inboundFormState = inboundForm?.state || inboundForm;
     if (typeof inboundFormState?.pasteInput === 'string' && inboundFormState.pasteInput.trim()) {
       candidates.push({
         batchId: batchMeta.id,
@@ -293,6 +307,7 @@
     if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
     isClearing = true;
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
+    sessionStorage.removeItem(LATEST_INBOUND_KEY);
     await Promise.all([deleteSorterDatabase(), deleteRestockDatabase(), deleteFormStateDatabase()]);
     localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
@@ -307,6 +322,8 @@
       await deleteRestockDatabase();
     } else if (PAGE === 'inbound-plan.html') {
       localStorage.removeItem(SHARED_INBOUND_KEY);
+      localStorage.removeItem(LATEST_INBOUND_KEY);
+      sessionStorage.removeItem(LATEST_INBOUND_KEY);
       localStorage.removeItem('fba-workspace:inbound-draft:v1');
       localStorage.removeItem('fba-workspace:inbound-reviewed');
       localStorage.removeItem('fba-workspace:quantity-choices');
@@ -356,7 +373,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.2'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V15.3'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -460,7 +477,7 @@
     if (event.key === CLEAR_KEY && event.newValue) reloadAfterClear();
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
     if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
-    if (event.key === SHARED_INBOUND_KEY || event.key === 'fba-workspace:inbound-draft:v1' || event.key === 'fba-workspace:form:inbound-plan.html') {
+    if (event.key === SHARED_INBOUND_KEY || event.key === LATEST_INBOUND_KEY || event.key === 'fba-workspace:inbound-draft:v1' || event.key === 'fba-workspace:form:inbound-plan.html') {
       applySharedInboundToEmail();
     }
   });
@@ -544,11 +561,17 @@
       updatedAt: latestFormUpdate
     }));
     const inbound = document.getElementById('pasteInput');
-    if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({
-      batchId: batchMeta.id,
-      value: inbound.value,
-      updatedAt: latestFormUpdate
-    }));
+    if (inbound) {
+      const inboundPayload = {
+        batchId: batchMeta.id,
+        value: inbound.value,
+        updatedAt: latestFormUpdate
+      };
+      const serializedInbound = JSON.stringify(inboundPayload);
+      localStorage.setItem(SHARED_INBOUND_KEY, serializedInbound);
+      localStorage.setItem(LATEST_INBOUND_KEY, serializedInbound);
+      sessionStorage.setItem(LATEST_INBOUND_KEY, serializedInbound);
+    }
     applySharedInboundToEmail();
     isRestoring = false;
   }).catch(() => { isRestoring = false; });
