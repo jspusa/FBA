@@ -223,6 +223,7 @@
       await deleteRestockDatabase();
     } else if (PAGE === 'inbound-plan.html') {
       localStorage.removeItem(SHARED_INBOUND_KEY);
+      localStorage.removeItem('fba-workspace:inbound-draft:v1');
       localStorage.removeItem('fba-workspace:inbound-reviewed');
       localStorage.removeItem('fba-workspace:quantity-choices');
     } else if (PAGE === 'sorter.html') {
@@ -268,7 +269,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.7'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.8'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
