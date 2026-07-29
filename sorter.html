@@ -378,9 +378,11 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   const folders = new Map();
   const SORTER_DB = 'fba-workspace';
   const SORTER_SUMMARY_KEY = 'fba-workspace:sorter-summary';
+  const SORTER_EXPORT_KEY = 'fba-workspace:sorter-export';
   const BATCH_META_KEY = 'fba-workspace:batch-meta';
   let restoringWorkspace = true;
   let persistTimer = 0;
+  let exportInProgress = false;
   function currentBatchId(){
     try{
       const existing=JSON.parse(localStorage.getItem(BATCH_META_KEY)||'null');
@@ -685,10 +687,25 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 
   function normalizeShipmentDate(value){
     if(!value) return null;
-    let match = String(value).match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    const raw=String(value).replace(/,/g,' ').replace(/\s+/g,' ').trim();
+    let match = raw.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
     if(match) return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
-    match = String(value).match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
+    match = raw.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
     if(match) return `${match[3]}-${match[1].padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+    match = raw.match(/\b(JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\s+(\d{1,2})\s+(20\d{2})\b/i);
+    if(match){
+      const months={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+      const month=months[match[1].slice(0,3).toUpperCase()];
+      return `${match[3]}-${String(month).padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+    }
+    match = raw.match(/\b(\d{1,2})[-\/.](\d{1,2})\b/);
+    if(match){
+      const now=new Date();
+      let year=now.getFullYear();
+      const candidate=new Date(year,Number(match[1])-1,Number(match[2]));
+      if(candidate.getTime()<now.getTime()-120*86400000)year++;
+      return `${year}-${match[1].padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+    }
     return null;
   }
 
@@ -761,7 +778,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
           }
           return null;
         };
-        const dateMatch = text.match(/\bDATE\s*:\s*([^\s]+)/);
+        const dateMatch = text.match(/\b(?:PICKUP|FREIGHT\s+READY|READY|SHIP(?:MENT)?)\s+DATE\s*:?\s*([A-Z]{3,9}\s+\d{1,2},?\s+20\d{2}|20\d{2}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}(?:[-\/.]20\d{2})?)/)
+          || text.match(/\bDATE\s*:\s*([A-Z]{3,9}\s+\d{1,2},?\s+20\d{2}|20\d{2}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}(?:[-\/.]20\d{2})?)/);
         const shipmentMatch = text.match(/BILL\s+OF\s+LADING\s+NUMBER\s*:\s*(FBA[A-Z0-9]+)/);
         const cartonsMatch = text.match(/TOTAL\s+CARTONS\s+(\d+)/);
         const stackableMatch = text.match(/NUM\.?\s*STACKABLE\s+PALLETS\s+(\d+)/);
@@ -1042,14 +1060,15 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     els.activeRiskList.innerHTML = findings.map(finding=>findingHtml(finding)).join('');
 
     const dates = [...new Set(audits.map(a=>a.shipmentDate).filter(Boolean))];
-    const allDatesRead = dates.length === 1 && audits.every(a=>a.shipmentDate);
-    const dateText = allDatesRead ? dates[0].replaceAll('-','/') : (dates.length > 1 ? `不一致：${dates.join('、')}` : '—');
+    const hasSingleDate = dates.length === 1;
+    const allDatesRead = hasSingleDate && audits.every(a=>a.shipmentDate);
+    const dateText = hasSingleDate ? dates[0].replaceAll('-','/') : (dates.length > 1 ? `不一致：${dates.join('、')}` : '—');
     const totalCartons = audits.reduce((sum,a)=>sum + (Number.isFinite(a.preferredCartons) ? a.preferredCartons : 0),0);
     els.shipmentSummaryBody.innerHTML = `<tr><td>${escapeHtml(dateText)}</td><td>${audits.length} 車</td><td>${totalCartons.toLocaleString('en-US')} 箱</td></tr>`;
     const summaryValid=allDatesRead&&audits.every(audit=>audit.shipmentConsistent);
     if(audits.length){
       const shipmentIds=[...new Set(audits.flatMap(audit=>audit.shipmentIds))];
-      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:allDatesRead?dates[0]:'',truckCount:audits.length,totalCartons,shipmentIds,shipmentConsistent:summaryValid,updatedAt:Date.now()}));
+      localStorage.setItem(SORTER_SUMMARY_KEY,JSON.stringify({batchId:currentBatchId(),pickupDate:hasSingleDate?dates[0]:'',truckCount:audits.length,totalCartons,shipmentIds,shipmentConsistent:summaryValid,updatedAt:Date.now()}));
     }else{
       localStorage.removeItem(SORTER_SUMMARY_KEY);
     }
@@ -1064,11 +1083,22 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   function refreshExportState(){
     let count = 0;
     for(const [, meta] of folders.entries()) count += meta.files.size;
-    els.btnExport.disabled = count === 0;
+    let exported=false;
+    try{
+      const record=JSON.parse(localStorage.getItem(SORTER_EXPORT_KEY)||'null');
+      exported=record?.batchId===currentBatchId();
+    }catch{}
+    els.btnExport.disabled = count === 0 || exported || exportInProgress;
     els.btnExport.classList.remove('export-ready','export-warning');
     hideExportWarningPanel();
     renderOperationalSummary();
     scheduleWorkspaceSave();
+
+    if(exported){
+      els.btnExport.textContent = '本批次已匯出';
+      els.btnExport.title = '本批次 ZIP 已匯出；請到出貨通知繼續，或開始新批次。';
+      return;
+    }
 
     if(count === 0){
       els.btnExport.textContent = '匯出 ZIP';
@@ -1498,6 +1528,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
 
   async function requestExport(){
+    if(exportInProgress || els.btnExport.disabled) return;
     const findings = getExportFindings();
     if(findings.length === 0){
       hideExportWarningPanel();
@@ -1508,25 +1539,40 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
 
   async function exportZip(){
+    if(exportInProgress) return;
+    exportInProgress=true;
+    els.btnExport.disabled=true;
+    els.btnExport.textContent='正在產生 ZIP…';
+    els.btnConfirmRiskExport.disabled=true;
     const zip = new JSZip();
-    const sortedFolders = [...folders.keys()].sort((a,b)=>a.localeCompare(b));
-    for(const folderName of sortedFolders){
-      const meta = folders.get(folderName);
-      const dir = zip.folder(folderName);
-      const files = [...meta.files.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-      for(const [fname, file] of files){
-        const buf = await file.arrayBuffer();
-        dir.file(fname, buf);
+    try{
+      const sortedFolders = [...folders.keys()].sort((a,b)=>a.localeCompare(b));
+      for(const folderName of sortedFolders){
+        const meta = folders.get(folderName);
+        const dir = zip.folder(folderName);
+        const files = [...meta.files.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+        for(const [fname, file] of files){
+          const buf = await file.arrayBuffer();
+          dir.file(fname, buf);
+        }
       }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const stamp = new Date();
+      const yyyy = stamp.getFullYear();
+      const mm = String(stamp.getMonth()+1).padStart(2,'0');
+      const dd = String(stamp.getDate()).padStart(2,'0');
+      const filename = `FBA_Sorted_${yyyy}${mm}${dd}.zip`;
+      renderOperationalSummary();
+      localStorage.setItem(SORTER_EXPORT_KEY,JSON.stringify({batchId:currentBatchId(),filename,exportedAt:Date.now()}));
+      saveAs(blob, filename);
+      els.btnExport.textContent='本批次已匯出';
+      location.assign('email.html');
+    }catch(error){
+      exportInProgress=false;
+      refreshExportState();
+      window.alert(`ZIP 匯出失敗：${error?.message||'未知錯誤'}。請修正後再試一次。`);
+      throw error;
     }
-    const blob = await zip.generateAsync({ type: "blob" });
-    const stamp = new Date();
-    const yyyy = stamp.getFullYear();
-    const mm = String(stamp.getMonth()+1).padStart(2,'0');
-    const dd = String(stamp.getDate()).padStart(2,'0');
-    const filename = `FBA_Sorted_${yyyy}${mm}${dd}.zip`;
-    saveAs(blob, filename);
-    setTimeout(()=>{ location.href='email.html'; },650);
   }
 
   function clearByType(type){
@@ -1682,6 +1728,6 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   })();
   restoreWorkspace();
 </script>
-<script src="shared-workspace.js?v=20260729c"></script>
+<script src="shared-workspace.js?v=20260729d"></script>
 </body>
 </html>
