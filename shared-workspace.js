@@ -7,11 +7,14 @@
   const CLEAR_KEY = 'fba-workspace:clear-at';
   const VALUE_MODE_KEY = 'fba-workspace:value-mode';
   const BUSINESS_REPORT_KEY = 'fba-workspace:business-report';
-  const SEEN_CLEAR_KEY = `fba-workspace:seen-clear-at:${PAGE}`;
   const SORTER_DB = 'fba-workspace';
   const RESTOCK_DB = 'fba-restock-files';
   const RESTOCK_STORE = 'files';
+  const FORM_STATE_DB = 'fba-workspace-state';
+  const FORM_STATE_STORE = 'forms';
   let isClearing = false;
+  let isRestoring = true;
+  let latestFormUpdate = 0;
 
   const makeId = () => globalThis.crypto?.randomUUID?.()
     || `batch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -50,6 +53,28 @@
       });
     } finally { db.close(); }
   };
+  const openFormStateDb = () => new Promise((resolve, reject) => {
+    if (!globalThis.indexedDB) return reject(new Error('瀏覽器不支援表單暫存'));
+    const request = indexedDB.open(FORM_STATE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(FORM_STATE_STORE)) db.createObjectStore(FORM_STATE_STORE, { keyPath: 'page' });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const formStateRequest = async (mode, action) => {
+    const db = await openFormStateDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(FORM_STATE_STORE, mode);
+        const store = tx.objectStore(FORM_STATE_STORE);
+        const request = action(store);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } finally { db.close(); }
+  };
   window.FBAWorkspaceFiles = {
     async save(kind, file) {
       if (!file || !['helium', 'inventory', 'business'].includes(kind)) return;
@@ -70,7 +95,21 @@
     }
   };
 
-  const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open';
+  const modeCookieEnabled = () => document.cookie.split(';').some(item => item.trim() === 'fba_value_mode=open');
+  const valueModeEnabled = () => localStorage.getItem(VALUE_MODE_KEY) === 'open'
+    || sessionStorage.getItem(VALUE_MODE_KEY) === 'open'
+    || modeCookieEnabled();
+  const persistValueMode = enabled => {
+    if (enabled) {
+      localStorage.setItem(VALUE_MODE_KEY, 'open');
+      sessionStorage.setItem(VALUE_MODE_KEY, 'open');
+      document.cookie = 'fba_value_mode=open; Path=/; SameSite=Lax';
+    } else {
+      localStorage.removeItem(VALUE_MODE_KEY);
+      sessionStorage.removeItem(VALUE_MODE_KEY);
+      document.cookie = 'fba_value_mode=; Max-Age=0; Path=/; SameSite=Lax';
+    }
+  };
   localStorage.removeItem('fba-workspace:bro-mode');
   const flashModeEnabled = () => {
     const flash = readJson('fba-workspace:flash-mode');
@@ -100,9 +139,8 @@
     isEnabled: valueModeEnabled,
     setEnabled(enabled) {
       const changed = valueModeEnabled() !== Boolean(enabled);
-      if (enabled) localStorage.setItem(VALUE_MODE_KEY, 'open');
-      else {
-        localStorage.removeItem(VALUE_MODE_KEY);
+      persistValueMode(Boolean(enabled));
+      if (!enabled) {
         closeFlashMode();
       }
       if (changed) playValueTransition(Boolean(enabled));
@@ -119,18 +157,27 @@
     clearBusinessReport() { localStorage.removeItem(BUSINESS_REPORT_KEY); }
   };
   window.FBAFlashMode = { isEnabled: flashModeEnabled };
+  localStorage.removeItem('fba-restock-reservation-ledger:v1');
+  localStorage.removeItem('fba-workspace:inventory-snapshot');
 
+  const fieldKey = el => el.id
+    || (el.dataset.persistKey ? `data:${el.dataset.persistKey}` : '')
+    || (el.dataset.cc ? `cc:${el.dataset.cc}` : '');
   const fields = () => [...document.querySelectorAll('input:not([type="file"]), textarea, select')]
-    .filter(el => el.id && !el.matches('[data-no-persist]'));
+    .filter(el => fieldKey(el) && !el.matches('[data-no-persist]'));
   const read = el => (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
   const write = (el, value) => {
     if (el.type === 'checkbox' || el.type === 'radio') el.checked = Boolean(value);
     else el.value = value ?? '';
   };
   const save = () => {
+    if (isClearing || isRestoring) return;
     const state = {};
-    fields().forEach(el => { state[el.id] = read(el); });
-    localStorage.setItem(FORM_KEY, JSON.stringify({ batchId: batchMeta.id, state, updatedAt: Date.now() }));
+    fields().forEach(el => { state[fieldKey(el)] = read(el); });
+    const payload = { page: PAGE, batchId: batchMeta.id, state, updatedAt: Date.now() };
+    latestFormUpdate = payload.updatedAt;
+    localStorage.setItem(FORM_KEY, JSON.stringify(payload));
+    void formStateRequest('readwrite', store => store.put(payload)).catch(() => {});
     const inbound = document.getElementById('pasteInput');
     if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({ batchId: batchMeta.id, value: inbound.value, updatedAt: Date.now() }));
     batchMeta.updatedAt = Date.now();
@@ -152,12 +199,17 @@
     const request = indexedDB.deleteDatabase(RESTOCK_DB);
     request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
+  const deleteFormStateDatabase = () => new Promise(resolve => {
+    if (!globalThis.indexedDB) return resolve();
+    const request = indexedDB.deleteDatabase(FORM_STATE_DB);
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
+  });
   const reloadAfterClear = () => { isClearing = true; clearCurrentPage(); location.reload(); };
   const startNewBatch = async () => {
     if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
     isClearing = true;
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
-    await Promise.all([deleteSorterDatabase(), deleteRestockDatabase()]);
+    await Promise.all([deleteSorterDatabase(), deleteRestockDatabase(), deleteFormStateDatabase()]);
     localStorage.setItem(CLEAR_KEY, String(Date.now()));
     reloadAfterClear();
   };
@@ -165,11 +217,13 @@
     if (!window.confirm('確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。')) return;
     isClearing = true;
     localStorage.removeItem(FORM_KEY);
+    await formStateRequest('readwrite', store => store.delete(PAGE)).catch(() => {});
     if (PAGE === 'index.html') {
       localStorage.removeItem(BUSINESS_REPORT_KEY);
       await deleteRestockDatabase();
     } else if (PAGE === 'inbound-plan.html') {
       localStorage.removeItem(SHARED_INBOUND_KEY);
+      localStorage.removeItem('fba-workspace:inbound-draft:v1');
       localStorage.removeItem('fba-workspace:inbound-reviewed');
       localStorage.removeItem('fba-workspace:quantity-choices');
     } else if (PAGE === 'sorter.html') {
@@ -215,7 +269,7 @@
       mark.setAttribute('aria-label', flashEnabled ? '光速補貨模式' : 'Jasper');
     }
     if (title.querySelector('.fba-version')) return;
-    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.3'; title.appendChild(badge);
+    const badge = document.createElement('small'); badge.className = 'fba-version'; badge.textContent = 'V14.8'; title.appendChild(badge);
   };
   const style = document.createElement('style');
   style.textContent = `
@@ -309,6 +363,7 @@
     `;
   document.head.appendChild(style);
   ensureVersionBadge();
+  if (valueModeEnabled()) persistValueMode(true);
   document.body.classList.toggle('fba-night', nightModeEnabled());
   requestAnimationFrame(() => document.body.classList.add('fba-ui-ready'));
   const resetButton = ensureResetButton();
@@ -319,13 +374,21 @@
     if (event.key === VALUE_MODE_KEY) { document.body.classList.toggle('fba-night', nightModeEnabled()); notifyValueMode(); }
     if (event.key === 'fba-workspace:flash-mode') ensureVersionBadge();
   });
-  const latestClear = localStorage.getItem(CLEAR_KEY);
-  if (latestClear && sessionStorage.getItem(SEEN_CLEAR_KEY) !== latestClear) {
-    sessionStorage.setItem(SEEN_CLEAR_KEY, latestClear); clearCurrentPage();
-  }
+  window.addEventListener('pageshow', () => {
+    document.body.classList.toggle('fba-night', nightModeEnabled());
+    notifyValueMode();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      document.body.classList.toggle('fba-night', nightModeEnabled());
+      notifyValueMode();
+    }
+  });
   const savedForm = readJson(FORM_KEY, {});
+  latestFormUpdate = Number(savedForm?.updatedAt) || 0;
   const savedState = savedForm?.batchId ? (savedForm.batchId === batchMeta.id ? savedForm.state || {} : {}) : savedForm;
-  fields().forEach(el => { if (Object.prototype.hasOwnProperty.call(savedState || {}, el.id)) write(el, savedState[el.id]); });
+  const restoredFields = fields().filter(el => Object.prototype.hasOwnProperty.call(savedState || {}, fieldKey(el)));
+  restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
 
   const emailData = document.getElementById('emailData');
   const sharedInbound = readJson(SHARED_INBOUND_KEY);
@@ -355,7 +418,48 @@
   }
   fields().forEach(el => { el.addEventListener('input', save); el.addEventListener('change', save); });
   fields().forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+  restoredFields.forEach(el => write(el, savedState[fieldKey(el)]));
+  restoredFields
+    .filter(el => el.type === 'checkbox' || el.type === 'radio')
+    .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
+  isRestoring = false;
+  if (savedForm?.batchId === batchMeta.id && savedForm.state) {
+    void formStateRequest('readwrite', store => store.put({
+      page: PAGE,
+      batchId: batchMeta.id,
+      state: savedForm.state,
+      updatedAt: latestFormUpdate || Date.now()
+    })).catch(() => {});
+  }
+  void formStateRequest('readonly', store => store.get(PAGE)).then(record => {
+    if (!record || record.batchId !== batchMeta.id || !record.state || Number(record.updatedAt) <= latestFormUpdate) return;
+    isRestoring = true;
+    const restored = fields().filter(el => Object.prototype.hasOwnProperty.call(record.state, fieldKey(el)));
+    restored.forEach(el => write(el, record.state[fieldKey(el)]));
+    restored.forEach(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+    restored
+      .filter(el => el.type === 'checkbox' || el.type === 'radio')
+      .forEach(el => el.dispatchEvent(new Event('change', { bubbles: true })));
+    latestFormUpdate = Number(record.updatedAt) || Date.now();
+    localStorage.setItem(FORM_KEY, JSON.stringify({
+      page: PAGE,
+      batchId: batchMeta.id,
+      state: record.state,
+      updatedAt: latestFormUpdate
+    }));
+    const inbound = document.getElementById('pasteInput');
+    if (inbound) localStorage.setItem(SHARED_INBOUND_KEY, JSON.stringify({
+      batchId: batchMeta.id,
+      value: inbound.value,
+      updatedAt: latestFormUpdate
+    }));
+    isRestoring = false;
+  }).catch(() => { isRestoring = false; });
+  document.querySelectorAll('.top-tabs a[href]').forEach(link => {
+    link.addEventListener('click', () => { if (!isClearing) save(); }, { capture: true });
+  });
   window.addEventListener('pagehide', () => { if (!isClearing) save(); });
+  window.addEventListener('beforeunload', () => { if (!isClearing) save(); });
   window.dispatchEvent(new CustomEvent('fba-workspace-ready', { detail: { batchId: batchMeta.id } }));
   notifyValueMode();
 })();
