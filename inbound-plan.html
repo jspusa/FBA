@@ -547,15 +547,23 @@ const inboundDraftInput=document.getElementById('pasteInput');
 function saveInboundDraft(){
  try{
   const updatedAt=Date.now(),value=inboundDraftInput.value;
-  localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify({value,updatedAt}));
   const batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null');
+  localStorage.setItem(INBOUND_DRAFT_KEY,JSON.stringify({batchId:batch?.id||'',value,updatedAt}));
   if(batch?.id)localStorage.setItem(SHARED_INBOUND_KEY,JSON.stringify({batchId:batch.id,value,updatedAt}));
  }catch{}
 }
 function restoreInboundDraft(){
  try{
-  const saved=JSON.parse(localStorage.getItem(INBOUND_DRAFT_KEY)||'null');
-  if(saved&&typeof saved.value==='string'&&saved.value.trim())inboundDraftInput.value=saved.value;
+  const batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null');
+  const draft=JSON.parse(localStorage.getItem(INBOUND_DRAFT_KEY)||'null');
+  const shared=JSON.parse(localStorage.getItem(SHARED_INBOUND_KEY)||'null');
+  const form=JSON.parse(localStorage.getItem('fba-workspace:form:inbound-plan.html')||'null');
+  const candidates=[
+   draft&&(!draft.batchId||draft.batchId===batch?.id)?draft:null,
+   shared?.batchId===batch?.id?shared:null,
+   form?.batchId===batch?.id&&typeof form.state?.pasteInput==='string'?{value:form.state.pasteInput,updatedAt:form.updatedAt}:null
+  ].filter(item=>typeof item?.value==='string'&&item.value.trim()).sort((a,b)=>Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  if(candidates[0])inboundDraftInput.value=candidates[0].value;
  }catch{}
 }
 restoreInboundDraft();
@@ -576,5 +584,5 @@ window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mo
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
 renderCatalogMeta();inboundDraftInput.addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});renderPreview();bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260729g"></script>
+<script src="shared-workspace.js?v=20260729h"></script>
 </body></html>
