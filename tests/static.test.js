@@ -68,3 +68,11 @@ test('inline JavaScript is syntactically valid', () => {
     });
   }
 });
+
+test('restock page uses the shared Inventory column detector', () => {
+  const source = read('index.html');
+  assert.match(source, /<script src="fba-core\.js\?v=[^"]+"><\/script>/);
+  assert.match(source, /window\.FBACore\.detectInventoryColumns\(headers,rows\)/);
+  assert.doesNotMatch(source, /Inventory update 檔案缺欄位。/);
+  assert.match(source, /缺少必要欄位：EXPIRE/);
+});

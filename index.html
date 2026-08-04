@@ -400,6 +400,7 @@
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="fba-core.js?v=20260804a"></script>
 <script>
 (function(){
     const $ = (id) => document.getElementById(id);
@@ -523,27 +524,9 @@
       });
       return {records,map,duplicates,autoResolved,rawRecordCount};
     }
-    function isExpiryHeader(h){ const n=normalizeHeader(h); return n==='expire'||n==='expiry'||n==='expiration'||n==='效期'||n==='有效期限'||n==='到期日'||n.includes('expire'); }
-    function isQtyHeader(h){ const n=normalizeHeader(h); return n==='qty'||n==='quantity'||n==='數量'||n==='数量'; }
-    function detectInventoryColumns(headers){
-      const skuIdx=findHeaderIndex(headers,['SKU']);
-      const packIdx=findHeaderIndex(headers,['箱入數','箱入数','每箱數量','每箱数量','Pack','Case Pack']);
-      let totalCartonsIdx=findHeaderIndex(headers,['總箱數','总箱数','Total Cartons']);
-      const totalPacksIdx=findHeaderIndex(headers,['總包數','总包数','Total Units','Total Packs']);
-      const expiryPairs=[];
-      for(let i=0;i<headers.length;i++){
-        if(!isExpiryHeader(headers[i])) continue;
-        let qtyIdx=-1;
-        for(let j=i+1;j<headers.length&&!isExpiryHeader(headers[j]);j++){
-          if(isQtyHeader(headers[j])){ qtyIdx=j; break; }
-        }
-        expiryPairs.push({expiryIdx:i,qtyIdx});
-      }
-      if(skuIdx===-1||packIdx===-1) throw new Error('Inventory update 檔案缺欄位。');
-      if(totalCartonsIdx===-1){ const c=skuIdx+1; if(c<headers.length) totalCartonsIdx=c; }
-      if(totalCartonsIdx===-1) throw new Error('Inventory update 檔案找不到 總箱數 欄位。');
-      return {skuIdx,packIdx,totalCartonsIdx,totalPacksIdx,expiryPairs};
-    }
+    function isExpiryHeader(h){ return window.FBACore.isInventoryExpiryHeader(h); }
+    function isQtyHeader(h){ return window.FBACore.isInventoryQtyHeader(h); }
+    function detectInventoryColumns(headers,rows=[]){ return window.FBACore.detectInventoryColumns(headers,rows); }
     const computeSuggestion=(reorder, pack)=>{ const p=toNumber(pack); if(!p) return ''; return Math.round(toNumber(reorder)/p); };
     function parseExpiryDate(value){
       if(value instanceof Date && !Number.isNaN(value.getTime())) return new Date(value.getFullYear(),value.getMonth(),value.getDate());
@@ -672,7 +655,7 @@
     function processInventory(heliumData, inventoryRows,inventorySelections={},businessData={}){
       if(inventoryRows.length<2) throw new Error('Inventory update 檔案格式不足。');
       const headers=trimTrailingEmpty(inventoryRows[1]).map(h=>String(h??''));
-      const cols=detectInventoryColumns(headers);
+      const cols=detectInventoryColumns(headers,inventoryRows);
       const inventorySkuRows=new Map();
       for(let r=2;r<inventoryRows.length;r++){
         const rawSku=String(inventoryRows[r]?.[cols.skuIdx]??'').trim();
@@ -966,7 +949,7 @@
     function calculateInventoryValue(){
       try{
         if(!isValidCheck(preflightChecks.inventory)||!isValidCheck(preflightChecks.business)) throw new Error('請先加入 Inventory 與 Business Report。');
-        const rows=preflightChecks.inventory.rows, headers=trimTrailingEmpty(rows[1]).map(h=>String(h??'')), cols=detectInventoryColumns(headers), totals={};
+        const rows=preflightChecks.inventory.rows, headers=trimTrailingEmpty(rows[1]).map(h=>String(h??'')), cols=detectInventoryColumns(headers,rows), totals={};
         const inventorySkuRows=new Map();
         for(let r=2;r<rows.length;r++){ const sku=fixSku(rows[r]?.[cols.skuIdx]); if(!sku||isInventorySummarySku(sku))continue; if(!inventorySkuRows.has(sku))inventorySkuRows.set(sku,[]); inventorySkuRows.get(sku).push(r); }
         for(let r=2;r<rows.length;r++){
@@ -1342,7 +1325,7 @@ async function run(options={}){
       try{return JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'{}').id||''}catch{return ''}
     }
     function buildInventorySnapshot(rows,fileName=''){
-      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers),items={};
+      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers,rows),items={};
       for(let r=2;r<rows.length;r++){
         const row=rows[r]||[],sku=fixSku(row[cols.skuIdx]);
         if(!sku||isInventorySummarySku(sku))continue;
@@ -1363,7 +1346,7 @@ async function run(options={}){
       if(!api){buildInventorySnapshot(rows,file?.name||'');return rows}
       const ledger=api.read(),batchId=currentBatchId(),pending=(ledger.batches||[]).filter(entry=>entry.status==='pending'&&entry.batchId!==batchId);
       if(!pending.length){buildInventorySnapshot(rows,file?.name||'');return rows}
-      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers);
+      const headers=trimTrailingEmpty(rows[1]||[]).map(h=>String(h??'')),cols=detectInventoryColumns(headers,rows);
       reservationGuard.active=true;reservationGuard.batches=pending.length;
       pending.forEach(entry=>{
         let batchApplied=0,batchUnresolved=0;
@@ -1443,8 +1426,8 @@ async function run(options={}){
       const rows=await readWorkbookFirstSheetAsRows(file);
       if(rows.length<3) throw new Error('Inventory Excel 沒有足夠的資料列。');
       const headers=trimTrailingEmpty(rows[1]).map(h=>String(h??''));
-      const cols=detectInventoryColumns(headers);
-      if(!cols.expiryPairs.length) throw new Error('Inventory Excel 找不到成對的 EXPIRE／QTY 欄位。');
+      const cols=detectInventoryColumns(headers,rows);
+      if(!cols.expiryPairs.length) throw new Error('Inventory update 無法判讀，缺少必要欄位：EXPIRE（可接受表頭：EXPIRE、EXPIRY、EXPIRATION、效期、有效期限、到期日）。');
       const skus=new Set(), groups=new Map(), diagnostics=[];
       const expiryPairStats=cols.expiryPairs.map((pair,index)=>({
         group:index+1,
@@ -1457,6 +1440,9 @@ async function run(options={}){
         validQtyRows:0
       }));
       const addDiagnostic=(label,sku,location,detail,handling='請確認原始檔')=>diagnostics.push({id:`inventory-${diagnostics.length+1}`,kind:'diagnostic',label,source:'Inventory',sku,location,detail,handling});
+      cols.expiryPairs.filter(pair=>pair.qtyIdx===-1).forEach(pair=>{
+        addDiagnostic('QTY 欄缺漏','—',`${colLetter(pair.expiryIdx)} 欄 · ${String(headers[pair.expiryIdx]??'EXPIRE')}`,`此 EXPIRE／效期欄右側找不到對應的 QTY 欄，該組批次箱數無法判讀。`,'該組效期數量會按 0 計算；請補上 QTY 欄');
+      });
       for(let r=2;r<rows.length;r++){
         const row=rows[r]||[], rawSku=String(row[cols.skuIdx]??'').trim();
         if(!rawSku||isInventorySummarySku(rawSku)) continue;
@@ -1494,7 +1480,9 @@ async function run(options={}){
       groups.forEach((options,sku)=>{ if(options.length>1) decisions.push({id:`inventory-${sku}`,kind:'inventory-duplicate',source:'Inventory',sku,options,defaultChoice:'all',location:`Excel 第 ${options.map(option=>option._sourceRow).join('、')} 列`}); });
       const stale=freshnessWarning(file,'Inventory Excel',7);
       if(stale) diagnostics.push({id:'inventory-file-age',kind:'diagnostic',label:'檔案日期',source:'Inventory',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認版本'});
-      return {rows,skus,warnings:[],decisions,diagnostics,notes:[{kind:'inventory-info',pairCount:cols.expiryPairs.length,pairs:expiryPairStats}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}`};
+      const inferenceNotes=(cols.inferred||[]).map(item=>({kind:'inventory-inference',text:`已自動判讀 ${item.column} 欄為「${item.field}」：${item.reason}。原始檔不需先修改即可繼續整理。`}));
+      const inferredDetail=cols.inferred?.length?` · 自動判讀 ${cols.inferred.map(item=>`${item.column} 欄${item.field}`).join('、')}`:'';
+      return {rows,skus,warnings:[],decisions,diagnostics,notes:[...inferenceNotes,{kind:'inventory-info',pairCount:cols.expiryPairs.length,pairs:expiryPairStats}],detail:`${skus.size} 個 SKU${decisions.length?` · ${decisions.length} 組待選`:''}${inferredDetail}`};
     }
     async function validateBusinessFile(file){
       const rows=await readWorkbookFirstSheetAsRows(file), parsed=parseBusinessReport(rows);
@@ -1577,8 +1565,8 @@ async function run(options={}){
         const hasAll=(headers,required)=>Object.values(required).every(aliases=>findHeaderIndex(headers,aliases)!==-1);
         if(hasAll(first,REQUIRED_BUSINESS_COLS)) return 'business';
         if(hasAll(first,REQUIRED_HELIUM_COLS)) return 'helium';
-        const inventorySku=findHeaderIndex(second,['SKU']), inventoryPack=findHeaderIndex(second,['箱入數','箱入数','每箱數量','每箱数量','Pack','Case Pack']);
-        if(inventorySku!==-1&&inventoryPack!==-1&&second.some(isExpiryHeader)) return 'inventory';
+        const inventoryColumns=detectInventoryColumns(second,rows);
+        if(inventoryColumns.expiryPairs.length) return 'inventory';
       }catch{}
       const name=String(file?.name||'').toLowerCase();
       if(name.includes('businessreport')||name.includes('business-report')) return 'business';

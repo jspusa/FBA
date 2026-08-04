@@ -57,6 +57,21 @@
     units: ['單位數量', '總單位數', 'units', 'totalunits', 'unitquantity']
   };
 
+  const INVENTORY_FIELD_ALIASES = {
+    sku: ['SKU'],
+    pack: ['箱入數', '箱入数', '每箱數量', '每箱数量', 'Pack', 'Case Pack', 'Units per Case', 'Units per Carton'],
+    totalCartons: ['總箱數', '总箱数', '箱數', '箱数', 'Total Cartons', 'Cartons', 'Boxes'],
+    totalPacks: ['總包數', '总包数', 'Total Units', 'Total Packs'],
+    expiry: ['EXPIRE', 'EXPIRY', 'EXPIRATION', 'Expiration Date', 'Exp Date', '效期', '有效期限', '到期日']
+  };
+
+  const INVENTORY_FIELD_LABELS = {
+    sku: 'SKU',
+    pack: '箱入數',
+    totalCartons: '總箱數',
+    expiry: 'EXPIRE／效期'
+  };
+
   function fieldForLabel(value) {
     const normalized = normalizeLabel(value);
     return Object.keys(FIELD_ALIASES).find(field => FIELD_ALIASES[field].includes(normalized)) || null;
@@ -156,6 +171,161 @@
     return rows;
   }
 
+  const inventoryHeaderIndex = (headers, aliases) => {
+    const normalized = headers.map(normalizeLabel);
+    return aliases.map(normalizeLabel).map(alias => normalized.indexOf(alias)).find(index => index !== -1) ?? -1;
+  };
+
+  const isInventorySummarySku = value => [
+    'newsku', 'total', 'totals', 'subtotal', 'grandtotal', '合計', '總計', '总计'
+  ].includes(normalizeLabel(value));
+
+  const isInventoryExpiryHeader = value => {
+    const normalized = normalizeLabel(value);
+    return normalized === 'expire'
+      || normalized === 'expiry'
+      || normalized === 'expiration'
+      || normalized === 'expirationdate'
+      || normalized === 'expdate'
+      || normalized === '效期'
+      || normalized === '有效期限'
+      || normalized === '到期日'
+      || normalized.includes('expire');
+  };
+
+  const isInventoryQtyHeader = value => {
+    const normalized = normalizeLabel(value);
+    return normalized === 'qty'
+      || normalized === 'quantity'
+      || normalized === '數量'
+      || normalized === '数量';
+  };
+
+  const spreadsheetColumnName = index => {
+    let value = Number(index) + 1;
+    let name = '';
+    while (value > 0) {
+      value--;
+      name = String.fromCharCode(65 + (value % 26)) + name;
+      value = Math.floor(value / 26);
+    }
+    return name;
+  };
+
+  function numericInventoryColumnEvidence(rows, columnIndex, skuIndex) {
+    if (!Array.isArray(rows) || columnIndex < 0 || skuIndex < 0) return { usable: false, sampled: 0 };
+    let sampled = 0;
+    let numeric = 0;
+    let positive = 0;
+    for (const row of rows.slice(2, 202)) {
+      const sku = String(row?.[skuIndex] ?? '').trim();
+      if (!sku || isInventorySummarySku(sku)) continue;
+      const value = row?.[columnIndex];
+      if (value == null || String(value).trim() === '') continue;
+      sampled++;
+      const rawNumber = typeof value === 'number'
+        ? value
+        : (/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(String(value).replace(/,/g, '').trim())
+            ? Number(String(value).replace(/,/g, '').trim())
+            : null);
+      const number = Number.isFinite(rawNumber) ? rawNumber : null;
+      if (number != null) {
+        numeric++;
+        if (number > 0) positive++;
+      }
+    }
+    return {
+      usable: sampled > 0 && numeric === sampled && positive > 0,
+      sampled,
+      numeric,
+      positive
+    };
+  }
+
+  function inventoryColumnsError(missingFields, headers) {
+    const missingText = missingFields.map(field => {
+      const aliases = INVENTORY_FIELD_ALIASES[field].join('、');
+      return `${INVENTORY_FIELD_LABELS[field]}（可接受表頭：${aliases}）`;
+    }).join('；');
+    const visibleHeaders = headers
+      .map((header, index) => String(header ?? '').trim() ? `${spreadsheetColumnName(index)}=${String(header).trim()}` : '')
+      .filter(Boolean)
+      .join('、');
+    const error = new Error(
+      `Inventory update 無法判讀，缺少必要欄位：${missingText}。`
+      + `程式讀取 Excel 第 2 列作為表頭；目前辨識到：${visibleHeaders || '沒有可辨識的表頭'}。`
+    );
+    error.code = 'INVENTORY_MISSING_COLUMNS';
+    error.missingColumns = missingFields.map(field => INVENTORY_FIELD_LABELS[field]);
+    return error;
+  }
+
+  function detectInventoryColumns(headers, rows = []) {
+    const sourceHeaders = Array.isArray(headers) ? headers.map(value => String(value ?? '')) : [];
+    const inferred = [];
+    const skuIdx = inventoryHeaderIndex(sourceHeaders, INVENTORY_FIELD_ALIASES.sku);
+    let packIdx = inventoryHeaderIndex(sourceHeaders, INVENTORY_FIELD_ALIASES.pack);
+    let totalCartonsIdx = inventoryHeaderIndex(sourceHeaders, INVENTORY_FIELD_ALIASES.totalCartons);
+    const totalPacksIdx = inventoryHeaderIndex(sourceHeaders, INVENTORY_FIELD_ALIASES.totalPacks);
+    const firstExpiryIdx = sourceHeaders.findIndex(isInventoryExpiryHeader);
+
+    // Legacy Inventory exports sometimes leave A2 blank even though column A still
+    // contains the case-pack value. Infer it only when the surrounding layout and
+    // numeric data make the meaning unambiguous.
+    if (packIdx === -1 && skuIdx > 0) {
+      const candidate = skuIdx - 1;
+      const evidence = numericInventoryColumnEvidence(rows, candidate, skuIdx);
+      const hasInventoryLayout = (firstExpiryIdx > skuIdx || totalPacksIdx > skuIdx)
+        && (totalCartonsIdx > skuIdx || numericInventoryColumnEvidence(rows, skuIdx + 1, skuIdx).usable);
+      if (!normalizeLabel(sourceHeaders[candidate]) && evidence.usable && hasInventoryLayout) {
+        packIdx = candidate;
+        inferred.push({
+          field: '箱入數',
+          index: candidate,
+          column: spreadsheetColumnName(candidate),
+          reason: `${spreadsheetColumnName(candidate)} 欄表頭空白，但位於 SKU 左側且 ${evidence.sampled} 筆資料皆為數字`
+        });
+      }
+    }
+
+    if (totalCartonsIdx === -1 && skuIdx !== -1 && skuIdx + 1 < sourceHeaders.length) {
+      const candidate = skuIdx + 1;
+      const evidence = numericInventoryColumnEvidence(rows, candidate, skuIdx);
+      const beforeExpiry = firstExpiryIdx === -1 || candidate < firstExpiryIdx;
+      if (!normalizeLabel(sourceHeaders[candidate]) && evidence.usable && beforeExpiry) {
+        totalCartonsIdx = candidate;
+        inferred.push({
+          field: '總箱數',
+          index: candidate,
+          column: spreadsheetColumnName(candidate),
+          reason: `${spreadsheetColumnName(candidate)} 欄表頭空白，但位於 SKU 右側且 ${evidence.sampled} 筆資料皆為數字`
+        });
+      }
+    }
+
+    const missingFields = [];
+    if (skuIdx === -1) missingFields.push('sku');
+    if (packIdx === -1) missingFields.push('pack');
+    if (totalCartonsIdx === -1) missingFields.push('totalCartons');
+    if (firstExpiryIdx === -1) missingFields.push('expiry');
+    if (missingFields.length) throw inventoryColumnsError(missingFields, sourceHeaders);
+
+    const expiryPairs = [];
+    for (let index = 0; index < sourceHeaders.length; index++) {
+      if (!isInventoryExpiryHeader(sourceHeaders[index])) continue;
+      let qtyIdx = -1;
+      for (let next = index + 1; next < sourceHeaders.length && !isInventoryExpiryHeader(sourceHeaders[next]); next++) {
+        if (isInventoryQtyHeader(sourceHeaders[next])) {
+          qtyIdx = next;
+          break;
+        }
+      }
+      expiryPairs.push({ expiryIdx: index, qtyIdx });
+    }
+
+    return { skuIdx, packIdx, totalCartonsIdx, totalPacksIdx, expiryPairs, inferred };
+  }
+
   return {
     normalizeLabel,
     toNumber,
@@ -163,6 +333,9 @@
     parseCsvMetrics,
     normalizeShipmentDate,
     parseBolMetrics,
-    parseShipmentText
+    parseShipmentText,
+    detectInventoryColumns,
+    isInventoryExpiryHeader,
+    isInventoryQtyHeader
   };
 });
