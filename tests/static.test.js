@@ -48,6 +48,16 @@ test('inbound plan and email clear their linked page state together', () => {
   assert.match(inbound, /if\(window\.FBAWorkspaceIsClearing\)return/);
 });
 
+test('workspace reset uses an accessible in-page confirmation instead of blocking native dialogs', () => {
+  const source = read('shared-workspace.js');
+  assert.doesNotMatch(source, /window\.confirm\(/);
+  assert.match(source, /role="alertdialog"/);
+  assert.match(source, /aria-modal="true"/);
+  assert.match(source, /fba-confirm-cancel/);
+  assert.match(source, /fba-confirm-accept/);
+  assert.match(source, /event\.key === 'Escape'/);
+});
+
 test('email does not invent a truck count and reports its data source', () => {
   const source = read('email.html');
   assert.doesNotMatch(source, /id="truckCount"[^>]*value="5"/);
