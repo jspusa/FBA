@@ -548,6 +548,7 @@ const SHARED_INBOUND_KEY='fba-workspace:inbound-data';
 const LATEST_INBOUND_KEY='fba-workspace:inbound-latest:v1';
 const inboundDraftInput=document.getElementById('pasteInput');
 function saveInboundDraft(){
+ if(window.FBAWorkspaceIsClearing)return;
  try{
   const updatedAt=Date.now(),value=inboundDraftInput.value;
   const batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null');
@@ -590,5 +591,5 @@ window.addEventListener('storage',event=>{if(event.key==='fba-workspace:value-mo
 window.addEventListener('fba-workspace-ready',()=>{syncInboundValueMode();consumeFlashRestock()});
 renderCatalogMeta();inboundDraftInput.addEventListener('input',()=>{clearInboundValueResult();DEDUCTION_OUTPUT=null;document.getElementById('downloadPostShipmentInventoryBtn').disabled=true;document.getElementById('inventoryDeductionResult').innerHTML='';renderPreview()});renderPreview();bindDropzone('catalogDropzone','catalogFile','catalogFileName');bindDropzone('inventoryDropzone','inventoryFile','inventoryFileName');bindDropzone('deductionInventoryDropzone','deductionInventoryFile','deductionInventoryFileName');document.getElementById('deductionInventoryFile').addEventListener('change',event=>{const file=event.target.files?.[0];if(file)setDeductionInventoryFile(file,'自行選擇')});syncInboundValueMode();
 </script>
-<script src="shared-workspace.js?v=20260729j"></script>
+<script src="shared-workspace.js?v=20260818a"></script>
 </body></html>

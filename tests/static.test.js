@@ -36,6 +36,18 @@ test('workspace reset clears localStorage and IndexedDB', () => {
   assert.match(source, /indexedDB\.deleteDatabase\(SORTER_DB\)/);
 });
 
+test('inbound plan and email clear their linked page state together', () => {
+  const source = read('shared-workspace.js');
+  const inbound = read('inbound-plan.html');
+  assert.match(source, /const LINKED_CLEAR_PAGES = \['inbound-plan\.html', 'email\.html'\]/);
+  assert.match(source, /LINKED_CLEAR_PAGES\.includes\(PAGE\)/);
+  assert.match(source, /localStorage\.removeItem\(`fba-workspace:form:\$\{page\}`\)/);
+  assert.match(source, /formStateRequest\('readwrite', store => store\.delete\(page\)\)/);
+  assert.match(source, /這兩頁的輸入與結果會一併清除，其他三頁會保留/);
+  assert.match(source, /window\.FBAWorkspaceIsClearing = true/);
+  assert.match(inbound, /if\(window\.FBAWorkspaceIsClearing\)return/);
+});
+
 test('email does not invent a truck count and reports its data source', () => {
   const source = read('email.html');
   assert.doesNotMatch(source, /id="truckCount"[^>]*value="5"/);

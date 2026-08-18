@@ -15,9 +15,15 @@
   const RESTOCK_STORE = 'files';
   const FORM_STATE_DB = 'fba-workspace-state';
   const FORM_STATE_STORE = 'forms';
+  const LINKED_CLEAR_PAGES = ['inbound-plan.html', 'email.html'];
   let isClearing = false;
   let isRestoring = true;
   let latestFormUpdate = 0;
+  window.FBAWorkspaceIsClearing = false;
+  const beginClearing = () => {
+    isClearing = true;
+    window.FBAWorkspaceIsClearing = true;
+  };
 
   const makeId = () => globalThis.crypto?.randomUUID?.()
     || `batch-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -302,10 +308,10 @@
     const request = indexedDB.deleteDatabase(FORM_STATE_DB);
     request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
-  const reloadAfterClear = () => { isClearing = true; clearCurrentPage(); location.reload(); };
+  const reloadAfterClear = () => { beginClearing(); clearCurrentPage(); location.reload(); };
   const startNewBatch = async () => {
     if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
-    isClearing = true;
+    beginClearing();
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
     sessionStorage.removeItem(LATEST_INBOUND_KEY);
     await Promise.all([deleteSorterDatabase(), deleteRestockDatabase(), deleteFormStateDatabase()]);
@@ -313,14 +319,19 @@
     reloadAfterClear();
   };
   const clearThisPage = async () => {
-    if (!window.confirm('確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。')) return;
-    isClearing = true;
-    localStorage.removeItem(FORM_KEY);
-    await formStateRequest('readwrite', store => store.delete(PAGE)).catch(() => {});
+    const clearsLinkedPages = LINKED_CLEAR_PAGES.includes(PAGE);
+    const confirmation = clearsLinkedPages
+      ? '確定要清除「入庫計畫」與「出貨通知」嗎？這兩頁的輸入與結果會一併清除，其他三頁會保留。'
+      : '確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。';
+    if (!window.confirm(confirmation)) return;
+    beginClearing();
+    const pagesToClear = clearsLinkedPages ? LINKED_CLEAR_PAGES : [PAGE];
+    pagesToClear.forEach(page => localStorage.removeItem(`fba-workspace:form:${page}`));
+    await Promise.all(pagesToClear.map(page => formStateRequest('readwrite', store => store.delete(page)).catch(() => {})));
     if (PAGE === 'index.html') {
       localStorage.removeItem(BUSINESS_REPORT_KEY);
       await deleteRestockDatabase();
-    } else if (PAGE === 'inbound-plan.html') {
+    } else if (clearsLinkedPages) {
       localStorage.removeItem(SHARED_INBOUND_KEY);
       localStorage.removeItem(LATEST_INBOUND_KEY);
       sessionStorage.removeItem(LATEST_INBOUND_KEY);
