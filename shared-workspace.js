@@ -309,8 +309,51 @@
     request.onsuccess = request.onerror = request.onblocked = () => resolve();
   });
   const reloadAfterClear = () => { beginClearing(); clearCurrentPage(); location.reload(); };
+  const requestWorkspaceConfirmation = ({ title, message, confirmLabel }) => new Promise(resolve => {
+    document.querySelector('.fba-confirm-backdrop')?.remove();
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fba-confirm-backdrop';
+    backdrop.innerHTML = `
+      <section class="fba-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="fbaConfirmTitle" aria-describedby="fbaConfirmMessage">
+        <div class="fba-confirm-icon" aria-hidden="true">!</div>
+        <h2 id="fbaConfirmTitle"></h2>
+        <p id="fbaConfirmMessage"></p>
+        <div class="fba-confirm-actions">
+          <button type="button" class="fba-confirm-cancel">取消</button>
+          <button type="button" class="fba-confirm-accept"></button>
+        </div>
+      </section>`;
+    const titleElement = backdrop.querySelector('#fbaConfirmTitle');
+    const messageElement = backdrop.querySelector('#fbaConfirmMessage');
+    const cancelButton = backdrop.querySelector('.fba-confirm-cancel');
+    const acceptButton = backdrop.querySelector('.fba-confirm-accept');
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    acceptButton.textContent = confirmLabel;
+    const settle = confirmed => {
+      document.removeEventListener('keydown', onKeydown);
+      backdrop.remove();
+      resolve(confirmed);
+    };
+    const onKeydown = event => {
+      if (event.key === 'Escape') settle(false);
+    };
+    cancelButton.addEventListener('click', () => settle(false));
+    acceptButton.addEventListener('click', () => settle(true));
+    backdrop.addEventListener('click', event => {
+      if (event.target === backdrop) settle(false);
+    });
+    document.addEventListener('keydown', onKeydown);
+    document.body.appendChild(backdrop);
+    requestAnimationFrame(() => acceptButton.focus());
+  });
   const startNewBatch = async () => {
-    if (!window.confirm('確定要開始新批次嗎？目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。')) return;
+    const confirmed = await requestWorkspaceConfirmation({
+      title: '開始新批次？',
+      message: '目前批次的入庫資料、確認狀態、FBA 檔案與分析結果都會清除，且無法復原。',
+      confirmLabel: '開始新批次'
+    });
+    if (!confirmed) return;
     beginClearing();
     Object.keys(localStorage).filter(key => key.startsWith('fba-workspace:')).forEach(key => localStorage.removeItem(key));
     sessionStorage.removeItem(LATEST_INBOUND_KEY);
@@ -320,10 +363,15 @@
   };
   const clearThisPage = async () => {
     const clearsLinkedPages = LINKED_CLEAR_PAGES.includes(PAGE);
-    const confirmation = clearsLinkedPages
+    const message = clearsLinkedPages
       ? '確定要清除「入庫計畫」與「出貨通知」嗎？這兩頁的輸入與結果會一併清除，其他三頁會保留。'
       : '確定要清除此頁面嗎？只會清除目前頁面的輸入與結果，其他四頁會保留。';
-    if (!window.confirm(confirmation)) return;
+    const confirmed = await requestWorkspaceConfirmation({
+      title: clearsLinkedPages ? '清除入庫計畫與出貨通知？' : '清除此頁面？',
+      message,
+      confirmLabel: clearsLinkedPages ? '清除兩頁' : '清除此頁面'
+    });
+    if (!confirmed) return;
     beginClearing();
     const pagesToClear = clearsLinkedPages ? LINKED_CLEAR_PAGES : [PAGE];
     pagesToClear.forEach(page => localStorage.removeItem(`fba-workspace:form:${page}`));
@@ -397,6 +445,12 @@
     .workspace-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:max-content}
     .clear-page{appearance:none;border:1px solid rgba(0,0,0,.09);cursor:pointer;flex:0 0 auto;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.82);color:#52525b;font-size:12px;font-weight:700;transition:.18s ease;white-space:nowrap}
     .clear-page:hover{background:#fff;transform:translateY(-1px);box-shadow:0 7px 18px rgba(0,0,0,.08)}
+    .fba-confirm-backdrop{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.56);backdrop-filter:blur(8px)}
+    .fba-confirm-dialog{width:min(440px,100%);box-sizing:border-box;padding:26px;border:1px solid rgba(255,255,255,.6);border-radius:24px;background:#fff;color:#1d1d1f;box-shadow:0 28px 80px rgba(15,23,42,.32);text-align:center}
+    .fba-confirm-icon{display:grid;place-items:center;width:46px;height:46px;margin:0 auto 14px;border-radius:50%;background:#fff4df;color:#9a4f00;font-size:24px;font-weight:900}
+    .fba-confirm-dialog h2{margin:0 0 9px;font-size:22px;line-height:1.25}.fba-confirm-dialog p{margin:0;color:#61616a;font-size:14px;line-height:1.65}
+    .fba-confirm-actions{display:flex;justify-content:center;gap:10px;margin-top:24px}.fba-confirm-actions button{min-width:126px;padding:11px 17px;border-radius:999px;font-weight:800;cursor:pointer}
+    .fba-confirm-cancel{border:1px solid rgba(0,0,0,.12);background:#f5f5f7;color:#3a3a3c}.fba-confirm-accept{border:1px solid #c9342f;background:#d93f39;color:#fff}.fba-confirm-accept:hover{background:#bd2f2a}.fba-confirm-actions button:focus-visible{outline:3px solid rgba(0,113,227,.28);outline-offset:2px}
     .workspace-source{margin-top:10px;padding:10px 12px;border-radius:12px;background:#f5f7fb;color:#667085;font-size:12px;line-height:1.45}
     .workspace-source.ok{background:#e8f7ed;color:#176b2c}.workspace-source.warn{background:#fff4df;color:#8a4b00}
     .private-value-action[hidden],.private-value-panel[hidden]{display:none!important}
@@ -432,6 +486,7 @@
     body.fba-night .top-tabs{background:#17100b!important;border:1px solid #3f2817!important}body.fba-night .top-tab{color:#d6b79d!important}body.fba-night .top-tab:hover{background:#2b180c!important;color:#fff7ed!important}
     body.fba-night input:focus,body.fba-night textarea:focus,body.fba-night select:focus{outline:3px solid rgba(249,115,22,.24)!important;border-color:#f97316!important}
     body.fba-night .workspace-source.ok,body.fba-night .review-progress.done{background:#2b180c!important;color:#fdba74!important;border-color:#9a4d15!important}
+    body.fba-night .fba-confirm-dialog{background:#17120e!important;color:#fff7ed!important;border-color:#5a351d!important}body.fba-night .fba-confirm-dialog p{color:#c4a991!important}body.fba-night .fba-confirm-cancel{background:#21170f!important;color:#fed7aa!important;border-color:#9a4d15!important}
     body.fba-night .preflight-panel,body.fba-night .audit-item,body.fba-night .issue-head,body.fba-night .issue-body,body.fba-night .issue-table-wrap,body.fba-night .issue-option,body.fba-night .option-metric,body.fba-night .decision-confirm,body.fba-night .preflight-notes summary,body.fba-night .batch-stat,body.fba-night .final-status,body.fba-night .tool-status,body.fba-night .active-risk-panel,body.fba-night .export-warning-panel{background:#17120e!important;border-color:#5a351d!important;color:#fff7ed!important}
     body.fba-night .issue-card.confirmed,body.fba-night .issue-card.confirmed .issue-head,body.fba-night .issue-card.confirmed .issue-body,body.fba-night .issue-card.confirmed .issue-table-wrap{background:#132117!important;border-color:#356b3d!important;color:#d1fad8!important}
     body.fba-night .review-toggle.confirmed{background:#183221!important;border-color:#3f7d50!important;color:#c7f4d2!important;box-shadow:none!important}
