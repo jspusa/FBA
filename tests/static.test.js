@@ -8,6 +8,27 @@ const root = path.resolve(__dirname, '..');
 const htmlFiles = ['index.html', 'inbound-plan.html', 'shipment.html', 'sorter.html', 'email.html'];
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
+function extractFunction(source, name) {
+  const start = source.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `Missing function ${name}`);
+  const brace = source.indexOf('{', start);
+  let depth = 0;
+  for (let index = brace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+  throw new Error(`Unterminated function ${name}`);
+}
+
+function loadInlineFunction(file, name, globals = {}) {
+  const context = vm.createContext({ ...globals });
+  vm.runInContext(`${extractFunction(read(file), name)};this.fn=${name};`, context, { filename: file });
+  return context.fn;
+}
+
 test('all workflow pages load shared workspace behavior', () => {
   const expectedTabs = ['補貨整合', '入庫計畫', '棧板擷取', 'FBA 整理', '出貨通知'];
   for (const file of htmlFiles) {
@@ -97,4 +118,137 @@ test('restock page uses the shared Inventory column detector', () => {
   assert.match(source, /window\.FBACore\.detectInventoryColumns\(headers,rows\)/);
   assert.doesNotMatch(source, /Inventory update 檔案缺欄位。/);
   assert.match(source, /缺少必要欄位：EXPIRE/);
+});
+
+test('prefilled inbound-plan cartons stay numeric in exported Excel', () => {
+  const coerceCellValue = loadInlineFunction('index.html', 'coerceCellValue', {
+    isNumericLike: (value) => !(value == null || value === '') && Number.isFinite(Number(String(value).replace(/,/g, '').trim())),
+    toNumber: (value) => {
+      if (value == null || value === '') return 0;
+      const number = Number(String(value).replace(/,/g, '').trim());
+      return Number.isFinite(number) ? number : 0;
+    },
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(coerceCellValue('入庫計畫', 30))),
+    { v: 30, t: 'n', z: '0' },
+  );
+});
+
+test('under-five classification uses total eligible cartons, not the first expiry lot', () => {
+  const source = read('index.html');
+  const line = source.split('\n').find((candidate) => candidate.includes('underFive.push(eligibleRowStandard)'));
+  assert.ok(line, 'Missing under-five classification branch');
+  const expression = line.match(/if\((.*)\) underFive\.push\(eligibleRowStandard\)/)?.[1];
+  assert.ok(expression, 'Unable to extract under-five classification expression');
+  const classified = vm.runInNewContext(expression, {
+    eligibleQty: 107,
+    cappedToFirstExpiry: true,
+    firstEligibleQty: 2,
+  });
+  assert.equal(classified, false);
+});
+
+test('email accepts an unambiguous headerless shipment row', () => {
+  const parseData = loadInlineFunction('email.html', 'parseData', {
+    parsePositiveInteger: (value, label) => {
+      const raw = String(value ?? '').trim();
+      const number = Number(raw);
+      if (!/^\d+$/.test(raw) || !Number.isInteger(number) || number < 1) throw new Error(`${label}必須是正整數。`);
+      return number;
+    },
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(parseData('ATAL01\t30\t1260\t6/28'))),
+    {
+      rows: [{ sku: 'ATAL01', ctn: 30, quantity: 1260, expire: '6/28' }],
+      totalCtn: 30,
+      totalQuantity: 1260,
+    },
+  );
+});
+
+test('email keeps headered shipment parsing and rejects incomplete headers', () => {
+  const parseData = loadInlineFunction('email.html', 'parseData', {
+    parsePositiveInteger: (value, label) => {
+      const raw = String(value ?? '').trim();
+      const number = Number(raw);
+      if (!/^\d+$/.test(raw) || !Number.isInteger(number) || number < 1) throw new Error(`${label}必須是正整數。`);
+      return number;
+    },
+  });
+  assert.equal(parseData('SKU\t入庫計畫\t入庫包數\tEXPIRE\nATAL01\t30\t1260\t6/28').totalQuantity, 1260);
+  assert.throws(
+    () => parseData('SKU\t入庫計畫\tEXPIRE\nATAL01\t30\t6/28'),
+    /資料需要包含 SKU/,
+  );
+});
+
+test('built-in catalog includes the August update and confirmed GTBL05 carton size', () => {
+  const source = read('inbound-plan.html');
+  const base = JSON.parse(source.match(/const BUILTIN_CATALOG=(\{.*\});\nconst BUILTIN_CATALOG_ADDITIONS=/)?.[1] || 'null');
+  const additions = JSON.parse(source.match(/const BUILTIN_CATALOG_ADDITIONS=(\{[\s\S]*?\});\nObject\.assign/)?.[1] || 'null');
+  const catalog = { ...base, ...additions };
+  const addedSkus = [
+    '1AXXD002A0', '1GLTD011A0', '1MHTD017A0', '1MHTD027A0', '1MHTD037A0', '1MHTD047A0', '1MHTD057A0',
+    '1VFPD010A0', '1VFPD018A0', '1VFPD050A0', '1VFPD058A0', '1VFRD010A0', '1VFSD010A0', '1VFSD018A0',
+    '7ATRD013AB', '7ATSD010AB', '7ATSD017AB', '7ATSD019AB', '7GTBD013AB', '7GTBD017AB', '7GTBD037AB',
+    '7GTBD053AB', '7GTBD057AB', '7GTPD013AB', '7GTPD017AB', '7GTPD037AB', '7GTPD053AB', '7GTPD057AB',
+    '7GTRD013AB', '7GTRD017AB', '7GTRD037AB', '7GTSD013AB', '7GTSD017AB',
+  ];
+  const changedSkus = {
+    GTP03: { units: 100, length: 23, width: 14, height: 14, weight: 26, source: 'AMZ 所有SKU' },
+    GTPL03: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTBL03: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTRL03: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTCL01: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTAL01: { units: 38, length: 20, width: 16, height: 16, weight: 44, source: 'AMZ 所有SKU' },
+    GTP05: { units: 100, length: 23, width: 14, height: 14, weight: 29, source: 'AMZ 所有SKU' },
+    GTPL05: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTB05: { units: 100, length: 23, width: 14, height: 14, weight: 29, source: 'AMZ 所有SKU' },
+    GTBL05: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTSL01: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTPL01: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTBL01: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    GTRL01: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
+    '1ABRD002A0': { units: 42, length: 20, width: 16, height: 12, weight: 37, source: 'AMZ 所有SKU' },
+  };
+  assert.ok(addedSkus.every((sku) => catalog[sku]), 'Missing one or more newly added SKUs');
+  for (const [sku, product] of Object.entries(changedSkus)) assert.deepEqual(catalog[sku], product, sku);
+  assert.equal(Object.keys(catalog).length, 307);
+  assert.match(source, /const BUILTIN_CATALOG_VERSION='2026-08-25'/);
+});
+
+test('catalog import keeps the first complete row when a later duplicate is stale', () => {
+  const source = read('inbound-plan.html');
+  const context = vm.createContext({
+    XLSX: { utils: { sheet_to_json: (sheet) => sheet.rows } },
+  });
+  const setup = [
+    source.match(/const WANTED_SHEETS=.*;/)?.[0],
+    source.match(/const normHeader=.*;/)?.[0],
+    source.match(/const normSheet=.*;/)?.[0],
+    extractFunction(source, 'asNumber'),
+    extractFunction(source, 'findCol'),
+    extractFunction(source, 'parseDimsCm'),
+    extractFunction(source, 'sheetConfig'),
+    extractFunction(source, 'extractCatalog'),
+    'this.extractCatalog = extractCatalog;',
+  ].join('\n');
+  vm.runInContext(setup, context, { filename: 'inbound-plan.html:catalog-import' });
+  const header1 = Array(22).fill('');
+  const header2 = Array(22).fill('');
+  header1[1] = 'SKU'; header1[3] = '包數/箱'; header1[16] = '紙箱規格'; header1[20] = '每箱產品的毛重'; header2[21] = 'GW (lb)';
+  const newer = Array(22).fill('');
+  const stale = Array(22).fill('');
+  newer[1] = 'GTBL05'; newer[3] = 30; newer[16] = '50*40*40'; newer[21] = 35;
+  stale[1] = 'GTBL05'; stale[3] = 24; stale[16] = '50*40*30'; stale[21] = 29;
+  const result = context.extractCatalog({
+    SheetNames: ['AMZ 所有SKU'],
+    Sheets: { 'AMZ 所有SKU': { rows: [header1, header2, newer, stale] } },
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(result.found.GTBL05)), {
+    units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU',
+  });
+  assert.equal(result.duplicateConflicts, 1);
 });

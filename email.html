@@ -216,12 +216,24 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     $('emailMeta').textContent=message;
   });
   function parseData(value) {
-    const lines=value.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(lines.length<2) throw new Error('至少需要標題列與一筆資料。');
+    const lines=value.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean); if(!lines.length) throw new Error('請貼上至少一筆出貨資料。');
     const split=line=>line.includes('\t')?line.split('\t').map(s=>s.trim()):line.split(/\s{2,}/).map(s=>s.trim());
-    const headers=split(lines[0]).map(h=>h.toLowerCase().replace(/\s/g,''));
-    const find=(names)=>headers.findIndex(h=>names.includes(h)); const sku=find(['sku','merchantsku']), ctn=find(['ctn','入庫計畫','箱數','numberofboxes']), quantity=find(['quantity','入庫包數','數量']), expire=find(['expire','expiry','效期']);
-    if(sku<0||ctn<0||quantity<0||expire<0) throw new Error('資料需要包含 SKU、CTN（或入庫計畫）、Quantity（或入庫包數）與 EXPIRE。');
-    const rows=lines.slice(1).map(split).filter(r=>r[sku]).map((r,index)=>({sku:r[sku],ctn:parsePositiveInteger(r[ctn],`第 ${index+2} 列 CTN `),quantity:parsePositiveInteger(r[quantity],`第 ${index+2} 列 Quantity `),expire:r[expire]??''}));
+    const cells=lines.map(split), headers=cells[0].map(h=>h.toLowerCase().replace(/\s/g,''));
+    const aliases={sku:['sku','merchantsku'],ctn:['ctn','入庫計畫','箱數','numberofboxes'],quantity:['quantity','入庫包數','數量'],expire:['expire','expiry','效期']};
+    const find=names=>headers.findIndex(h=>names.includes(h));
+    let sku=find(aliases.sku),ctn=find(aliases.ctn),quantity=find(aliases.quantity),expire=find(aliases.expire),dataRows,lineOffset;
+    const hasAllHeaders=sku>=0&&ctn>=0&&quantity>=0&&expire>=0;
+    const knownHeaders=new Set(Object.values(aliases).flat()), knownHeaderCount=headers.filter(h=>knownHeaders.has(h)).length;
+    if(hasAllHeaders){
+      if(lines.length<2) throw new Error('至少需要標題列與一筆資料。');
+      dataRows=cells.slice(1); lineOffset=2;
+    } else if(knownHeaderCount){
+      throw new Error('資料需要包含 SKU、CTN（或入庫計畫）、Quantity（或入庫包數）與 EXPIRE。');
+    } else {
+      if(cells.some(row=>row.length!==4)) throw new Error('無表頭資料需要依序包含 SKU、入庫計畫、入庫包數與 EXPIRE 四欄。');
+      sku=0; ctn=1; quantity=2; expire=3; dataRows=cells; lineOffset=1;
+    }
+    const rows=dataRows.filter(r=>r[sku]).map((r,index)=>({sku:r[sku],ctn:parsePositiveInteger(r[ctn],`第 ${index+lineOffset} 列 CTN `),quantity:parsePositiveInteger(r[quantity],`第 ${index+lineOffset} 列 Quantity `),expire:r[expire]??''}));
     if(!rows.length) throw new Error('沒有成功解析到任何 SKU 資料。');
     return {rows,totalCtn:rows.reduce((sum,r)=>sum+r.ctn,0),totalQuantity:rows.reduce((sum,r)=>sum+r.quantity,0)};
   }

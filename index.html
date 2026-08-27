@@ -746,10 +746,7 @@
         if(eligibleQty<=0) continue;
         const eligibleRowPlanned=buildRow(fixedSku,sd,eligibleQty,rq,eligibleLots,packValue,inb,sell,plannedHeaders);
         const eligibleRowStandard=buildRow(fixedSku,sd,eligibleQty,rq,eligibleLots,packValue,inb,sell,standardHeaders);
-        const firstEligibleQty=eligibleLots.length?Math.max(0,Math.round(toNumber(eligibleLots[0].qty))):0;
-        const suggestion=computeSuggestion(rq,packValue);
-        const cappedToFirstExpiry=firstEligibleQty>0&&isNumericLike(suggestion)&&Math.round(toNumber(suggestion))>firstEligibleQty;
-        if(eligibleQty<5||(cappedToFirstExpiry&&firstEligibleQty<5)) underFive.push(eligibleRowStandard);
+        if(eligibleQty<5) underFive.push(eligibleRowStandard);
         else if(!helium) unlisted.push(eligibleRowPlanned);
         else {
           main.push(eligibleRowPlanned);
@@ -779,7 +776,7 @@
       SHEET_ORDER.forEach(name=>{ sheets[name]=optimizeLotColumns(name,sheets[name]); });
       return {sheets};
     }
-    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='入庫計畫'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
+    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
     function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
     function isHiddenOutputHeader(h){ return ['入項','可售庫存','過去30天銷量','补货数量','後台月數驗算','箱入數','總包數'].includes(h); }
     function isHiddenOutputColumn(name,headers,c){
