@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-08-28.3",
+  "catalogVersion": "2026-08-28.4",
   "projection": "fba-inbound",
   "products": [
     {
@@ -3927,7 +3927,7 @@
         11
       ],
       "grossWeightLb": 45,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD040",
@@ -3940,7 +3940,7 @@
         11
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD051",
@@ -3953,7 +3953,7 @@
         11
       ],
       "grossWeightLb": 45,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD060",
@@ -3966,7 +3966,7 @@
         11
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD011",
@@ -3979,7 +3979,7 @@
         11
       ],
       "grossWeightLb": 45,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD050",
@@ -3992,7 +3992,7 @@
         11
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD020",
@@ -4005,7 +4005,7 @@
         11
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD010",
@@ -4018,7 +4018,7 @@
         11
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD041",
@@ -4031,7 +4031,7 @@
         11
       ],
       "grossWeightLb": 45,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EPD061",
@@ -4044,7 +4044,7 @@
         11
       ],
       "grossWeightLb": 45,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EZD051",
@@ -4057,7 +4057,7 @@
         11
       ],
       "grossWeightLb": 41,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EZD041",
@@ -4070,7 +4070,7 @@
         11
       ],
       "grossWeightLb": 41,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EZD021",
@@ -4083,7 +4083,7 @@
         11
       ],
       "grossWeightLb": 41,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EZD011",
@@ -4096,7 +4096,7 @@
         11
       ],
       "grossWeightLb": 41,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "EZD061",
@@ -4109,7 +4109,7 @@
         11
       ],
       "grossWeightLb": 41,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "AMZ 所有SKU"
     },
     {
       "productSku": "1HGCC015A0",
@@ -4369,7 +4369,7 @@
         12
       ],
       "grossWeightLb": 43,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1AWDD775A0",
@@ -4382,7 +4382,7 @@
         12
       ],
       "grossWeightLb": 48,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1AXXD001A0",
@@ -4395,7 +4395,7 @@
         14
       ],
       "grossWeightLb": 25,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1AXXD002A0",
@@ -4408,7 +4408,7 @@
         12
       ],
       "grossWeightLb": 36,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1GLTD011A0",
@@ -4421,7 +4421,7 @@
         12
       ],
       "grossWeightLb": 21,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1GXXD001A0",
@@ -4434,7 +4434,7 @@
         11
       ],
       "grossWeightLb": 29,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1GXXD002A0",
@@ -4447,7 +4447,7 @@
         11
       ],
       "grossWeightLb": 20,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFPD010A0",
@@ -4460,7 +4460,7 @@
         12
       ],
       "grossWeightLb": 16,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFPD018A0",
@@ -4473,7 +4473,7 @@
         12
       ],
       "grossWeightLb": 20,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFPD050A0",
@@ -4486,7 +4486,7 @@
         12
       ],
       "grossWeightLb": 17,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFPD058A0",
@@ -4499,7 +4499,7 @@
         12
       ],
       "grossWeightLb": 16,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFRD010A0",
@@ -4512,7 +4512,7 @@
         12
       ],
       "grossWeightLb": 18,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFSD010A0",
@@ -4525,7 +4525,7 @@
         12
       ],
       "grossWeightLb": 18,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "1VFSD018A0",
@@ -4538,7 +4538,7 @@
         12
       ],
       "grossWeightLb": 22,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "ED011AM",
@@ -4650,7 +4650,7 @@
         12
       ],
       "grossWeightLb": 21,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7ATSD010AB",
@@ -4663,7 +4663,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7ATSD011AB",
@@ -4689,7 +4689,7 @@
         12
       ],
       "grossWeightLb": 22,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7ATSD019AB",
@@ -4702,7 +4702,7 @@
         12
       ],
       "grossWeightLb": 22,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTBD013AB",
@@ -4715,7 +4715,7 @@
         12
       ],
       "grossWeightLb": 21,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTBD017AB",
@@ -4728,7 +4728,7 @@
         12
       ],
       "grossWeightLb": 30,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTBD037AB",
@@ -4741,7 +4741,7 @@
         12
       ],
       "grossWeightLb": 32,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTBD053AB",
@@ -4754,7 +4754,7 @@
         12
       ],
       "grossWeightLb": 25,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTBD057AB",
@@ -4767,7 +4767,7 @@
         12
       ],
       "grossWeightLb": 27,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTPD013AB",
@@ -4780,7 +4780,7 @@
         12
       ],
       "grossWeightLb": 21,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTPD017AB",
@@ -4793,7 +4793,7 @@
         12
       ],
       "grossWeightLb": 27,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTPD037AB",
@@ -4806,7 +4806,7 @@
         12
       ],
       "grossWeightLb": 27,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTPD053AB",
@@ -4819,7 +4819,7 @@
         12
       ],
       "grossWeightLb": 25,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTPD057AB",
@@ -4832,7 +4832,7 @@
         12
       ],
       "grossWeightLb": 27,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTRD013AB",
@@ -4845,7 +4845,7 @@
         12
       ],
       "grossWeightLb": 21,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTRD017AB",
@@ -4858,7 +4858,7 @@
         12
       ],
       "grossWeightLb": 25,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTRD037AB",
@@ -4871,7 +4871,7 @@
         12
       ],
       "grossWeightLb": 32,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTSD013AB",
@@ -4884,7 +4884,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7GTSD017AB",
@@ -4897,7 +4897,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTBD015AB",
@@ -4910,7 +4910,7 @@
         12
       ],
       "grossWeightLb": 17,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTBD410AB",
@@ -4923,7 +4923,7 @@
         12
       ],
       "grossWeightLb": 18,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTRD015AB",
@@ -4936,7 +4936,7 @@
         12
       ],
       "grossWeightLb": 17,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTRD215AB",
@@ -4949,7 +4949,7 @@
         12
       ],
       "grossWeightLb": 18,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTSD013AB",
@@ -4962,7 +4962,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTSD017AB",
@@ -4975,7 +4975,7 @@
         12
       ],
       "grossWeightLb": 29,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTSD513AB",
@@ -4988,7 +4988,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     },
     {
       "productSku": "7VTSD913AB",
@@ -5001,7 +5001,7 @@
         12
       ],
       "grossWeightLb": 24,
-      "sourceSheet": "canonical product catalog"
+      "sourceSheet": "2026"
     }
   ]
 }

@@ -27,11 +27,11 @@ GitHub Actions 會在 push 與 pull request 時執行相同測試。
 
 ### 共用產品資料
 
-平常直接把既有產品資訊原始 Excel 丟到「備用：更新產品資訊資料庫」即可，不必新增或維護 `產品主檔` 工作表。系統只讀取 `AMZ 所有SKU`、`2026`、`罐頭`，保留每個 SKU 第一筆完整箱規，並把結果存在 `jspusa.github.io` 的同源瀏覽器空間；重新整理後仍會保留，Supply 也會自動採用同一份資料。
+平常直接使用程式內建產品資料，不需要上傳產品資訊 Excel。Jasper 只維護既有原始 Excel；發布時由 Supply 的匯入工具直接讀取 `AMZ 所有SKU`、`2026`、`罐頭`，再生成 Supply 與 FBA 各自的內建版本，不必新增或維護 `產品主檔` 工作表。
 
-`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 仍是未上傳原始檔時的安全備援，因此任一網站暫時離線不會使另一站失效。按「恢復內建資料」才會移除瀏覽器共用版本。
+「備用：臨時測試產品資訊」只供發布前驗證；正式內建版本更新後會清除較舊的瀏覽器測試覆蓋。`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 才是日常正式來源。
 
-發布新的內建備援時，才需要由 canonical Product Catalog 更新 FBA 投影：
+發布新的內建資料時，由 canonical Product Catalog 更新 FBA 投影：
 
 ```bash
 npm run generate:catalog -- --source ../Supply/catalog/product-catalog.json

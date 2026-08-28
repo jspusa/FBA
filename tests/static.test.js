@@ -233,5 +233,5 @@ test('catalog import loads the same persistent raw-file adapter used by Supply',
   const source = read('inbound-plan.html');
   assert.match(source, /<script src="shared-product-catalog\.js"><\/script>/);
   assert.match(source, /SHARED_CATALOG_API\.saveToStorage\(payload,localStorage\)/);
-  assert.match(source, /Supply 也會自動採用/);
+  assert.match(source, /正式內建更新由發布流程完成/);
 });
