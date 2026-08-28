@@ -25,11 +25,13 @@ npm test
 
 GitHub Actions 會在 push 與 pull request 時執行相同測試。
 
-### 共用產品主檔
+### 共用產品資料
 
-產品主檔由 Supply 專案維護；FBA 只保存 `catalog/fba-product-catalog.snapshot.json` 投影與 `inbound-plan.html` 的內嵌備援，因此頁面不需跨站抓取資料也能離線使用。Excel 匯入仍只在當次瀏覽器工作階段覆蓋內建資料，不會改寫主檔。
+平常直接把既有產品資訊原始 Excel 丟到「備用：更新產品資訊資料庫」即可，不必新增或維護 `產品主檔` 工作表。系統只讀取 `AMZ 所有SKU`、`2026`、`罐頭`，保留每個 SKU 第一筆完整箱規，並把結果存在 `jspusa.github.io` 的同源瀏覽器空間；重新整理後仍會保留，Supply 也會自動採用同一份資料。
 
-取得新版 canonical Product Catalog 後，以其本機路徑更新 FBA 投影：
+`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 仍是未上傳原始檔時的安全備援，因此任一網站暫時離線不會使另一站失效。按「恢復內建資料」才會移除瀏覽器共用版本。
+
+發布新的內建備援時，才需要由 canonical Product Catalog 更新 FBA 投影：
 
 ```bash
 npm run generate:catalog -- --source ../Supply/catalog/product-catalog.json

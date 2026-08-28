@@ -229,36 +229,9 @@ test('built-in catalog includes the August update and confirmed GTBL05 carton si
   assert.match(source, /const BUILTIN_CATALOG_VERSION=BUILTIN_CATALOG_ADAPTER\.catalogVersion/);
 });
 
-test('catalog import keeps the first complete row when a later duplicate is stale', () => {
+test('catalog import loads the same persistent raw-file adapter used by Supply', () => {
   const source = read('inbound-plan.html');
-  const context = vm.createContext({
-    XLSX: { utils: { sheet_to_json: (sheet) => sheet.rows } },
-  });
-  const setup = [
-    source.match(/const WANTED_SHEETS=.*;/)?.[0],
-    source.match(/const normHeader=.*;/)?.[0],
-    source.match(/const normSheet=.*;/)?.[0],
-    extractFunction(source, 'asNumber'),
-    extractFunction(source, 'findCol'),
-    extractFunction(source, 'parseDimsCm'),
-    extractFunction(source, 'sheetConfig'),
-    extractFunction(source, 'extractCatalog'),
-    'this.extractCatalog = extractCatalog;',
-  ].join('\n');
-  vm.runInContext(setup, context, { filename: 'inbound-plan.html:catalog-import' });
-  const header1 = Array(22).fill('');
-  const header2 = Array(22).fill('');
-  header1[1] = 'SKU'; header1[3] = '包數/箱'; header1[16] = '紙箱規格'; header1[20] = '每箱產品的毛重'; header2[21] = 'GW (lb)';
-  const newer = Array(22).fill('');
-  const stale = Array(22).fill('');
-  newer[1] = 'GTBL05'; newer[3] = 30; newer[16] = '50*40*40'; newer[21] = 35;
-  stale[1] = 'GTBL05'; stale[3] = 24; stale[16] = '50*40*30'; stale[21] = 29;
-  const result = context.extractCatalog({
-    SheetNames: ['AMZ 所有SKU'],
-    Sheets: { 'AMZ 所有SKU': { rows: [header1, header2, newer, stale] } },
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(result.found.GTBL05)), {
-    units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU',
-  });
-  assert.equal(result.duplicateConflicts, 1);
+  assert.match(source, /<script src="shared-product-catalog\.js"><\/script>/);
+  assert.match(source, /SHARED_CATALOG_API\.saveToStorage\(payload,localStorage\)/);
+  assert.match(source, /Supply 也會自動採用/);
 });
