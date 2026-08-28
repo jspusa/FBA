@@ -186,9 +186,8 @@ test('email keeps headered shipment parsing and rejects incomplete headers', () 
 
 test('built-in catalog includes the August update and confirmed GTBL05 carton size', () => {
   const source = read('inbound-plan.html');
-  const base = JSON.parse(source.match(/const BUILTIN_CATALOG=(\{.*\});\nconst BUILTIN_CATALOG_ADDITIONS=/)?.[1] || 'null');
-  const additions = JSON.parse(source.match(/const BUILTIN_CATALOG_ADDITIONS=(\{[\s\S]*?\});\nObject\.assign/)?.[1] || 'null');
-  const catalog = { ...base, ...additions };
+  const document = JSON.parse(read('catalog/fba-product-catalog.snapshot.json'));
+  const { catalog } = require('../product-catalog.js').createLegacyCatalog(document);
   const addedSkus = [
     '1AXXD002A0', '1GLTD011A0', '1MHTD017A0', '1MHTD027A0', '1MHTD037A0', '1MHTD047A0', '1MHTD057A0',
     '1VFPD010A0', '1VFPD018A0', '1VFPD050A0', '1VFPD058A0', '1VFRD010A0', '1VFSD010A0', '1VFSD018A0',
@@ -214,9 +213,20 @@ test('built-in catalog includes the August update and confirmed GTBL05 carton si
     '1ABRD002A0': { units: 42, length: 20, width: 16, height: 12, weight: 37, source: 'AMZ 所有SKU' },
   };
   assert.ok(addedSkus.every((sku) => catalog[sku]), 'Missing one or more newly added SKUs');
-  for (const [sku, product] of Object.entries(changedSkus)) assert.deepEqual(catalog[sku], product, sku);
-  assert.equal(Object.keys(catalog).length, 307);
-  assert.match(source, /const BUILTIN_CATALOG_VERSION='2026-08-25'/);
+  for (const [sku, product] of Object.entries(changedSkus)) {
+    const actual = catalog[sku];
+    assert.deepEqual(
+      [actual.units, actual.length, actual.width, actual.height, actual.weight],
+      [product.units, product.length, product.width, product.height, product.weight],
+      sku,
+    );
+    assert.ok(actual.source, `${sku} must retain catalog provenance`);
+  }
+  assert.ok(Object.keys(catalog).length >= 307);
+  assert.match(document.catalogVersion, /^2026-08-(?:25|28)(?:\.\d+)?$/);
+  assert.equal(document.projection, 'fba-inbound');
+  assert.match(source, /<script src="product-catalog\.js"><\/script>/);
+  assert.match(source, /const BUILTIN_CATALOG_VERSION=BUILTIN_CATALOG_ADAPTER\.catalogVersion/);
 });
 
 test('catalog import keeps the first complete row when a later duplicate is stale', () => {

@@ -24,3 +24,18 @@ npm test
 ```
 
 GitHub Actions 會在 push 與 pull request 時執行相同測試。
+
+### 共用產品主檔
+
+產品主檔由 Supply 專案維護；FBA 只保存 `catalog/fba-product-catalog.snapshot.json` 投影與 `inbound-plan.html` 的內嵌備援，因此頁面不需跨站抓取資料也能離線使用。Excel 匯入仍只在當次瀏覽器工作階段覆蓋內建資料，不會改寫主檔。
+
+取得新版 canonical Product Catalog 後，以其本機路徑更新 FBA 投影：
+
+```bash
+npm run generate:catalog -- --source ../Supply/catalog/product-catalog.json
+npm test
+```
+
+產生器會拒絕重複 Product SKU、無目前有效包裝版本或不支援的 schemaVersion，避免包裝資料被靜默覆蓋。
+
+canonical Product SKU 不得以 `7` 開頭。schema v2 的 `orderSkuAliases` 是 FBA legacy Order SKU lookup 與其專屬包裝的來源；`approved` alias 的 owner 必須與 Product 的 `approvedOrderSkus` 一致，`unmapped-legacy` alias 則保留 `canonicalProductSku: null`，不冒充 Product SKU。更新前會分別檢查既有 Product SKU、已核准 alias 與其他 legacy Order SKU是否仍被保留；既有正值的箱入數、任一外箱尺寸或重量也不可退化為空值。有 migration blocker 時不會改寫目前可用的 FBA snapshot；正值更新成另一個正值則視為有意更新。
