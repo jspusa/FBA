@@ -29,7 +29,7 @@ GitHub Actions 會在 push 與 pull request 時執行相同測試。
 
 平常直接使用程式內建產品資料，不需要上傳產品資訊 Excel。Jasper 只維護既有原始 Excel；發布時由 Supply 的匯入工具直接讀取 `AMZ 所有SKU`、`2026`、`罐頭`，再生成 Supply 與 FBA 各自的內建版本，不必新增或維護 `產品主檔` 工作表。
 
-「備用：臨時測試產品資訊」只供發布前驗證；正式內建版本更新後會清除較舊的瀏覽器測試覆蓋。`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 才是日常正式來源。
+「備用：臨時測試產品資訊」只供發布前驗證；正式內建版本更新後會清除較舊的瀏覽器測試覆蓋。`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 才是日常正式來源。schema v3 會保留每個 Product SKU／Order SKU owner 的完整不可變包裝歷史，並明確記錄新工作預設版本；已停用身分仍可供歷史資料還原，但不進入新入庫列產品庫。公開快照不包含原始 Excel 工作表名稱或列號。
 
 正常發布由 Supply 的 `npm run catalog:release` 一次編排，產生這個 repository 的 snapshot 與 `inbound-plan.html` 內嵌資料。Pages 部署後可執行 `npm run verify:live:catalog -- --version <catalog-version>`，直接核對公開 snapshot 與共用載入程式是否等於本機版本。
 
@@ -40,6 +40,8 @@ npm run generate:catalog -- --source ../Supply/catalog/product-catalog.json
 npm test
 ```
 
-產生器會拒絕重複 Product SKU、無目前有效包裝版本或不支援的 schemaVersion，避免包裝資料被靜默覆蓋。
+產生器會拒絕重複 Product SKU、缺少或指向不存在的新工作預設包裝版本、重複包裝版本號或不支援的 schemaVersion，避免包裝資料被靜默覆蓋。schema v3 不會靠 `effectiveTo` 自動猜測預設；即使歷史日期重疊，仍只使用明確指定的 `newOrderPackagingDefaultVersion`。
 
 canonical Product SKU 不得以 `7` 開頭。schema v2 的 `orderSkuAliases` 是 FBA legacy Order SKU lookup 與其專屬包裝的來源；`approved` alias 的 owner 必須與 Product 的 `approvedOrderSkus` 一致，`unmapped-legacy` alias 則保留 `canonicalProductSku: null`，不冒充 Product SKU。更新前會分別檢查既有 Product SKU、已核准 alias 與其他 legacy Order SKU是否仍被保留；既有正值的箱入數、任一外箱尺寸或重量也不可退化為空值。有 migration blocker 時不會改寫目前可用的 FBA snapshot；正值更新成另一個正值則視為有意更新。
+
+入庫列在同一批次會另存穩定 row ID，所以在前方插入新列、排序、修改箱數或人工 Quantity 不會把原列指派到新包裝版本。重複 SKU／效期無法唯一對應時，系統會產生待複查的新身分，不會靜默挪用另一列的包裝指派。

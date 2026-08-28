@@ -1,6 +1,17 @@
 'use strict';
 
 function analyzeLegacyCoverage(previous, projected) {
+  const selectedPackaging = (product, preferredVersion = null) => {
+    if (!Array.isArray(product?.packagingVersions)) return product;
+    const target = preferredVersion
+      || product.newWorkPackagingDefaultVersion
+      || product.currentPackagingVersion;
+    return product.packagingVersions.find(version => version.packagingVersion === target) || null;
+  };
+  const packagingHistory = product => Array.isArray(product?.packagingVersions)
+    ? product.packagingVersions
+    : [product];
+  const pushUnique = (fields, field) => { if (!fields.includes(field)) fields.push(field); };
   const projectedEntries = new Map(projected.products.map(product => [product.productSku, product]));
   const projectedProducts = new Set(
     projected.products
@@ -22,21 +33,29 @@ function analyzeLegacyCoverage(previous, projected) {
     const projectedProduct = projectedEntries.get(previousProduct.productSku);
     if (!projectedProduct) continue;
     const fields = [];
-    if (Number.isFinite(previousProduct.unitsPerCarton) && previousProduct.unitsPerCarton > 0
-      && !(Number.isFinite(projectedProduct.unitsPerCarton) && projectedProduct.unitsPerCarton > 0)) {
-      fields.push('unitsPerCarton');
-    }
-    for (let index = 0; index < 3; index += 1) {
-      const previousValue = previousProduct.cartonDimensionsIn?.[index];
-      const projectedValue = projectedProduct.cartonDimensionsIn?.[index];
-      if (Number.isFinite(previousValue) && previousValue > 0
-        && !(Number.isFinite(projectedValue) && projectedValue > 0)) {
-        fields.push(`cartonDimensionsIn[${index}]`);
+    const previousHasExplicitHistory = Array.isArray(previousProduct?.packagingVersions);
+    for (const previousPackaging of packagingHistory(previousProduct)) {
+      const previousVersion = previousPackaging?.packagingVersion || previousProduct.packagingVersion || null;
+      const projectedPackaging = selectedPackaging(projectedProduct, previousVersion);
+      const versionPrefix = previousVersion ? `packagingVersions[${previousVersion}].` : '';
+      if (!projectedPackaging && previousVersion) {
+        pushUnique(fields, `packagingVersions[${previousVersion}]`);
+        continue;
       }
-    }
-    if (Number.isFinite(previousProduct.grossWeightLb) && previousProduct.grossWeightLb > 0
-      && !(Number.isFinite(projectedProduct.grossWeightLb) && projectedProduct.grossWeightLb > 0)) {
-      fields.push('grossWeightLb');
+      const compareField = (field, previousValue, projectedValue) => {
+        if (previousVersion && previousValue !== projectedValue) pushUnique(fields, `${versionPrefix}${field}`);
+        else if (Number.isFinite(previousValue) && previousValue > 0
+          && !(Number.isFinite(projectedValue) && projectedValue > 0)) pushUnique(fields, field);
+      };
+      if (previousHasExplicitHistory) {
+        compareField('effectiveFrom', previousPackaging?.effectiveFrom ?? null, projectedPackaging?.effectiveFrom ?? null);
+        compareField('effectiveTo', previousPackaging?.effectiveTo ?? null, projectedPackaging?.effectiveTo ?? null);
+      }
+      compareField('unitsPerCarton', previousPackaging?.unitsPerCarton, projectedPackaging?.unitsPerCarton);
+      for (let index = 0; index < 3; index += 1) {
+        compareField(`cartonDimensionsIn[${index}]`, previousPackaging?.cartonDimensionsIn?.[index], projectedPackaging?.cartonDimensionsIn?.[index]);
+      }
+      compareField('grossWeightLb', previousPackaging?.grossWeightLb, projectedPackaging?.grossWeightLb);
     }
     if (fields.length) packagingDataLoss.push(Object.freeze({ sku: previousProduct.productSku, fields: Object.freeze(fields) }));
   }

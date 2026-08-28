@@ -386,6 +386,8 @@
       localStorage.removeItem('fba-workspace:inbound-draft:v1');
       localStorage.removeItem('fba-workspace:inbound-reviewed');
       localStorage.removeItem('fba-workspace:quantity-choices');
+      localStorage.removeItem('fba-workspace:packaging-assignments:v1');
+      localStorage.removeItem('fba-workspace:inbound-row-identities:v1');
     } else if (PAGE === 'sorter.html') {
       localStorage.removeItem(SORTER_SUMMARY_KEY);
       localStorage.removeItem(SORTER_HANDOFF_KEY);
