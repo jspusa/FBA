@@ -50,6 +50,18 @@ test('shared header keeps navigation centered and reset action green', () => {
   assert.match(source, /color:#176b2c!important/);
 });
 
+test('FBA owns a stamped normal-light visual-system artifact', async () => {
+  const source = read('workspace-shell.css');
+  const { verifyVisualSystem } = await import('../scripts/visual-system-contract.mjs');
+  const contract = verifyVisualSystem(source);
+  assert.equal(contract.version, '1.0.0');
+  assert.equal(contract.mode, 'normal-light');
+  assert.match(contract.contentHash, /^[a-f0-9]{64}$/);
+  assert.match(source, /--workspace-page:#f5f5f7/);
+  assert.match(source, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.doesNotMatch(source, /fba-night|fba-door-transition|芝麻開門/);
+});
+
 test('workspace reset clears localStorage and IndexedDB', () => {
   const source = read('shared-workspace.js');
   assert.match(source, /localStorage\.removeItem/);
@@ -234,4 +246,33 @@ test('catalog import loads the same persistent raw-file adapter used by Supply',
   assert.match(source, /<script src="shared-product-catalog\.js"><\/script>/);
   assert.match(source, /SHARED_CATALOG_API\.saveToStorage\(payload,localStorage\)/);
   assert.match(source, /正式內建更新由發布流程完成/);
+});
+
+test('inbound rows load and preserve explicit packaging assignments through review and export', () => {
+  const source = read('inbound-plan.html');
+  const workspace = read('shared-workspace.js');
+  assert.match(source, /<script src="packaging-assignment\.js"><\/script>/);
+  assert.match(source, /<script src="inbound-row-identity\.js"><\/script>/);
+  assert.match(source, /INBOUND_ROW_IDENTITIES\.reconcile/);
+  assert.match(source, /rowKey=identity\.rowId/);
+  assert.match(source, /PACKAGING_ASSIGNMENTS\.get\(rowKey\)/);
+  assert.match(source, /PACKAGING_ASSIGNMENTS\.migrateLegacy/);
+  assert.match(source, /candidates:owner\?\.candidates\|\|\[\]/);
+  assert.match(source, /owner\?\.newWorkEligible/);
+  assert.match(source, /PACKAGING_LEGACY_IMPORT_PENDING=Object\.keys\(PACKAGING_ASSIGNMENTS\.entries\(\)\)\.length===0\|\|INBOUND_ROW_IDENTITIES\.entries\(\)\.length===0/);
+  assert.match(source, /packagingAssignment\.reviewRequired/);
+  assert.match(source, /packagingAssignmentHtml\(r\.packagingAssignment\)/);
+  assert.match(source, /請先完成所有歷史包裝複查/);
+  assert.match(workspace, /localStorage\.removeItem\('fba-workspace:packaging-assignments:v1'\)/);
+  assert.match(workspace, /localStorage\.removeItem\('fba-workspace:inbound-row-identities:v1'\)/);
+});
+
+test('temporary product override blocks source conflicts instead of using first-row-wins', () => {
+  const conflictCount = loadInlineFunction('inbound-plan.html', 'catalogConflictCount');
+  assert.equal(conflictCount({ stats: { duplicateConflicts: 2 }, conflicts: [] }), 2);
+  assert.equal(conflictCount({ stats: { sourceConflicts: 3 }, conflicts: [] }), 3);
+  assert.equal(conflictCount({ stats: {}, conflicts: [{}, {}, {}, {}] }), 4);
+  const source = read('inbound-plan.html');
+  assert.match(source, /已拒絕臨時套用/);
+  assert.doesNotMatch(source, /重複衝突已保留第一筆完整資料/);
 });

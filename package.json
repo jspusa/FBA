@@ -2,9 +2,11 @@
   "name": "fba-workspace",
   "private": true,
   "scripts": {
+    "visual:stamp": "node scripts/visual-system-contract.mjs --write",
+    "visual:check": "node scripts/visual-system-contract.mjs --check",
     "generate:catalog": "node scripts/generate-product-catalog.mjs",
     "check:catalog": "node scripts/generate-product-catalog.mjs --check",
     "verify:live:catalog": "node scripts/verify-live-product-catalog.mjs",
-    "test": "npm run check:catalog && node --test tests/*.test.js"
+    "test": "npm run check:catalog && npm run visual:check && node --test tests/*.test.js"
   }
 }

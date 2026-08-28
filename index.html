@@ -245,6 +245,8 @@
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
   <link rel="stylesheet" href="workspace-shell.css" />
+  <link rel="stylesheet" href="catalog-alignment-status.css" />
+  <link rel="stylesheet" href="product-update-entry.css" />
 </head>
 <body>
 <header class="app-header">
@@ -1661,5 +1663,11 @@ async function run(options={}){
   })();
 </script>
 <script src="shared-workspace.js?v=20260818b"></script>
+<script src="catalog-alignment-status.js"></script>
+<script src="catalog-alignment-ui.js" data-catalog-alignment-site="fba" data-local-manifest="./catalog-alignment.json" data-peer-manifest="../Supply/catalog-alignment.json"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="shared-product-catalog.js"></script>
+<script src="catalog-update-baseline.js"></script>
+<script type="module" src="product-update-entry.mjs" data-product-update-site="fba"></script>
 </body>
 </html>
