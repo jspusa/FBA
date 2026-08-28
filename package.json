@@ -4,6 +4,7 @@
   "scripts": {
     "generate:catalog": "node scripts/generate-product-catalog.mjs",
     "check:catalog": "node scripts/generate-product-catalog.mjs --check",
+    "verify:live:catalog": "node scripts/verify-live-product-catalog.mjs",
     "test": "npm run check:catalog && node --test tests/*.test.js"
   }
 }
