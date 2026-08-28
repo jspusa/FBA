@@ -31,6 +31,8 @@ GitHub Actions 會在 push 與 pull request 時執行相同測試。
 
 「備用：臨時測試產品資訊」只供發布前驗證；正式內建版本更新後會清除較舊的瀏覽器測試覆蓋。`catalog/fba-product-catalog.snapshot.json` 與 `inbound-plan.html` 的內嵌 catalog 才是日常正式來源。
 
+正常發布由 Supply 的 `npm run catalog:release` 一次編排，產生這個 repository 的 snapshot 與 `inbound-plan.html` 內嵌資料。Pages 部署後可執行 `npm run verify:live:catalog -- --version <catalog-version>`，直接核對公開 snapshot 與共用載入程式是否等於本機版本。
+
 發布新的內建資料時，由 canonical Product Catalog 更新 FBA 投影：
 
 ```bash
