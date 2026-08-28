@@ -16,7 +16,7 @@ function rawWorkbook() {
 }
 
 test('shared raw parser keeps the first complete duplicate for FBA', () => {
-  const payload = api.createPayload(rawWorkbook(), { utils:{ sheet_to_json:sheet => sheet.rows } }, { sourceFile:'raw.xlsx', updatedAt:'2026-08-28T00:00:00Z' });
+  const payload = api.createPayload(rawWorkbook(), { utils:{ sheet_to_json:sheet => sheet.rows } }, { sourceFile:'raw.xlsx', updatedAt:'2026-08-28T00:00:00Z', baseCatalogVersion:'2026-08-28.4' });
   const result = api.applyToFbaCatalog({}, payload);
 
   assert.equal(payload.stats.duplicateConflicts, 1);
@@ -26,7 +26,7 @@ test('shared raw parser keeps the first complete duplicate for FBA', () => {
 });
 
 test('shared raw payload survives refresh through the common origin storage key', () => {
-  const payload = api.createPayload(rawWorkbook(), { utils:{ sheet_to_json:sheet => sheet.rows } }, { sourceFile:'raw.xlsx', updatedAt:'2026-08-28T00:00:00Z' });
+  const payload = api.createPayload(rawWorkbook(), { utils:{ sheet_to_json:sheet => sheet.rows } }, { sourceFile:'raw.xlsx', updatedAt:'2026-08-28T00:00:00Z', baseCatalogVersion:'2026-08-28.4' });
   const values = new Map();
   const storage = {
     getItem:key => values.get(key) || null,
@@ -36,7 +36,9 @@ test('shared raw payload survives refresh through the common origin storage key'
 
   api.saveToStorage(payload, storage);
   assert.equal(api.loadFromStorage(storage).sourceFile, 'raw.xlsx');
-  assert.equal(values.has('jspusa:shared-product-catalog:v1'), true);
+  assert.equal(values.has('jspusa:shared-product-catalog:v2'), true);
+  assert.equal(api.isCompatibleWithBuiltIn(api.loadFromStorage(storage), '2026-08-28.4'), true);
+  assert.equal(api.isCompatibleWithBuiltIn(api.loadFromStorage(storage), '2026-08-28.5'), false);
   api.removeFromStorage(storage);
   assert.equal(api.loadFromStorage(storage), null);
 });
