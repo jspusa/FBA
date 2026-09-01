@@ -262,9 +262,36 @@ test('inbound rows load and preserve explicit packaging assignments through revi
   assert.match(source, /PACKAGING_LEGACY_IMPORT_PENDING=Object\.keys\(PACKAGING_ASSIGNMENTS\.entries\(\)\)\.length===0\|\|INBOUND_ROW_IDENTITIES\.entries\(\)\.length===0/);
   assert.match(source, /packagingAssignment\.reviewRequired/);
   assert.match(source, /packagingAssignmentHtml\(r\.packagingAssignment\)/);
+  assert.match(source, /merchantSkuHtml\(r\)/);
+  assert.doesNotMatch(source, /class="packaging-newer"/);
   assert.match(source, /請先完成所有歷史包裝複查/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:packaging-assignments:v1'\)/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:inbound-row-identities:v1'\)/);
+});
+
+test('newer packaging notice stays behind the clickable SKU with a plain-language explanation', () => {
+  const merchantSkuHtml = loadInlineFunction('inbound-plan.html', 'merchantSkuHtml', {
+    escapeCatalogHtml: value => String(value),
+  });
+  const ordinary = merchantSkuHtml({
+    sku: 'GTB01',
+    packagingAssignment: { newerAvailable: false },
+  });
+  assert.match(ordinary, />GTB01</);
+  assert.doesNotMatch(ordinary, /<details/);
+
+  const historical = merchantSkuHtml({
+    sku: 'GTBL05',
+    packagingAssignment: {
+      kind: 'historical-imported',
+      newerAvailable: true,
+      currentPackagingVersion: '2026-08-28.4',
+    },
+  });
+  assert.match(historical, /<details class="sku-packaging-details">/);
+  assert.match(historical, /這不是錯誤，也不需要處理/);
+  assert.match(historical, /2026-08-28\.4/);
+  assert.match(historical, /不會自動替換/);
 });
 
 test('temporary product override blocks source conflicts instead of using first-row-wins', () => {
