@@ -214,7 +214,7 @@ test('email keeps headered shipment parsing and rejects incomplete headers', () 
   );
 });
 
-test('built-in catalog includes the August update and confirmed GTBL05 carton size', () => {
+test('built-in catalog matches the exact 15-SKU facts for the checked release', () => {
   const source = read('inbound-plan.html');
   const document = JSON.parse(read('catalog/fba-product-catalog.snapshot.json'));
   const { catalog } = require('../product-catalog.js').createLegacyCatalog(document);
@@ -225,7 +225,23 @@ test('built-in catalog includes the August update and confirmed GTBL05 carton si
     '7GTBD053AB', '7GTBD057AB', '7GTPD013AB', '7GTPD017AB', '7GTPD037AB', '7GTPD053AB', '7GTPD057AB',
     '7GTRD013AB', '7GTRD017AB', '7GTRD037AB', '7GTSD013AB', '7GTSD017AB',
   ];
-  const changedSkus = {
+  const changedSkus = document.catalogVersion === '2026-09-02' ? {
+    GTP03: { units: 90, length: 20, width: 16, height: 12, weight: 24, source: 'AMZ 所有SKU' },
+    GTPL03: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
+    GTBL03: { units: 28, length: 20, width: 16, height: 12, weight: 33, source: 'AMZ 所有SKU' },
+    GTRL03: { units: 28, length: 20, width: 16, height: 12, weight: 33, source: 'AMZ 所有SKU' },
+    GTCL01: { units: 28, length: 20, width: 16, height: 12, weight: 33, source: 'AMZ 所有SKU' },
+    GTAL01: { units: 30, length: 20, width: 16, height: 12, weight: 35, source: 'AMZ 所有SKU' },
+    GTP05: { units: 90, length: 20, width: 16, height: 12, weight: 26, source: 'AMZ 所有SKU' },
+    GTPL05: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
+    GTB05: { units: 90, length: 20, width: 16, height: 12, weight: 26, source: 'AMZ 所有SKU' },
+    GTBL05: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
+    GTSL01: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
+    GTPL01: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
+    GTBL01: { units: 26, length: 20, width: 16, height: 12, weight: 31, source: 'AMZ 所有SKU' },
+    GTRL01: { units: 22, length: 20, width: 16, height: 12, weight: 26, source: 'AMZ 所有SKU' },
+    '1ABRD002A0': { units: 36, length: 20, width: 16, height: 12, weight: 32, source: 'AMZ 所有SKU' },
+  } : {
     GTP03: { units: 100, length: 23, width: 14, height: 14, weight: 26, source: 'AMZ 所有SKU' },
     GTPL03: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
     GTBL03: { units: 30, length: 20, width: 16, height: 16, weight: 35, source: 'AMZ 所有SKU' },
@@ -253,7 +269,7 @@ test('built-in catalog includes the August update and confirmed GTBL05 carton si
     assert.ok(actual.source, `${sku} must retain catalog provenance`);
   }
   assert.ok(Object.keys(catalog).length >= 307);
-  assert.match(document.catalogVersion, /^2026-08-(?:25|28)(?:\.\d+)?$/);
+  assert.match(document.catalogVersion, /^(?:2026-08-28\.4|2026-09-02)$/);
   assert.equal(document.projection, 'fba-inbound');
   assert.match(source, /<script src="product-catalog\.js"><\/script>/);
   assert.match(source, /const BUILTIN_CATALOG_VERSION=BUILTIN_CATALOG_ADAPTER\.catalogVersion/);
