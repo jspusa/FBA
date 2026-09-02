@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "catalogVersion": "2026-08-28.4",
+  "catalogVersion": "2026-09-02",
   "projection": "fba-inbound",
   "products": [
     {
@@ -653,44 +653,20 @@
       "canonicalProductSku": "1ABRD002A0",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 36,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 42,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            12
-          ],
-          "grossWeightLb": 37
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 42,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            12
-          ],
-          "grossWeightLb": 37
+          "grossWeightLb": 32
         }
       ]
     },
@@ -1413,44 +1389,20 @@
       "canonicalProductSku": "GTP03",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 90,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 26
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 26
+          "grossWeightLb": 24
         }
       ]
     },
@@ -1506,44 +1458,20 @@
       "canonicalProductSku": "GTB05",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 90,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 29
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 29
+          "grossWeightLb": 26
         }
       ]
     },
@@ -1553,44 +1481,20 @@
       "canonicalProductSku": "GTP05",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 90,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 29
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 100,
-          "cartonDimensionsIn": [
-            23,
-            14,
-            14
-          ],
-          "grossWeightLb": 29
+          "grossWeightLb": 26
         }
       ]
     },
@@ -1669,44 +1573,20 @@
       "canonicalProductSku": "GTSL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 24,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 29
         }
       ]
     },
@@ -1716,44 +1596,20 @@
       "canonicalProductSku": "GTRL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 22,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 26
         }
       ]
     },
@@ -1763,44 +1619,20 @@
       "canonicalProductSku": "GTPL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 24,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 29
         }
       ]
     },
@@ -1810,44 +1642,20 @@
       "canonicalProductSku": "GTBL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 26,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 31
         }
       ]
     },
@@ -1857,44 +1665,20 @@
       "canonicalProductSku": "GTAL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 30,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 38,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 44
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 38,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 44
+          "grossWeightLb": 35
         }
       ]
     },
@@ -1904,44 +1688,20 @@
       "canonicalProductSku": "GTCL01",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 28,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 33
         }
       ]
     },
@@ -1951,44 +1711,20 @@
       "canonicalProductSku": "GTRL03",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 28,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 33
         }
       ]
     },
@@ -1998,44 +1734,20 @@
       "canonicalProductSku": "GTPL03",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 24,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 29
         }
       ]
     },
@@ -2045,44 +1757,20 @@
       "canonicalProductSku": "GTBL03",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 28,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 33
         }
       ]
     },
@@ -2115,44 +1803,20 @@
       "canonicalProductSku": "GTPL05",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 24,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 29
         }
       ]
     },
@@ -2162,44 +1826,20 @@
       "canonicalProductSku": "GTBL05",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-28.4",
-      "newWorkPackagingDefaultVersion": "2026-08-28.4",
+      "currentPackagingVersion": "2026-09-02",
+      "newWorkPackagingDefaultVersion": "2026-09-02",
       "packagingVersions": [
         {
-          "packagingVersion": "supply-2026-07-19",
-          "effectiveFrom": "2026-07-19",
-          "effectiveTo": "2026-08-24",
+          "packagingVersion": "2026-09-02",
+          "effectiveFrom": "2026-09-02",
+          "effectiveTo": null,
           "unitsPerCarton": 24,
           "cartonDimensionsIn": [
             20,
             16,
             12
           ],
-          "grossWeightLb": null
-        },
-        {
-          "packagingVersion": "2026-08-25",
-          "effectiveFrom": "2026-08-25",
-          "effectiveTo": "2026-08-27",
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
-        },
-        {
-          "packagingVersion": "2026-08-28.4",
-          "effectiveFrom": "2026-08-28",
-          "effectiveTo": null,
-          "unitsPerCarton": 30,
-          "cartonDimensionsIn": [
-            20,
-            16,
-            16
-          ],
-          "grossWeightLb": 35
+          "grossWeightLb": 29
         }
       ]
     },
