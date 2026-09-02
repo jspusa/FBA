@@ -5,14 +5,14 @@ const test = require('node:test');
 
 const repoRoot = path.resolve(__dirname, '..');
 const adapter = require('../product-catalog.js');
-const { analyzeLegacyCoverage } = require('../scripts/fba-catalog-coverage.js');
+const { analyzeLegacyCoverage, unauthorizedPackagingDataLoss } = require('../scripts/fba-catalog-coverage.js');
 
 test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () => {
   const snapshot = JSON.parse(fs.readFileSync(path.join(repoRoot, 'catalog/fba-product-catalog.snapshot.json'), 'utf8'));
   const result = adapter.createLegacyCatalog(snapshot);
 
   assert.equal(result.schemaVersion, 3);
-  assert.match(result.catalogVersion, /^2026-08-(?:25|28)(?:\.\d+)?$/);
+  assert.match(result.catalogVersion, /^(?:2026-08-28\.4|2026-09-02)$/);
   assert.ok(Object.keys(result.catalog).length >= 307);
   assert.ok(result.catalog.GTBL05);
   assert.equal(Object.hasOwn(result.catalog, 'EZD040-3'), false, 'incomplete products cannot seed new work');
@@ -22,7 +22,23 @@ test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () 
   assert.ok(snapshot.products.some(product => product.packagingVersions.length > 1), 'immutable historical versions must be shipped to the browser');
   assert.doesNotMatch(JSON.stringify(snapshot), /sourceSheet|"source"\s*:/, 'public FBA snapshot must not expose raw workbook provenance');
 
-  const augustPackaging = {
+  const confirmedPackaging = result.catalogVersion === '2026-09-02' ? {
+    '1ABRD002A0': [36, 20, 16, 12, 32],
+    GTAL01: [30, 20, 16, 12, 35],
+    GTB05: [90, 20, 16, 12, 26],
+    GTBL01: [26, 20, 16, 12, 31],
+    GTBL03: [28, 20, 16, 12, 33],
+    GTBL05: [24, 20, 16, 12, 29],
+    GTCL01: [28, 20, 16, 12, 33],
+    GTP03: [90, 20, 16, 12, 24],
+    GTP05: [90, 20, 16, 12, 26],
+    GTPL01: [24, 20, 16, 12, 29],
+    GTPL03: [24, 20, 16, 12, 29],
+    GTPL05: [24, 20, 16, 12, 29],
+    GTRL01: [22, 20, 16, 12, 26],
+    GTRL03: [28, 20, 16, 12, 33],
+    GTSL01: [24, 20, 16, 12, 29],
+  } : {
     '1ABRD002A0': [42, 20, 16, 12, 37],
     GTAL01: [38, 20, 16, 16, 44],
     GTB05: [100, 23, 14, 14, 29],
@@ -39,12 +55,12 @@ test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () 
     GTRL03: [30, 20, 16, 16, 35],
     GTSL01: [30, 20, 16, 16, 35],
   };
-  for (const [productSku, expected] of Object.entries(augustPackaging)) {
+  for (const [productSku, expected] of Object.entries(confirmedPackaging)) {
     const product = result.catalog[productSku];
     assert.deepEqual(
       [product.units, product.length, product.width, product.height, product.weight],
       expected,
-      `${productSku} must retain the audited 2026-08-25 FBA packaging`,
+      `${productSku} must match the checked catalog release`,
     );
   }
 });
@@ -593,4 +609,20 @@ test('migration coverage blocks removal or mutation of a named immutable histori
   assert.deepEqual(analyzeLegacyCoverage(previous, removed).packagingDataLoss, [{
     sku:'PRODUCT-1', fields:['packagingVersions[V1]'],
   }]);
+});
+
+test('an exact signed-version authorization permits only named whole-version removal', () => {
+  const losses = [
+    { sku:'PRODUCT-1', fields:['packagingVersions[V1]', 'packagingVersions[V2]'] },
+    { sku:'PRODUCT-2', fields:['packagingVersions[V1]'] },
+    { sku:'PRODUCT-3', fields:['packagingVersions[V1].unitsPerCarton'] },
+  ];
+  assert.deepEqual(unauthorizedPackagingDataLoss(losses, [
+    { sku:'PRODUCT-1', removedVersionIds:['V1'] },
+    { sku:'PRODUCT-3', removedVersionIds:['V1'] },
+  ]), [
+    losses[0],
+    losses[1],
+    losses[2],
+  ]);
 });

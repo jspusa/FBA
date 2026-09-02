@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { projectCanonicalCatalog, validateFbaSnapshot } = require('../product-catalog.js');
-const { analyzeLegacyCoverage } = require('./fba-catalog-coverage.js');
+const { analyzeLegacyCoverage, unauthorizedPackagingDataLoss } = require('./fba-catalog-coverage.js');
+const { reviewedHistoryReplacementSkus } = require('./catalog-history-authorization.js');
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const snapshotPath = path.join(repoRoot, 'catalog', 'fba-product-catalog.snapshot.json');
 const inboundPath = path.join(repoRoot, 'inbound-plan.html');
@@ -28,15 +29,16 @@ function renderInbound(source, snapshot) {
   return `${source.slice(0, start)}${block}${source.slice(end + endMarker.length)}`;
 }
 
-function assertLegacyCoverage(previous, projected) {
+function assertLegacyCoverage(previous, projected, packagingHistoryReplacements = []) {
   const { missingProductSkus, missingApprovedOrderSkus, missingLegacyOrderSkus, packagingDataLoss } = analyzeLegacyCoverage(previous, projected);
+  const unauthorizedDataLoss = unauthorizedPackagingDataLoss(packagingDataLoss, packagingHistoryReplacements);
 
   const blockers = [];
   if (missingProductSkus.length) blockers.push(`缺少既有 Product SKU (${missingProductSkus.length})：${missingProductSkus.join(', ')}`);
   if (missingApprovedOrderSkus.length) blockers.push(`缺少已核准 Order SKU alias (${missingApprovedOrderSkus.length})：${missingApprovedOrderSkus.join(', ')}`);
   if (missingLegacyOrderSkus.length) blockers.push(`缺少既有 7 字頭 legacy Order SKU (${missingLegacyOrderSkus.length})：${missingLegacyOrderSkus.join(', ')}`);
-  if (packagingDataLoss.length) {
-    blockers.push(`既有正值包裝欄位將變成空值 (${packagingDataLoss.length} SKU)：${packagingDataLoss.map(loss => `${loss.sku}[${loss.fields.join(',')}]`).join(', ')}`);
+  if (unauthorizedDataLoss.length) {
+    blockers.push(`既有正值包裝欄位將變成空值 (${unauthorizedDataLoss.length} SKU)：${unauthorizedDataLoss.map(loss => `${loss.sku}[${loss.fields.join(',')}]`).join(', ')}`);
   }
   if (blockers.length) throw new Error(`canonical product catalog 尚不可取代既有 FBA snapshot：\n- ${blockers.join('\n- ')}`);
 }
@@ -44,13 +46,27 @@ function assertLegacyCoverage(previous, projected) {
 const args = process.argv.slice(2);
 const sourceIndex = args.indexOf('--source');
 if (sourceIndex >= 0 && !args[sourceIndex + 1]) throw new Error('--source 必須指定 canonical product catalog 路徑');
+const reviewedPlanIndex = args.indexOf('--reviewed-plan');
+const selectedEntriesIndex = args.indexOf('--selected-entry-ids');
+if ((reviewedPlanIndex >= 0) !== (selectedEntriesIndex >= 0)
+  || (reviewedPlanIndex >= 0 && (!args[reviewedPlanIndex + 1] || !args[selectedEntriesIndex + 1]))) {
+  throw new Error('歷史箱規清除必須同時指定 --reviewed-plan 與 --selected-entry-ids');
+}
 
 let snapshot;
 if (sourceIndex >= 0) {
-  snapshot = projectCanonicalCatalog(readJson(path.resolve(process.cwd(), args[sourceIndex + 1])));
+  const sourceCatalog = readJson(path.resolve(process.cwd(), args[sourceIndex + 1]));
+  const packagingHistoryReplacements = reviewedPlanIndex >= 0
+    ? reviewedHistoryReplacementSkus({
+      plan:readJson(path.resolve(process.cwd(), args[reviewedPlanIndex + 1])),
+      sourceCatalog,
+      selectedEntryIds:args[selectedEntriesIndex + 1].split(',').filter(Boolean),
+    })
+    : [];
+  snapshot = projectCanonicalCatalog(sourceCatalog);
   if (fs.existsSync(snapshotPath)) {
     const previous = validateFbaSnapshot(readJson(snapshotPath));
-    assertLegacyCoverage(previous, snapshot);
+    assertLegacyCoverage(previous, snapshot, packagingHistoryReplacements);
   }
 } else {
   snapshot = validateFbaSnapshot(readJson(snapshotPath));

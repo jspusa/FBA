@@ -77,4 +77,19 @@ function analyzeLegacyCoverage(previous, projected) {
   });
 }
 
-module.exports = Object.freeze({ analyzeLegacyCoverage });
+function unauthorizedPackagingDataLoss(packagingDataLoss, packagingHistoryReplacements = []) {
+  const authorized = new Map((packagingHistoryReplacements || []).map(item => [
+    String(item?.sku || '').trim().toUpperCase(),
+    new Set((item?.removedVersionIds || []).map(String)),
+  ]));
+  return (packagingDataLoss || []).filter(loss => {
+    const versions = authorized.get(String(loss?.sku || '').trim().toUpperCase());
+    if (!versions) return true;
+    return !(loss.fields || []).every(field => {
+      const match = String(field).match(/^packagingVersions\[([^\]]+)\]$/);
+      return Boolean(match && versions.has(match[1]));
+    });
+  });
+}
+
+module.exports = Object.freeze({ analyzeLegacyCoverage, unauthorizedPackagingDataLoss });
