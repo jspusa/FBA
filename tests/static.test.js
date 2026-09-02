@@ -108,6 +108,13 @@ test('email generator separates FBA and AWD messages and excludes departed recip
   assert.match(source, /id="ccStatus"[^>]*>已預選 6 人</);
 });
 
+test('email table cannot float beside the Outlook signature and leaves one blank line', () => {
+  const source = read('email.html');
+  assert.doesNotMatch(source, /<table class="email-table"[^>]*\salign="left"/);
+  assert.match(source, /const signatureSpacer='<p style="margin:0;clear:both;line-height:1\.7;">&nbsp;<\/p>'/);
+  assert.match(source, /\$\{table\}\$\{signatureSpacer\}<\/div>`/);
+});
+
 test('sorter summary is batch-scoped and invalidated when unverifiable', () => {
   const source = read('sorter.html');
   assert.match(source, /batchId:\s*currentBatchId\(\)/);
