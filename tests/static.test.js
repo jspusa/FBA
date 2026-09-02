@@ -97,6 +97,17 @@ test('email does not invent a truck count and reports its data source', () => {
   assert.match(source, /id="workspaceSource"/);
 });
 
+test('email generator separates FBA and AWD messages and excludes departed recipients', () => {
+  const source = read('email.html');
+  assert.match(source, /id="buildFbaEmailBtn"[^>]*>產生FBA信件</);
+  assert.match(source, /id="buildAwdEmailBtn"[^>]*>產生AWD信件</);
+  assert.match(source, /\[For \$\{shipmentType\}\]/);
+  assert.match(source, /maximum pallet height is 60 inches/);
+  assert.match(source, /shipmentType==='AWD'/);
+  assert.doesNotMatch(source, /ray\.chen@jasperpet\.com|>\s*Ray\s*</i);
+  assert.match(source, /id="ccStatus"[^>]*>已預選 6 人</);
+});
+
 test('sorter summary is batch-scoped and invalidated when unverifiable', () => {
   const source = read('sorter.html');
   assert.match(source, /batchId:\s*currentBatchId\(\)/);
