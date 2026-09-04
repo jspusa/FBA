@@ -115,14 +115,38 @@ test('email table cannot float beside the Outlook signature and leaves one blank
   assert.match(source, /\$\{table\}\$\{signatureSpacer\}<\/div>`/);
 });
 
-test('inbound plan exposes distinct FBA and AWD downloads', () => {
+test('restock table exposes a yellow one-decimal AWD pallet audit', () => {
+  const source = read('index.html');
+  assert.match(source, /'入庫包數','AWD板數'/);
+  assert.match(source, /if\(h==='AWD板數'\) return plannedCartons===''\?'':toNumber\(plannedCartons\)\/24/);
+  assert.match(source, /h==='AWD板數'\)&&isNumericLike\(v\)\) return toNumber\(v\)\.toFixed\(1\)/);
+  assert.match(source, /\.awd-pallet-column[^}]*background:#fef3c7!important/);
+  assert.match(source, /AWD_HEADER_STYLE[^\n]*FDE68A/);
+  assert.match(source, /AWD_CELL_STYLE[^\n]*FEF3C7/);
+});
+
+test('inbound plan switches downloads from the pasted AWD pallet header', () => {
   const source = read('inbound-plan.html');
   assert.match(source, /id="exportBtn"[^>]*>下載FBA檔案</);
   assert.match(source, /id="awdExportBtn"[^>]*>下載AWD檔案</);
+  assert.match(source, /btn\.disabled=!baseReady\|\|isAwdMode/);
+  assert.match(source, /awdBtn\.disabled=!baseReady\|\|!isAwdMode\|\|!awdPlan\.ready/);
+  assert.doesNotMatch(source, /AWD 棧板確認|data-awd-carton-key|setAwdCartonChoice/);
   assert.match(source, /Create workflow – AWD template/);
   assert.match(source, /Palletized\?/);
   assert.match(source, /Boxes Per Pallet/);
   assert.match(source, /Number of pallets/);
+});
+
+test('AWD mode is selected only by an AWD pallet header', () => {
+  const inboundColumnLayout = loadInlineFunction('inbound-plan.html', 'inboundColumnLayout', {
+    splitLine: line => line.split('\t'),
+    normalizeInboundHeader: value => String(value ?? '').trim().replace(/\s+/g, '').toUpperCase(),
+  });
+  assert.equal(inboundColumnLayout('SKU\t入庫計畫\t入庫包數\tEXPIRE').isAwd, false);
+  const awd = inboundColumnLayout('SKU\t入庫計畫\t入庫包數\tAWD板數\tEXPIRE');
+  assert.equal(awd.isAwd, true);
+  assert.equal(awd.awd, 3);
 });
 
 test('embedded AWD download template retains the official sheet and columns', () => {
@@ -142,35 +166,34 @@ test('embedded AWD download template retains the official sheet and columns', ()
   assert.equal(rows[3][10], '24');
 });
 
-test('AWD pallet planning requires a 24-carton multiple and recalculates units', () => {
+test('AWD pallet planning uses the pasted cartons without adjustment', () => {
   const buildAwdPalletPlan = loadInlineFunction('inbound-plan.html', 'buildAwdPalletPlan', {
     AWD_CARTONS_PER_PALLET: 24,
   });
-  const row = { rowKey: 'row-1', sku: 'GTAL01', boxes: 50, units: 30, quantity: 1500 };
-  const pending = buildAwdPalletPlan([row], {});
+  const pending = buildAwdPalletPlan([{ rowKey: 'row-1', sku: 'GTAL01', boxes: 50, units: 30, quantity: 1500 }]);
   assert.equal(pending.ready, false);
-  assert.deepEqual(JSON.parse(JSON.stringify(pending.unresolved[0].options)), [48, 72]);
-  assert.equal(pending.unresolved[0].remainder, 2);
+  assert.equal(pending.rows[0].boxes, 50);
+  assert.equal(pending.rows[0].quantity, 1500);
 
-  const confirmed = buildAwdPalletPlan([row], { 'row-1': 48 });
-  assert.equal(confirmed.ready, true);
-  assert.equal(confirmed.rows[0].boxes, 48);
-  assert.equal(confirmed.rows[0].quantity, 1440);
-  assert.equal(confirmed.rows[0].pallets, 2);
-  assert.equal(confirmed.totalPallets, 2);
+  const exact = buildAwdPalletPlan([{ rowKey: 'row-1', sku: 'GTAL01', boxes: 48, units: 30, quantity: 1440 }]);
+  assert.equal(exact.ready, true);
+  assert.equal(exact.rows[0].boxes, 48);
+  assert.equal(exact.rows[0].quantity, 1440);
+  assert.equal(exact.rows[0].pallets, 2);
+  assert.equal(exact.totalPallets, 2);
 });
 
-test('AWD email uses only the confirmed adjusted pallet plan', () => {
+test('AWD email uses only the integer-pallet inbound plan', () => {
   const source = read('email.html');
   assert.match(source, /fba-workspace:awd-inbound:v1/);
   assert.match(source, /Pallets \(24 CTN\)/);
   assert.match(source, /data\.totalPallets/);
-  assert.match(source, /請回到「入庫計畫」確認 AWD 餘箱數量/);
+  assert.match(source, /資料包含 AWD板數且為整數板/);
 });
 
-test('AWD email rejects stale input and totals confirmed pallets', () => {
+test('AWD email rejects stale input and totals integer pallets', () => {
   const payload = {
-    sourceValue: 'SKU\t入庫計畫\t入庫包數\tEXPIRE\nGTAL01\t50\t1500\t9/28',
+    sourceValue: 'SKU\t入庫計畫\t入庫包數\tAWD板數\tEXPIRE\nGTAL01\t48\t1440\t2.0\t9/28',
     cartonsPerPallet: 24,
     rows: [{ sku: 'GTAL01', ctn: 48, quantity: 1440, expire: '9/28', pallets: 2 }],
   };
@@ -193,7 +216,7 @@ test('AWD email rejects stale input and totals confirmed pallets', () => {
   assert.equal(data.totalCtn, 48);
   assert.equal(data.totalQuantity, 1440);
   assert.equal(data.totalPallets, 2);
-  assert.throws(() => shipmentDataForType('AWD', 'changed'), /確認 AWD 餘箱數量/);
+  assert.throws(() => shipmentDataForType('AWD', 'changed'), /AWD板數且為整數板/);
 });
 
 test('sorter summary is batch-scoped and invalidated when unverifiable', () => {
@@ -382,7 +405,6 @@ test('inbound rows load and preserve explicit packaging assignments through revi
   assert.match(source, /請先完成所有歷史包裝複查/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:packaging-assignments:v1'\)/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:inbound-row-identities:v1'\)/);
-  assert.match(workspace, /localStorage\.removeItem\('fba-workspace:awd-carton-choices:v1'\)/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:awd-inbound:v1'\)/);
 });
 

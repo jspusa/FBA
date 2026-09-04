@@ -245,8 +245,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     let payload=null,batch=null;try{payload=JSON.parse(localStorage.getItem(AWD_INBOUND_KEY)||'null');batch=JSON.parse(localStorage.getItem('fba-workspace:batch-meta')||'null')}catch{}
     const sourceMatches=typeof payload?.sourceValue==='string'&&payload.sourceValue.trim()===String(rawValue||'').trim();
     const batchMatches=!payload?.batchId||!batch?.id||payload.batchId===batch.id;
-    if(!sourceMatches||!batchMatches||payload?.cartonsPerPallet!==24||!Array.isArray(payload?.rows)||!payload.rows.length)throw new Error('請回到「入庫計畫」確認 AWD 餘箱數量，再產生 AWD 信件。');
-    const rows=payload.rows.map((row,index)=>{const ctn=parsePositiveInteger(row.ctn,`AWD 第 ${index+1} 列 CTN `),quantity=parsePositiveInteger(row.quantity,`AWD 第 ${index+1} 列 Quantity `),pallets=parsePositiveInteger(row.pallets,`AWD 第 ${index+1} 列棧板數 `);if(ctn%24!==0||pallets!==ctn/24)throw new Error('請回到「入庫計畫」確認 AWD 餘箱數量，再產生 AWD 信件。');return{sku:String(row.sku||''),ctn,quantity,expire:String(row.expire||''),pallets}});
+    if(!sourceMatches||!batchMatches||payload?.cartonsPerPallet!==24||!Array.isArray(payload?.rows)||!payload.rows.length)throw new Error('請回到「入庫計畫」確認資料包含 AWD板數且為整數板，再產生 AWD 信件。');
+    const rows=payload.rows.map((row,index)=>{const ctn=parsePositiveInteger(row.ctn,`AWD 第 ${index+1} 列 CTN `),quantity=parsePositiveInteger(row.quantity,`AWD 第 ${index+1} 列 Quantity `),pallets=parsePositiveInteger(row.pallets,`AWD 第 ${index+1} 列棧板數 `);if(ctn%24!==0||pallets!==ctn/24)throw new Error('請回到「入庫計畫」確認資料包含 AWD板數且為整數板，再產生 AWD 信件。');return{sku:String(row.sku||''),ctn,quantity,expire:String(row.expire||''),pallets}});
     return{rows,totalCtn:rows.reduce((sum,row)=>sum+row.ctn,0),totalQuantity:rows.reduce((sum,row)=>sum+row.quantity,0),totalPallets:rows.reduce((sum,row)=>sum+row.pallets,0)};
   }
   function buildEmail(shipmentType='FBA'){ try {
@@ -297,7 +297,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   syncCalendarFromValue();updateConfirmationLabels();
 })();
 </script>
-<script src="shared-workspace.js?v=20260818b"></script>
+<script src="shared-workspace.js?v=20260904a"></script>
 <script src="catalog-alignment-status.js"></script>
 <script src="catalog-alignment-ui.js" data-catalog-alignment-site="fba" data-local-manifest="./catalog-alignment.json" data-peer-manifest="../Supply/catalog-alignment.json"></script>
 <script src="vendor/xlsx.full.min.js"></script>

@@ -223,6 +223,7 @@
     .tool-table-wrap td.month-warning{color:#d70015!important;font-weight:850!important}
     .tool-table-wrap th.hidden-output-col,.tool-table-wrap td.hidden-output-col{display:none}
     .tool-table-wrap th.focus-header{background:#f4b183;color:#7c2d12;font-weight:800}
+    .tool-table-wrap th.awd-pallet-column,.tool-table-wrap td.awd-pallet-column{background:#fef3c7!important;color:#854d0e!important;font-weight:800}
     .section-row td{background:#e8e8ed;color:#3a3a3c;font-weight:800;border-top:1px solid #c7c7cc;border-bottom:1px solid #c7c7cc}
     .definition-row td{background:#fafafa;color:var(--muted);font-weight:600;white-space:normal;line-height:1.55;padding:14px}
     .hint{color:var(--muted);font-size:12px;line-height:1.45}
@@ -394,7 +395,7 @@
       <div id="summary" class="tool-pills"></div>
       <p class="result-guide">主工作表：黃色＝需儘速入庫；綠色＝可全部入庫；藍色＝新入倉；紅色＝供貨天數超過 730 天。供貨天數還有 4 至 12 個月，且無顏色註記品項則隱藏。</p>
       <p class="result-guide">後台月數驗算＝（入項＋可售庫存＋補貨數量）÷ 過去 30 天已訂購單位數量。超過 10.0 個月時以紅字提醒；此估算很保守，過往銷量不等於未來銷量，若持續成長，實際可售月數應低於驗算值，僅供參考。</p>
-      <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量。Business Report 未提供時，兩種月數與營業額欄位會自動隱藏。</p>
+      <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量；黃色 AWD板數＝入庫計畫 ÷ 24，顯示到小數點後一位，方便辨認是否為整板。Business Report 未提供時，兩種月數與營業額欄位會自動隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
     </div>
@@ -423,6 +424,8 @@
     const BASE_CELL_STYLE = {alignment:CENTER_ALIGNMENT};
     const HEADER_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'D9EAF7'}},font:{bold:true,color:{rgb:'1F2A44'}},alignment:CENTER_ALIGNMENT,border:{bottom:{style:'thin',color:{rgb:'B8C7DD'}}}};
     const FOCUS_HEADER_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'F4B183'}},font:{bold:true,color:{rgb:'7C2D12'}},alignment:CENTER_ALIGNMENT,border:{bottom:{style:'thin',color:{rgb:'C2410C'}}}};
+    const AWD_HEADER_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FDE68A'}},font:{bold:true,color:{rgb:'854D0E'}},alignment:CENTER_ALIGNMENT,border:{bottom:{style:'thin',color:{rgb:'D4A72C'}}}};
+    const AWD_CELL_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FEF3C7'}},font:{bold:true,color:{rgb:'854D0E'}},alignment:CENTER_ALIGNMENT};
     const SECTION_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'E2E8F0'}},font:{bold:true,color:{rgb:'334155'}},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'94A3B8'}},bottom:{style:'medium',color:{rgb:'94A3B8'}}}};
     const DEFINITION_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'F1F5F9'}},font:{bold:true,color:{rgb:'475569'}},alignment:CENTER_ALIGNMENT,border:{top:{style:'thin',color:{rgb:'CBD5E1'}}}};
     const GREEN_ROW_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'C6EFCE'}},font:{color:{rgb:'006100'},bold:true},alignment:CENTER_ALIGNMENT};
@@ -672,7 +675,7 @@
       const backendMonthHeaders=hasBusiness?['後台月數驗算']:[];
       const plannedMonthHeaders=hasBusiness?['後台月數驗算','入庫月數驗算']:[];
       const revenueHeaders=hasBusiness?['預估損失營業額']:[];
-      const plannedHeaders=['SKU','供貨天數','總箱數','入庫計畫','補貨箱數建議','补货数量',...plannedMonthHeaders,'入庫包數',...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存',...(hasBusiness?['過去30天銷量']:[])];
+      const plannedHeaders=['SKU','供貨天數','總箱數','入庫計畫','補貨箱數建議','补货数量',...plannedMonthHeaders,'入庫包數','AWD板數',...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存',...(hasBusiness?['過去30天銷量']:[])];
       const standardHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'箱入數','總包數','入項','可售庫存'];
       const urgentHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'最後可入庫日期','箱入數','總包數',...revenueHeaders,'入項','可售庫存'];
       const expiredHeaders=['SKU','供貨天數','總箱數','補貨箱數建議','补货数量',...backendMonthHeaders,...expiryQtyHeaders,'箱入數','總包數',...revenueHeaders,'入項','可售庫存'];
@@ -698,6 +701,7 @@
           if(h==='總箱數') return roundedCartons;
           if(h==='入庫計畫') return plannedCartons;
           if(h==='入庫包數') return inboundUnits;
+          if(h==='AWD板數') return plannedCartons===''?'':toNumber(plannedCartons)/24;
           if(h==='補貨箱數建議') return suggestion;
           if(h==='补货数量') return rq;
           if(h==='後台月數驗算') return monthlyCheck;
@@ -778,7 +782,7 @@
       SHEET_ORDER.forEach(name=>{ sheets[name]=optimizeLotColumns(name,sheets[name]); });
       return {sheets};
     }
-    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
+    function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算'||h==='AWD板數')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
     function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
     function isHiddenOutputHeader(h){ return ['入項','可售庫存','過去30天銷量','补货数量','後台月數驗算','箱入數','總包數'].includes(h); }
     function isHiddenOutputColumn(name,headers,c){
@@ -789,7 +793,7 @@
       for(let i=0;i<=c;i++) if(isExpiryHeader(headers[i])) pairNo++;
       return pairNo>2;
     }
-    function outputColumnWidth(h){ if(h==='SKU') return 18; if(h==='入庫計畫'||h==='入庫包數') return 14; if(h==='最後可入庫日期'||h==='預估損失營業額'||h==='後台月數驗算'||h==='入庫月數驗算') return 17; if(h==='補貨箱數建議'||h==='补货数量'||h==='供貨天數') return 14; if(isExpiryHeader(h)) return 13; if(isQtyHeader(h)) return 10; if(h==='入項'||h==='可售庫存') return 12; return 11; }
+    function outputColumnWidth(h){ if(h==='SKU') return 18; if(h==='入庫計畫'||h==='入庫包數') return 14; if(h==='AWD板數') return 12; if(h==='最後可入庫日期'||h==='預估損失營業額'||h==='後台月數驗算'||h==='入庫月數驗算') return 17; if(h==='補貨箱數建議'||h==='补货数量'||h==='供貨天數') return 14; if(isExpiryHeader(h)) return 13; if(isQtyHeader(h)) return 10; if(h==='入項'||h==='可售庫存') return 12; return 11; }
     function isPlanSheet(name){ return name==='主工作表'||name==='未上架'; }
     function isFocusHeader(name,headers,c){
       if(!isPlanSheet(name)) return false;
@@ -799,9 +803,9 @@
     }
     function createSheet(name, sheet, highlightMain=false){
       const headers=sheet.headers, ws={};
-      headers.forEach((h,c)=>ws[XLSX.utils.encode_cell({r:0,c})]={v:h,t:'s',s:isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE});
+      headers.forEach((h,c)=>ws[XLSX.utils.encode_cell({r:0,c})]={v:h,t:'s',s:h==='AWD板數'?AWD_HEADER_STYLE:isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE});
       const usInb=headers.indexOf('入項'), usSell=headers.indexOf('可售庫存'), usTotal=headers.indexOf('總數'), usSum=headers.indexOf('總和');
-      const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), packIdx=headers.indexOf('箱入數');
+      const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), awdPalletsIdx=headers.indexOf('AWD板數'), packIdx=headers.indexOf('箱入數');
       let excelRow=1;
       const writeDataRow=(row)=>{
         const r=excelRow++;
@@ -810,11 +814,14 @@
           const a=XLSX.utils.encode_cell({r,c}); let cell;
           if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
             cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",ROUND(${colLetter(planIdx)}${r+1}*${colLetter(packIdx)}${r+1},0))`,t:'n',z:'0'};
+          } else if(c===awdPalletsIdx&&planIdx!==-1){
+            cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",${colLetter(planIdx)}${r+1}/24)`,v:isNumericLike(row[c])?toNumber(row[c]):0,t:'n',z:'0.0'};
           } else if(c===usSum&&usInb!==-1&&usSell!==-1&&usTotal!==-1){
             cell={f:`${colLetter(usInb)}${r+1}+${colLetter(usSell)}${r+1}+${colLetter(usTotal)}${r+1}`,v:Math.round(toNumber(row[c])),t:'n',z:'0'};
           } else cell=coerceCellValue(h,row[c]);
           const highlight=highlightMain?rowHighlightKindAt(headers,row,c):'';
-          if(highlight==='red') cell.s=RED_ROW_STYLE;
+          if(h==='AWD板數') cell.s=AWD_CELL_STYLE;
+          else if(highlight==='red') cell.s=RED_ROW_STYLE;
           else if(highlight==='yellow') cell.s=YELLOW_ROW_STYLE;
           else if(highlight==='green') cell.s=GREEN_ROW_STYLE;
           else if(highlight==='blue') cell.s=BLUE_ROW_STYLE;
@@ -857,6 +864,7 @@
     function excelJsRowStyle(name,headers,row,c,highlightMain){
       const h=headers[c], highlight=highlightMain?rowHighlightKindAt(headers,row,c):'';
       let style=highlight==='red'?RED_ROW_STYLE:highlight==='yellow'?YELLOW_ROW_STYLE:highlight==='green'?GREEN_ROW_STYLE:highlight==='blue'?BLUE_ROW_STYLE:BASE_CELL_STYLE;
+      if(h==='AWD板數')return AWD_CELL_STYLE;
       if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[c])&&toNumber(row[c])>10) style={...style,font:{...(style.font||{}),...MONTH_WARNING_STYLE.font}};
       return style;
     }
@@ -869,11 +877,11 @@
         const sheet=state.sheets[name], headers=sheet.headers, highlightMain=name==='主工作表';
         const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});
         headers.forEach((h,c)=>{
-          const cell=ws.getCell(1,c+1); cell.value=h; applyExcelJsStyle(cell,isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE);
+          const cell=ws.getCell(1,c+1); cell.value=h; applyExcelJsStyle(cell,h==='AWD板數'?AWD_HEADER_STYLE:isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE);
           ws.getColumn(c+1).width=outputColumnWidth(h); ws.getColumn(c+1).hidden=isHiddenOutputColumn(name,headers,c);
         });
         ws.getRow(1).height=24;
-        const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), inboundMonthIdx=headers.indexOf('入庫月數驗算'), packIdx=headers.indexOf('箱入數'), sales30Idx=headers.indexOf('過去30天銷量');
+        const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), awdPalletsIdx=headers.indexOf('AWD板數'), inboundMonthIdx=headers.indexOf('入庫月數驗算'), packIdx=headers.indexOf('箱入數'), sales30Idx=headers.indexOf('過去30天銷量');
         const usInb=headers.indexOf('入項'), usSell=headers.indexOf('可售庫存'), usTotal=headers.indexOf('總數'), usSum=headers.indexOf('總和');
         let excelRow=2, dataRows=0;
         const writeDataRow=row=>{
@@ -883,6 +891,9 @@
             if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
               const result=isNumericLike(row[c])?Math.round(toNumber(row[c])):0;
               cell.value={formula:`IF(${colLetter(planIdx)}${currentRow}="","",ROUND(${colLetter(planIdx)}${currentRow}*${colLetter(packIdx)}${currentRow},0))`,result}; cell.numFmt='0';
+            }else if(c===awdPalletsIdx&&planIdx!==-1){
+              const result=isNumericLike(row[c])?toNumber(row[c]):0;
+              cell.value={formula:`IF(${colLetter(planIdx)}${currentRow}="","",${colLetter(planIdx)}${currentRow}/24)`,result}; cell.numFmt='0.0';
             }else if(c===inboundMonthIdx&&inboundUnitsIdx!==-1&&sales30Idx!==-1&&usInb!==-1&&usSell!==-1){
               const result=isNumericLike(row[c])?toNumber(row[c]):0;
               cell.value={formula:`IF(OR(${colLetter(inboundUnitsIdx)}${currentRow}="",${colLetter(sales30Idx)}${currentRow}=0),"",(${colLetter(usInb)}${currentRow}+${colLetter(usSell)}${currentRow}+${colLetter(inboundUnitsIdx)}${currentRow})/${colLetter(sales30Idx)}${currentRow})`,result}; cell.numFmt='0.0';
@@ -914,17 +925,17 @@
     function createWorkbookFromState(){ state.workbook=createExcelJsWorkbook(); state.filename=`Restock_Check_${todayStr()}.xlsx`; }
     function renderSummary(){ const summary=$('summary'); summary.innerHTML=''; SHEET_ORDER.forEach(l=>{ const d=document.createElement('div'); d.className='tool-pill'; d.textContent=`${l}：${state.sheets[l].rows.length} 筆`; summary.appendChild(d);}); }
     const formatUsd=value=>`US$${toNumber(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-    function displayValue(h,v){ if(v===''||v==null) return ''; if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(v)) return toNumber(v).toFixed(1); if(h==='預估損失營業額'&&isNumericLike(v)) return formatUsd(v); if(h!=='SKU'&&h!=='入庫計畫'&&h!=='最後可入庫日期'&&!isExpiryHeader(h)&&isNumericLike(v)) return String(Math.round(toNumber(v))); return String(v); }
+    function displayValue(h,v){ if(v===''||v==null) return ''; if((h==='後台月數驗算'||h==='入庫月數驗算'||h==='AWD板數')&&isNumericLike(v)) return toNumber(v).toFixed(1); if(h==='預估損失營業額'&&isNumericLike(v)) return formatUsd(v); if(h!=='SKU'&&h!=='入庫計畫'&&h!=='最後可入庫日期'&&!isExpiryHeader(h)&&isNumericLike(v)) return String(Math.round(toNumber(v))); return String(v); }
     function renderTable(name){
       const table=$('previewTable'), sheet=state.sheets[name]; table.innerHTML='';
       const thead=document.createElement('thead'), headerTr=document.createElement('tr');
-      sheet.headers.forEach((h,c)=>{ const th=document.createElement('th'); th.textContent=h; if(isFocusHeader(name,sheet.headers,c)) th.classList.add('focus-header'); if(isHiddenOutputColumn(name,sheet.headers,c)) th.classList.add('hidden-output-col'); headerTr.appendChild(th); });
+      sheet.headers.forEach((h,c)=>{ const th=document.createElement('th'); th.textContent=h; if(h==='AWD板數')th.classList.add('awd-pallet-column');else if(isFocusHeader(name,sheet.headers,c)) th.classList.add('focus-header'); if(isHiddenOutputColumn(name,sheet.headers,c)) th.classList.add('hidden-output-col'); headerTr.appendChild(th); });
       thead.appendChild(headerTr); table.appendChild(thead);
       const tbody=document.createElement('tbody');
       const addDataRow=(row)=>{
         const tr=document.createElement('tr');
         if(name==='主工作表'&&shouldHideSupplyRow(sheet.headers,row)) tr.hidden=true;
-        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(isHiddenOutputColumn(name,sheet.headers,i)) td.classList.add('hidden-output-col'); if(name==='主工作表'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[i])&&toNumber(row[i])>10) td.classList.add('month-warning'); tr.appendChild(td); });
+        sheet.headers.forEach((h,i)=>{ const td=document.createElement('td'); td.textContent=displayValue(h,row[i]); if(h==='AWD板數')td.classList.add('awd-pallet-column'); if(isHiddenOutputColumn(name,sheet.headers,i)) td.classList.add('hidden-output-col'); if(name==='主工作表'&&h!=='AWD板數'){ const highlight=rowHighlightKindAt(sheet.headers,row,i); if(highlight) td.classList.add(`highlight-${highlight}`); } if((h==='後台月數驗算'||h==='入庫月數驗算')&&isNumericLike(row[i])&&toNumber(row[i])>10) td.classList.add('month-warning'); tr.appendChild(td); });
         tbody.appendChild(tr);
       };
       const visibleColumnCount=sheet.headers.reduce((sum,_,c)=>sum+(isHiddenOutputColumn(name,sheet.headers,c)?0:1),0);
@@ -1662,7 +1673,7 @@ async function run(options={}){
     renderFileLog('helium'); renderFileLog('inventory'); renderFileLog('business'); renderPreflight(); syncValueMode();
   })();
 </script>
-<script src="shared-workspace.js?v=20260818b"></script>
+<script src="shared-workspace.js?v=20260904a"></script>
 <script src="catalog-alignment-status.js"></script>
 <script src="catalog-alignment-ui.js" data-catalog-alignment-site="fba" data-local-manifest="./catalog-alignment.json" data-peer-manifest="../Supply/catalog-alignment.json"></script>
 <script src="vendor/xlsx.full.min.js"></script>
