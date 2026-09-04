@@ -115,6 +115,87 @@ test('email table cannot float beside the Outlook signature and leaves one blank
   assert.match(source, /\$\{table\}\$\{signatureSpacer\}<\/div>`/);
 });
 
+test('inbound plan exposes distinct FBA and AWD downloads', () => {
+  const source = read('inbound-plan.html');
+  assert.match(source, /id="exportBtn"[^>]*>下載FBA檔案</);
+  assert.match(source, /id="awdExportBtn"[^>]*>下載AWD檔案</);
+  assert.match(source, /Create workflow – AWD template/);
+  assert.match(source, /Palletized\?/);
+  assert.match(source, /Boxes Per Pallet/);
+  assert.match(source, /Number of pallets/);
+});
+
+test('embedded AWD download template retains the official sheet and columns', () => {
+  const source = read('inbound-plan.html');
+  const encoded = source.match(/const AWD_TEMPLATE_B64='([^']+)'/)?.[1];
+  assert.ok(encoded, 'Missing embedded AWD template');
+  const XLSX = require('../vendor/xlsx.full.min.js');
+  const workbook = XLSX.read(Buffer.from(encoded, 'base64'), { type: 'buffer' });
+  assert.deepEqual(workbook.SheetNames, ['Create workflow – AWD template']);
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, raw: false });
+  assert.deepEqual(rows[2].slice(0, 12).map(value => String(value).trim()), [
+    'Merchant SKU', 'Quantity', 'Expiration date (MM/DD/YYYY)', 'Units per box',
+    'Number of boxes', 'Box length (in)', 'Box width (in)', 'Box height (in)',
+    'Box weight (lb)', 'Palletized?', 'Boxes Per Pallet', 'Number of pallets',
+  ]);
+  assert.equal(rows[3][9], 'Yes');
+  assert.equal(rows[3][10], '24');
+});
+
+test('AWD pallet planning requires a 24-carton multiple and recalculates units', () => {
+  const buildAwdPalletPlan = loadInlineFunction('inbound-plan.html', 'buildAwdPalletPlan', {
+    AWD_CARTONS_PER_PALLET: 24,
+  });
+  const row = { rowKey: 'row-1', sku: 'GTAL01', boxes: 50, units: 30, quantity: 1500 };
+  const pending = buildAwdPalletPlan([row], {});
+  assert.equal(pending.ready, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(pending.unresolved[0].options)), [48, 72]);
+  assert.equal(pending.unresolved[0].remainder, 2);
+
+  const confirmed = buildAwdPalletPlan([row], { 'row-1': 48 });
+  assert.equal(confirmed.ready, true);
+  assert.equal(confirmed.rows[0].boxes, 48);
+  assert.equal(confirmed.rows[0].quantity, 1440);
+  assert.equal(confirmed.rows[0].pallets, 2);
+  assert.equal(confirmed.totalPallets, 2);
+});
+
+test('AWD email uses only the confirmed adjusted pallet plan', () => {
+  const source = read('email.html');
+  assert.match(source, /fba-workspace:awd-inbound:v1/);
+  assert.match(source, /Pallets \(24 CTN\)/);
+  assert.match(source, /data\.totalPallets/);
+  assert.match(source, /請回到「入庫計畫」確認 AWD 餘箱數量/);
+});
+
+test('AWD email rejects stale input and totals confirmed pallets', () => {
+  const payload = {
+    sourceValue: 'SKU\t入庫計畫\t入庫包數\tEXPIRE\nGTAL01\t50\t1500\t9/28',
+    cartonsPerPallet: 24,
+    rows: [{ sku: 'GTAL01', ctn: 48, quantity: 1440, expire: '9/28', pallets: 2 }],
+  };
+  const shipmentDataForType = loadInlineFunction('email.html', 'shipmentDataForType', {
+    AWD_INBOUND_KEY: 'fba-workspace:awd-inbound:v1',
+    localStorage: {
+      getItem(key) {
+        if (key === 'fba-workspace:awd-inbound:v1') return JSON.stringify(payload);
+        if (key === 'fba-workspace:batch-meta') return '{}';
+        return null;
+      },
+    },
+    parseData: () => ({ rows: [], totalCtn: 0, totalQuantity: 0 }),
+    parsePositiveInteger(value, label) {
+      if (!Number.isInteger(Number(value)) || Number(value) < 1) throw new Error(label);
+      return Number(value);
+    },
+  });
+  const data = shipmentDataForType('AWD', payload.sourceValue);
+  assert.equal(data.totalCtn, 48);
+  assert.equal(data.totalQuantity, 1440);
+  assert.equal(data.totalPallets, 2);
+  assert.throws(() => shipmentDataForType('AWD', 'changed'), /確認 AWD 餘箱數量/);
+});
+
 test('sorter summary is batch-scoped and invalidated when unverifiable', () => {
   const source = read('sorter.html');
   assert.match(source, /batchId:\s*currentBatchId\(\)/);
@@ -301,6 +382,8 @@ test('inbound rows load and preserve explicit packaging assignments through revi
   assert.match(source, /請先完成所有歷史包裝複查/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:packaging-assignments:v1'\)/);
   assert.match(workspace, /localStorage\.removeItem\('fba-workspace:inbound-row-identities:v1'\)/);
+  assert.match(workspace, /localStorage\.removeItem\('fba-workspace:awd-carton-choices:v1'\)/);
+  assert.match(workspace, /localStorage\.removeItem\('fba-workspace:awd-inbound:v1'\)/);
 });
 
 test('newer packaging notice stays behind the clickable SKU with a plain-language explanation', () => {
