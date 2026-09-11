@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>計算入庫數量</title>
+  <meta name="fba-restock-version" content="20260911-sales-fix" />
   <style>
     :root{
       --page:#f5f5f7;
@@ -328,7 +329,7 @@
       <div class="drop" id="dropBusiness">
         <div class="file-icon" data-label="CSV"></div>
         <div class="drop-title">拖曳 Business Report 到這裡</div>
-        <div class="hint">同一 SKU 的不同父 ASIN 會自動加總</div>
+        <div class="hint">請匯出近 30 天、全部 SKU；同一 SKU 的不同父 ASIN 會自動加總</div>
         <div class="file-actions">
           <label class="btn primary" for="businessFile">選擇 Business Report</label>
           <input id="businessFile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple />
@@ -389,13 +390,14 @@
   <section id="resultCard" class="card" style="display:none;">
     <div class="result-hero">
       <div class="success-copy"><div class="success-icon">✓</div><div><h3>補貨結果已整理完成</h3><p id="resultFilename">可先預覽各工作表，再下載 Excel。</p></div></div>
-      <div class="result-actions"><button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button></div>
+      <div class="result-actions"><button id="toggleAwdBtn" class="btn secondary" type="button" aria-pressed="false">顯示 AWD板數</button><button id="downloadBtn" class="btn primary download-button" type="button" disabled>↓ 下載整理完成的 Excel</button></div>
     </div>
     <div class="result-body">
       <div id="summary" class="tool-pills"></div>
+      <div id="businessCoverageNotice" class="preflight-warnings hidden" aria-live="polite"></div>
       <p class="result-guide">主工作表：黃色＝需儘速入庫；綠色＝可全部入庫；藍色＝新入倉；紅色＝供貨天數超過 730 天。供貨天數還有 4 至 12 個月，且無顏色註記品項則隱藏。</p>
       <p class="result-guide">後台月數驗算＝（入項＋可售庫存＋補貨數量）÷ 過去 30 天已訂購單位數量。超過 10.0 個月時以紅字提醒；此估算很保守，過往銷量不等於未來銷量，若持續成長，實際可售月數應低於驗算值，僅供參考。</p>
-      <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量；黃色 AWD板數＝入庫計畫 ÷ 24，顯示到小數點後一位，方便辨認是否為整板。Business Report 未提供時，兩種月數與營業額欄位會自動隱藏。</p>
+      <p class="result-guide">入庫月數驗算＝（入項＋可售庫存＋入庫包數）÷ 過去 30 天已訂購單位數量；黃色 AWD板數＝入庫計畫 ÷ 24，顯示到小數點後一位；網頁與 Excel 預設隱藏，可按「顯示 AWD板數」開啟。報表未涵蓋的 SKU 不會填成 0，相關月數保持空白；需補上有效的近 30 天銷量及入庫計畫才能驗算。未上傳 Business Report 時，兩種月數與營業額欄位會自動隱藏。</p>
       <div id="tabs" class="inner-tabs"></div>
       <div class="tool-table-wrap"><table id="previewTable"></table></div>
     </div>
@@ -437,7 +439,7 @@
     const RED_URGENT_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'92400E'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'D97706'}},bottom:{style:'medium',color:{rgb:'D97706'}}}};
     const RED_URGENT_CLEARABLE_STYLE = {fill:{patternType:'solid',fgColor:{rgb:'FECACA'}},font:{color:{rgb:'7F1D1D'},bold:true},alignment:CENTER_ALIGNMENT,border:{top:{style:'medium',color:{rgb:'16A34A'}},bottom:{style:'medium',color:{rgb:'16A34A'}},left:{style:'medium',color:{rgb:'D97706'}},right:{style:'medium',color:{rgb:'D97706'}}}};
     const MONTH_WARNING_STYLE = {font:{color:{rgb:'D70015'},bold:true},alignment:CENTER_ALIGNMENT};
-    const state = { workbook:null, filename:"", sheets:null, activeSheet:"主工作表", shipmentRows:[], emailHtml:"", businessData:{} };
+    const state = { workbook:null, filename:"", sheets:null, activeSheet:"主工作表", shipmentRows:[], emailHtml:"", businessData:{}, showAwd:false };
     const toIsoDate=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const nextFridayStr=()=>{ const n=new Date(); const day=n.getDay(); let off=(5-day+7)%7; if(off===0||off===1) off+=7; const t=new Date(n); t.setDate(n.getDate()+off); return toIsoDate(t); };
     const todayStr=()=>toIsoDate(new Date());
@@ -460,10 +462,12 @@
         if(i===-1) throw new Error(`Business Report 缺少欄位：${key}`);
         idx[key]=i;
       }
-      const data={}; let rawRows=0;
+      const data=Object.create(null); let rawRows=0;
       for(let r=1;r<rows.length;r++){
         const row=rows[r]||[], sku=fixSku(row[idx.SKU]); if(!sku) continue;
-        const units=Math.max(0,toNumber(row[idx['已訂購單位數量']])), sales=Math.max(0,toCurrencyNumber(row[idx['訂購產品銷售額']]));
+        const rawUnits=row[idx['已訂購單位數量']];
+        if(!isNumericLike(rawUnits)||toNumber(rawUnits)<0) throw new Error(`Business Report 第 ${r+1} 列（${sku}）的已訂購單位數量不是有效的非負數字；請重新匯出，不能當成 0。`);
+        const units=toNumber(rawUnits), sales=Math.max(0,toCurrencyNumber(row[idx['訂購產品銷售額']]));
         if(!data[sku]) data[sku]={units:0,sales:0,rows:0};
         data[sku].units+=units; data[sku].sales+=sales; data[sku].rows++; rawRows++;
       }
@@ -471,7 +475,33 @@
       if(!Object.keys(data).length) throw new Error('Business Report 沒有可使用的 SKU 資料。');
       return {data,rawRows};
     }
-    const businessMetric=(sku,businessData=state.businessData)=>businessData?.[sku]||{units:0,sales:0,unitPrice:0,rows:0};
+    function businessMetric(sku,businessData=state.businessData){
+      // A missing report row is unknown, not a measured zero-sales row.
+      return Object.prototype.hasOwnProperty.call(businessData||{},sku)?businessData[sku]:{units:null,sales:null,unitPrice:null,rows:0};
+    }
+    function businessCoverage(businessData,expectedSkus){
+      const reportSkus=Object.keys(businessData||{}), expected=[...new Set(expectedSkus||[])];
+      const matched=expected.filter(sku=>businessMetric(sku,businessData).units!=null);
+      const missing=expected.filter(sku=>businessMetric(sku,businessData).units==null);
+      return {reportCount:reportSkus.length,totalUnits:reportSkus.reduce((sum,sku)=>sum+toNumber(businessData[sku].units),0),expected:expected.length,matched:matched.length,missing,zeroSales:matched.filter(sku=>businessMetric(sku,businessData).units===0).length};
+    }
+    function businessCoverageText(coverage,label){
+      const base=`Business Report 已讀取 ${coverage.reportCount} 個 SKU／${coverage.totalUnits.toLocaleString('en-US')} 包；${label} ${coverage.matched}／${coverage.expected} 個 SKU 有對應銷量。`;
+      if(coverage.missing.length) return `${base} ${coverage.missing.length} 個 SKU 未提供銷量，不能視為 0，相關月數保持空白。請確認匯出帳號、站點、近 30 天日期範圍及 SKU／品牌篩選。`;
+      return base+(coverage.zeroSales?` 其中 ${coverage.zeroSales} 個 SKU 在報表中明列銷量為 0，無法計算月數。`:'');
+    }
+    function salesCoverageNote(metric){
+      if(metric.units==null) return 'Business Report 未包含此 SKU，銷量未知而非 0。請使用正確帳號、站點、近 30 天且未篩選 SKU 的報表；補上有效銷量後即可驗算。';
+      if(metric.units===0) return 'Business Report 明列此 SKU 銷量為 0；無法以 0 作為月數分母，月數保持空白。';
+      return '';
+    }
+    function inboundMonthFormula(headers,excelRow){
+      const index=h=>headers.indexOf(h);
+      const required=['入庫包數','過去30天銷量','入項','可售庫存'];
+      if(required.some(h=>index(h)===-1)) return '';
+      const [units,sales,inbound,sellable]=required.map(h=>`${colLetter(index(h))}${excelRow}`);
+      return `IF(OR(${units}="",NOT(ISNUMBER(${sales})),${sales}<=0),"",(${inbound}+${sellable}+${units})/${sales})`;
+    }
     function parseHelium(rows,selections={}){
       if(!rows.length) throw new Error('Helium 檔案是空的。');
       const headers=trimTrailingEmpty(rows[0]).map(v=>String(v??''));
@@ -713,7 +743,7 @@
           if(h==='預估損失營業額') return lostRevenue;
           if(h==='入項') return inb;
           if(h==='可售庫存') return sell;
-          if(h==='過去30天銷量') return metric.units||0;
+          if(h==='過去30天銷量') return metric.units??'';
           return '';
         });
       };
@@ -784,7 +814,7 @@
     }
     function coerceCellValue(h,v){ if(v===''||v==null) return {v:'',t:'s'}; if(h==='SKU'||h==='最後可入庫日期'||h==='效期'||/EXPIRE/i.test(h)) return {v:String(v),t:'s'}; if((h==='後台月數驗算'||h==='入庫月數驗算'||h==='AWD板數')&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'0.0'}; if(h==='預估損失營業額'&&isNumericLike(v)) return {v:toNumber(v),t:'n',z:'"US$"#,##0.00'}; if(isNumericLike(v)) return {v:Math.round(toNumber(v)),t:'n',z:'0'}; return {v:String(v),t:'s'}; }
     function colLetter(n){ let s=''; while(n>=0){ s=String.fromCharCode((n%26)+65)+s; n=Math.floor(n/26)-1; } return s; }
-    function isHiddenOutputHeader(h){ return ['入項','可售庫存','過去30天銷量','补货数量','後台月數驗算','箱入數','總包數'].includes(h); }
+    function isHiddenOutputHeader(h){ if(h==='AWD板數') return !state.showAwd; return ['入項','可售庫存','過去30天銷量','补货数量','後台月數驗算','箱入數','總包數'].includes(h); }
     function isHiddenOutputColumn(name,headers,c){
       const h=headers[c];
       if(isHiddenOutputHeader(h)) return true;
@@ -805,7 +835,7 @@
       const headers=sheet.headers, ws={};
       headers.forEach((h,c)=>ws[XLSX.utils.encode_cell({r:0,c})]={v:h,t:'s',s:h==='AWD板數'?AWD_HEADER_STYLE:isFocusHeader(name,headers,c)?FOCUS_HEADER_STYLE:HEADER_STYLE});
       const usInb=headers.indexOf('入項'), usSell=headers.indexOf('可售庫存'), usTotal=headers.indexOf('總數'), usSum=headers.indexOf('總和');
-      const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), awdPalletsIdx=headers.indexOf('AWD板數'), packIdx=headers.indexOf('箱入數');
+      const planIdx=headers.indexOf('入庫計畫'), inboundUnitsIdx=headers.indexOf('入庫包數'), awdPalletsIdx=headers.indexOf('AWD板數'), inboundMonthIdx=headers.indexOf('入庫月數驗算'), packIdx=headers.indexOf('箱入數');
       let excelRow=1;
       const writeDataRow=(row)=>{
         const r=excelRow++;
@@ -813,9 +843,11 @@
         headers.forEach((h,c)=>{
           const a=XLSX.utils.encode_cell({r,c}); let cell;
           if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
-            cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",ROUND(${colLetter(planIdx)}${r+1}*${colLetter(packIdx)}${r+1},0))`,t:'n',z:'0'};
+            cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",ROUND(${colLetter(planIdx)}${r+1}*${colLetter(packIdx)}${r+1},0))`,v:isNumericLike(row[c])?Math.round(toNumber(row[c])):'',t:isNumericLike(row[c])?'n':'str',z:'0'};
           } else if(c===awdPalletsIdx&&planIdx!==-1){
-            cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",${colLetter(planIdx)}${r+1}/24)`,v:isNumericLike(row[c])?toNumber(row[c]):0,t:'n',z:'0.0'};
+            cell={f:`IF(${colLetter(planIdx)}${r+1}=\"\",\"\",${colLetter(planIdx)}${r+1}/24)`,v:isNumericLike(row[c])?toNumber(row[c]):'',t:isNumericLike(row[c])?'n':'str',z:'0.0'};
+          } else if(c===inboundMonthIdx&&inboundMonthFormula(headers,r+1)){
+            cell={f:inboundMonthFormula(headers,r+1),v:isNumericLike(row[c])?toNumber(row[c]):'',t:isNumericLike(row[c])?'n':'str',z:'0.0'};
           } else if(c===usSum&&usInb!==-1&&usSell!==-1&&usTotal!==-1){
             cell={f:`${colLetter(usInb)}${r+1}+${colLetter(usSell)}${r+1}+${colLetter(usTotal)}${r+1}`,v:Math.round(toNumber(row[c])),t:'n',z:'0'};
           } else cell=coerceCellValue(h,row[c]);
@@ -889,18 +921,22 @@
           headers.forEach((h,c)=>{
             const cell=ws.getCell(currentRow,c+1), coerced=coerceCellValue(h,row[c]);
             if(c===inboundUnitsIdx&&planIdx!==-1&&packIdx!==-1){
-              const result=isNumericLike(row[c])?Math.round(toNumber(row[c])):0;
+              const result=isNumericLike(row[c])?Math.round(toNumber(row[c])):'';
               cell.value={formula:`IF(${colLetter(planIdx)}${currentRow}="","",ROUND(${colLetter(planIdx)}${currentRow}*${colLetter(packIdx)}${currentRow},0))`,result}; cell.numFmt='0';
             }else if(c===awdPalletsIdx&&planIdx!==-1){
-              const result=isNumericLike(row[c])?toNumber(row[c]):0;
+              const result=isNumericLike(row[c])?toNumber(row[c]):'';
               cell.value={formula:`IF(${colLetter(planIdx)}${currentRow}="","",${colLetter(planIdx)}${currentRow}/24)`,result}; cell.numFmt='0.0';
             }else if(c===inboundMonthIdx&&inboundUnitsIdx!==-1&&sales30Idx!==-1&&usInb!==-1&&usSell!==-1){
-              const result=isNumericLike(row[c])?toNumber(row[c]):0;
-              cell.value={formula:`IF(OR(${colLetter(inboundUnitsIdx)}${currentRow}="",${colLetter(sales30Idx)}${currentRow}=0),"",(${colLetter(usInb)}${currentRow}+${colLetter(usSell)}${currentRow}+${colLetter(inboundUnitsIdx)}${currentRow})/${colLetter(sales30Idx)}${currentRow})`,result}; cell.numFmt='0.0';
+              const result=isNumericLike(row[c])?toNumber(row[c]):'';
+              cell.value={formula:inboundMonthFormula(headers,currentRow),result}; cell.numFmt='0.0';
             }else if(c===usSum&&usInb!==-1&&usSell!==-1&&usTotal!==-1){
               cell.value={formula:`${colLetter(usInb)}${currentRow}+${colLetter(usSell)}${currentRow}+${colLetter(usTotal)}${currentRow}`,result:Math.round(toNumber(row[c]))}; cell.numFmt='0';
             }else{
               cell.value=coerced.v===''?null:coerced.v; if(coerced.z) cell.numFmt=coerced.z;
+            }
+            if(['過去30天銷量','後台月數驗算','入庫月數驗算'].includes(h)){
+              const note=salesCoverageNote(businessMetric(row[headers.indexOf('SKU')]));
+              if(note) cell.note=note;
             }
             applyExcelJsStyle(cell,excelJsRowStyle(name,headers,row,c,highlightMain));
           });
@@ -1003,10 +1039,15 @@ async function run(options={}){
         state.sheets=processInventory(parseHelium(heliumRows,issueChoices.helium),inventoryRows,issueChoices.inventory,state.businessData).sheets;
         state.activeSheet='主工作表';
         if(!silent){
+          const mainSheet=state.sheets['主工作表'];
+          const coverage=businessCoverage(state.businessData,mainSheet.rows.map(row=>row[mainSheet.headers.indexOf('SKU')]));
+          const notice=$('businessCoverageNotice');
+          notice.textContent=coverage.reportCount?businessCoverageText(coverage,'主工作表'):'';
+          notice.classList.toggle('hidden',!coverage.reportCount);
           createWorkbookFromState(); renderSummary(); renderTabs(); renderTable('主工作表');
           $('resultFilename').textContent=`${state.filename} 已準備完成，可先預覽再下載。`;
           $('resultCard').style.display=''; $('downloadBtn').disabled=false;
-          setStatus('整理完成。請往下預覽，或直接下載整理完成的 Excel。',false,'ok');
+          setStatus(coverage.reportCount&&coverage.missing.length?`整理完成；主工作表有 ${coverage.missing.length} 個 SKU 未提供銷量，月數驗算保持空白，請確認 Business Report。`:'整理完成。請往下預覽，或直接下載整理完成的 Excel。',false,coverage.reportCount&&coverage.missing.length?'ready':'ok');
           $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
         }
         return true;
@@ -1303,6 +1344,15 @@ async function run(options={}){
         pairItem.dataset.state=(helium.status==='invalid'||inventory.status==='invalid')?'bad':'pending';
         pairText.textContent='等待兩份檔案'; pairText.title='等待兩份檔案'; pairIcon.textContent=pairItem.dataset.state==='bad'?'!':'↔';
       }
+      if(isValidCheck(business)&&isValidCheck(helium)){
+        const coverage=businessCoverage(business.businessData,helium.skus);
+        if(coverage.missing.length){
+          pairDiagnostics.push({id:'business-sales-coverage',kind:'diagnostic',label:'Business Report 銷量未完整對應',source:'Business Report',sku:'—',location:business.file?.name||'Business Report',detail:businessCoverageText(coverage,'Helium'),handling:'未提供銷量不填 0；可整理庫存，但缺資料的 SKU 無法驗算月數'});
+          $('auditBusiness').dataset.state='warn'; $('auditBusiness').querySelector('.audit-icon').textContent='!';
+          $('auditBusinessText').textContent=`銷量對應 ${coverage.matched}／${coverage.expected} 個 SKU · ${coverage.missing.length} 個未提供`;
+          $('auditBusinessText').title=businessCoverageText(coverage,'Helium');
+        }
+      }
       const requiredValid=isValidCheck(helium)&&isValidCheck(inventory);
       const ready=requiredValid&&business.status!=='checking'&&pair&&pair.matched>0;
       const issues=getIssueItems(pairDiagnostics), decisionCount=issues.filter(item=>item.kind!=='diagnostic').length, diagnosticCount=issues.length-decisionCount;
@@ -1322,6 +1372,8 @@ async function run(options={}){
         badge.textContent='等待檔案'; summary.textContent='會先確認 Helium、Inventory 與 SKU 對應；Business Report 為選填。';
       }
       const warningBox=$('preflightWarnings'); warningBox.innerHTML=''; warningBox.classList.add('hidden');
+      const salesWarning=pairDiagnostics.find(item=>item.id==='business-sales-coverage');
+      if(salesWarning){ warningBox.textContent=salesWarning.detail; warningBox.classList.remove('hidden'); }
       renderIssueCard(issues);
       renderPreflightNotes();
       return {ready,issues,pair,decisionCount,diagnosticCount};
@@ -1501,7 +1553,7 @@ async function run(options={}){
       const diagnostics=[];
       const stale=freshnessWarning(file,'Business Report',35);
       if(stale) diagnostics.push({id:'business-file-age',kind:'diagnostic',label:'檔案日期',source:'Business Report',sku:'—',location:file.name,detail:stale,handling:'仍可整理；請確認報表期間'});
-      return {rows,skus,businessData:parsed.data,warnings:[],decisions:[],diagnostics,notes:[],detail:`${skus.size} 個 SKU · ${parsed.rawRows} 筆來源列${zeroSales?` · ${zeroSales} 個無銷售資料`:''}`};
+      return {rows,skus,businessData:parsed.data,warnings:[],decisions:[],diagnostics,notes:[],detail:`${skus.size} 個 SKU · ${parsed.rawRows} 筆來源列 · ${Object.values(parsed.data).reduce((sum,item)=>sum+item.units,0).toLocaleString('en-US')} 包${zeroSales?` · ${zeroSales} 個銷量或銷售額為 0`:''}`};
     }
     function resetGeneratedResult(){
       state.workbook=null; state.sheets=null;
@@ -1644,6 +1696,12 @@ async function run(options={}){
       updateWorkflowState(false);
       const source=kind==='helium'?'Helium 建議檔':'Inventory Update';
       setStatus(input.checked?`${source} 的 ${sku} 已確認完畢。`:`已取消 ${source} 的 ${sku} 確認。`,false,'ready');
+    });
+    $('toggleAwdBtn').addEventListener('click',()=>{
+      state.showAwd=!state.showAwd;
+      $('toggleAwdBtn').setAttribute('aria-pressed',String(state.showAwd));
+      $('toggleAwdBtn').textContent=state.showAwd?'隱藏 AWD板數':'顯示 AWD板數';
+      if(state.sheets){ renderTable(state.activeSheet); createWorkbookFromState(); }
     });
     $('runBtn').addEventListener('click', run);
     $('flashRestockBtn').addEventListener('click',runFlashRestock);
