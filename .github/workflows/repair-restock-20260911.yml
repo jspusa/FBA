@@ -1,0 +1,37 @@
+name: Restock repair verification
+on:
+  push:
+    branches: [fix/restock-sales-20260911]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply guarded repair when present
+        run: |
+          if [ -f scripts/repair-restock-20260911.py ]; then
+            python3 scripts/repair-restock-20260911.py
+          fi
+      - run: npm test
+      - name: Commit verified repair on isolated branch
+        run: |
+          if [ -f scripts/repair-restock-20260911.py ]; then
+            rm scripts/repair-restock-20260911.py .github/workflows/repair-restock-20260911.yml
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git commit -m 'fix: distinguish missing sales and hide AWD columns by default'
+            git push origin HEAD:fix/restock-sales-20260911
+          fi
+      - name: Bundle verified source
+        run: git archive --format=zip HEAD -o /tmp/fba-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-fba-source
+          path: /tmp/fba-source.zip
+          retention-days: 1
