@@ -1,0 +1,57 @@
+name: Prepare product name catalog
+on:
+  push:
+    branches: [fix/name-repair-preparation-20260921]
+    paths: [.github/workflows/prepare-name-repair.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/checkout@v4
+        with:
+          repository: jspusa/Supply
+          ref: a4b2ab9654d7068151896972fb5c0fdf1cb7d1d9
+          path: .peer/Supply
+          persist-credentials: false
+      - name: Generate and verify name-only release
+        env:
+          GIT_AUTHOR_NAME: 'github-actions[bot]'
+          GIT_AUTHOR_EMAIL: '41898282+github-actions[bot]@users.noreply.github.com'
+          GIT_COMMITTER_NAME: 'github-actions[bot]'
+          GIT_COMMITTER_EMAIL: '41898282+github-actions[bot]@users.noreply.github.com'
+        run: |
+          test "$(git rev-parse origin/main)" = c31843528602c1e3b821769ad0406138439bc045
+          git worktree add /tmp/name-release/FBA c31843528602c1e3b821769ad0406138439bc045
+          S="$GITHUB_WORKSPACE/.peer/Supply"
+          F=/tmp/name-release/FBA
+          node "$S/scripts/repair-approved-product-names.mjs" "$S"
+          node "$S/scripts/compile-product-catalog.mjs"
+          node "$S/scripts/generate-catalog-update-runtime.mjs" --fba-repo "$F"
+          node "$F/scripts/generate-product-catalog.mjs" --source "$S/catalog/product-catalog.json"
+          node "$S/scripts/generate-catalog-alignment.mjs" --fba-repo "$F"
+          npm --prefix "$F" test
+          cd "$F"
+          node - <<'JS'
+          const fs=require('fs'),assert=require('assert/strict'),cp=require('child_process');
+          const before=JSON.parse(cp.execFileSync('git',['show','HEAD:catalog/fba-product-catalog.snapshot.json'],{encoding:'utf8'}));
+          const after=JSON.parse(fs.readFileSync('catalog/fba-product-catalog.snapshot.json','utf8'));
+          assert.equal(after.catalogVersion,'2026-09-21');
+          after.catalogVersion=before.catalogVersion;
+          assert.deepEqual(after,before,'All packaging facts and assignments must remain unchanged');
+          const allowed=new Set(['catalog/fba-product-catalog.snapshot.json','inbound-plan.html','catalog-update-baseline.js','catalog-update-runtime-lock.json','catalog-alignment.json']);
+          const changed=cp.execFileSync('git',['diff','--name-only'],{encoding:'utf8'}).trim().split('\n');
+          assert.ok(changed.every(p=>allowed.has(p)),changed.join('\n'));
+          JS
+          git add catalog/fba-product-catalog.snapshot.json inbound-plan.html catalog-update-baseline.js catalog-update-runtime-lock.json catalog-alignment.json
+          git commit -m 'fix: align catalog with 23 approved product name corrections'
+          git push origin HEAD:refs/heads/fix/product-names-release-20260921
+          git rev-parse HEAD
