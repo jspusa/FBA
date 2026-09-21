@@ -38,7 +38,6 @@ jobs:
           node "$S/scripts/generate-catalog-update-runtime.mjs" --fba-repo "$F"
           node "$F/scripts/generate-product-catalog.mjs" --source "$S/catalog/product-catalog.json"
           node "$S/scripts/generate-catalog-alignment.mjs" --fba-repo "$F"
-          npm --prefix "$F" test
           cd "$F"
           node - <<'JS'
           const fs=require('fs'),assert=require('assert/strict'),cp=require('child_process');
@@ -47,11 +46,26 @@ jobs:
           assert.equal(after.catalogVersion,'2026-09-21');
           after.catalogVersion=before.catalogVersion;
           assert.deepEqual(after,before,'All packaging facts and assignments must remain unchanged');
-          const allowed=new Set(['catalog/fba-product-catalog.snapshot.json','inbound-plan.html','catalog-update-baseline.js','catalog-update-runtime-lock.json','catalog-alignment.json']);
+          // The new release changes names only, so retain all exact September 2 packaging fixtures.
+          for(const [file,owner] of [['tests/product-catalog.test.js','result'],['tests/static.test.js','document']]){
+            let text=fs.readFileSync(file,'utf8');
+            const old=owner+".catalogVersion === '2026-09-02'";
+            assert.equal(text.split(old).length,2,file);
+            text=text.replace(old,"['2026-09-02', '2026-09-21'].includes("+owner+'.catalogVersion)');
+            if(owner==='result'){
+              const pattern='/^(?:2026-08-28\\.4|2026-09-02)$/';
+              assert.ok(text.includes(pattern));
+              text=text.replace(pattern,'/^(?:2026-08-28\\.4|2026-09-02|2026-09-21)$/');
+            }
+            fs.writeFileSync(file,text);
+          }
+          const allowed=new Set(['catalog/fba-product-catalog.snapshot.json','inbound-plan.html','catalog-update-baseline.js','catalog-update-runtime-lock.json','catalog-alignment.json','tests/product-catalog.test.js','tests/static.test.js']);
           const changed=cp.execFileSync('git',['diff','--name-only'],{encoding:'utf8'}).trim().split('\n');
           assert.ok(changed.every(p=>allowed.has(p)),changed.join('\n'));
+          console.log('Verified: all FBA packaging facts and history unchanged; exact fixtures preserved.');
           JS
-          git add catalog/fba-product-catalog.snapshot.json inbound-plan.html catalog-update-baseline.js catalog-update-runtime-lock.json catalog-alignment.json
+          npm test
+          git add catalog/fba-product-catalog.snapshot.json inbound-plan.html catalog-update-baseline.js catalog-update-runtime-lock.json catalog-alignment.json tests/product-catalog.test.js tests/static.test.js
           git commit -m 'fix: align catalog with 23 approved product name corrections'
           git push origin HEAD:refs/heads/fix/product-names-release-20260921
           git rev-parse HEAD
