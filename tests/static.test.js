@@ -329,7 +329,7 @@ test('built-in catalog matches the exact 15-SKU facts for the checked release', 
     '7GTBD053AB', '7GTBD057AB', '7GTPD013AB', '7GTPD017AB', '7GTPD037AB', '7GTPD053AB', '7GTPD057AB',
     '7GTRD013AB', '7GTRD017AB', '7GTRD037AB', '7GTSD013AB', '7GTSD017AB',
   ];
-  const changedSkus = document.catalogVersion === '2026-09-02' ? {
+  const changedSkus = ['2026-09-02', '2026-09-21'].includes(document.catalogVersion) ? {
     GTP03: { units: 90, length: 20, width: 16, height: 12, weight: 24, source: 'AMZ 所有SKU' },
     GTPL03: { units: 24, length: 20, width: 16, height: 12, weight: 29, source: 'AMZ 所有SKU' },
     GTBL03: { units: 28, length: 20, width: 16, height: 12, weight: 33, source: 'AMZ 所有SKU' },
@@ -373,7 +373,7 @@ test('built-in catalog matches the exact 15-SKU facts for the checked release', 
     assert.ok(actual.source, `${sku} must retain catalog provenance`);
   }
   assert.ok(Object.keys(catalog).length >= 307);
-  assert.match(document.catalogVersion, /^(?:2026-08-28\.4|2026-09-02)$/);
+  assert.match(document.catalogVersion, /^(?:2026-08-28\.4|2026-09-02|2026-09-21)$/);
   assert.equal(document.projection, 'fba-inbound');
   assert.match(source, /<script src="product-catalog\.js"><\/script>/);
   assert.match(source, /const BUILTIN_CATALOG_VERSION=BUILTIN_CATALOG_ADAPTER\.catalogVersion/);
