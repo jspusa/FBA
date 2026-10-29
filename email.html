@@ -161,7 +161,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <div class="row" style="margin-top:12px"><div class="email-build-actions"><button id="buildFbaEmailBtn" class="btn primary" type="button">產生FBA信件</button><button id="buildAwdEmailBtn" class="btn primary" type="button">產生AWD信件</button></div></div>
       <div class="small" id="emailMeta" style="margin-top:10px">尚未產生信件。</div>
       <div id="emailOutput" class="email-output" hidden><section class="email-output-card"><div class="email-output-head"><div><span class="email-output-label">Email標題（主旨）：</span><div id="emailSubjectText" class="email-subject-value"></div></div><button id="copySubjectBtn" class="copy-step" type="button">複製主旨</button></div></section><section class="email-output-card email-body-card"><div class="email-output-head"><span class="email-output-label">Email內容</span><button id="copyBodyBtn" class="copy-step" type="button">複製內容</button></div><div id="emailPreview" class="email-preview"></div></section></div>
-      <div class="cc-panel"><h3>副本收件者</h3><span class="field-help">預設全選；取消不需要的姓名後，一鍵複製到 Email 副本欄。</span><div class="cc-list"><label class="cc-chip"><input type="checkbox" data-cc="danny@jasperpet.com" checked> Danny</label><label class="cc-chip"><input type="checkbox" data-cc="jayden.hsu@jasperpet.com" checked> Jayden</label><label class="cc-chip"><input type="checkbox" data-cc="miacheng@petlifeco.com" checked> Mia</label><label class="cc-chip"><input type="checkbox" data-cc="grace.chen@jasperpet.com" checked> Grace</label><label class="cc-chip"><input type="checkbox" data-cc="mandy.niu@jasperpet.com" checked> Mandy</label><label class="cc-chip"><input type="checkbox" data-cc="min@petlifeco.com" checked> Min</label></div><div class="cc-actions"><button id="copyCcBtn" class="btn" type="button">一鍵複製副本收件者</button><span id="ccStatus" class="cc-status">已預選 6 人</span></div></div>
+      <div class="cc-panel"><h3>副本收件者</h3><span class="field-help">預設勾選 5 人；Jayden 需要時可手動勾選，再一鍵複製到 Email 副本欄。</span><div class="cc-list"><label class="cc-chip"><input type="checkbox" data-cc="danny@jasperpet.com" checked> Danny</label><label class="cc-chip"><input type="checkbox" data-cc="jayden.hsu@jasperpet.com" data-no-persist> Jayden</label><label class="cc-chip"><input type="checkbox" data-cc="miacheng@petlifeco.com" checked> Mia</label><label class="cc-chip"><input type="checkbox" data-cc="grace.chen@jasperpet.com" checked> Grace</label><label class="cc-chip"><input type="checkbox" data-cc="mandy.niu@jasperpet.com" checked> Mandy</label><label class="cc-chip"><input type="checkbox" data-cc="min@petlifeco.com" checked> Min</label></div><div class="cc-actions"><button id="copyCcBtn" class="btn" type="button">一鍵複製副本收件者</button><span id="ccStatus" class="cc-status">已預選 5 人</span></div></div>
     </div>
   </section>
 </main>
@@ -287,7 +287,9 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   $('copySubjectBtn').addEventListener('click',copySubject);
   $('copyBodyBtn').addEventListener('click',copyBody);
   $('copyCcBtn').addEventListener('click',copyCcRecipients);
-  document.querySelectorAll('[data-cc]').forEach(input=>input.addEventListener('change',()=>{$('ccStatus').textContent=`已選擇 ${document.querySelectorAll('[data-cc]:checked').length} 人`}));
+  const updateCcStatus=()=>{$('ccStatus').textContent=`已選擇 ${document.querySelectorAll('[data-cc]:checked').length} 人`};
+  document.querySelectorAll('[data-cc]').forEach(input=>input.addEventListener('change',updateCcStatus));
+  window.addEventListener('pageshow',()=>{document.querySelector('[data-cc="jayden.hsu@jasperpet.com"]').checked=false;updateCcStatus()});
   window.addEventListener('fba-workspace-ready',()=>{
     syncCalendarFromValue();
     updateConfirmationLabels();

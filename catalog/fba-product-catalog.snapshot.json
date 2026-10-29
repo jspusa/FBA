@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "catalogVersion": "2026-09-21",
+  "catalogVersion": "2026-10-29",
   "projection": "fba-inbound",
   "products": [
     {
@@ -6564,14 +6564,26 @@
       "canonicalProductSku": "1GSDD033A0",
       "lifecycle": "active",
       "newWorkEligible": true,
-      "currentPackagingVersion": "2026-08-25",
-      "newWorkPackagingDefaultVersion": "2026-08-25",
+      "currentPackagingVersion": "2026-10-29",
+      "newWorkPackagingDefaultVersion": "2026-10-29",
       "packagingVersions": [
         {
           "packagingVersion": "2026-08-25",
           "effectiveFrom": "2026-08-25",
           "effectiveTo": null,
           "unitsPerCarton": 90,
+          "cartonDimensionsIn": [
+            20,
+            16,
+            12
+          ],
+          "grossWeightLb": 52
+        },
+        {
+          "packagingVersion": "2026-10-29",
+          "effectiveFrom": "2026-10-29",
+          "effectiveTo": null,
+          "unitsPerCarton": 80,
           "cartonDimensionsIn": [
             20,
             16,
@@ -8416,6 +8428,75 @@
           "unitsPerCarton": null,
           "cartonDimensionsIn": null,
           "grossWeightLb": null
+        }
+      ]
+    },
+    {
+      "productSku": "1AFAD053A0",
+      "entryType": "product",
+      "canonicalProductSku": "1AFAD053A0",
+      "lifecycle": "active",
+      "newWorkEligible": true,
+      "currentPackagingVersion": "2026-10-29",
+      "newWorkPackagingDefaultVersion": "2026-10-29",
+      "packagingVersions": [
+        {
+          "packagingVersion": "2026-10-29",
+          "effectiveFrom": "2026-10-29",
+          "effectiveTo": null,
+          "unitsPerCarton": 110,
+          "cartonDimensionsIn": [
+            20,
+            16,
+            12
+          ],
+          "grossWeightLb": 28
+        }
+      ]
+    },
+    {
+      "productSku": "1AFSD013A0",
+      "entryType": "product",
+      "canonicalProductSku": "1AFSD013A0",
+      "lifecycle": "active",
+      "newWorkEligible": true,
+      "currentPackagingVersion": "2026-10-29",
+      "newWorkPackagingDefaultVersion": "2026-10-29",
+      "packagingVersions": [
+        {
+          "packagingVersion": "2026-10-29",
+          "effectiveFrom": "2026-10-29",
+          "effectiveTo": null,
+          "unitsPerCarton": 70,
+          "cartonDimensionsIn": [
+            20,
+            16,
+            12
+          ],
+          "grossWeightLb": 16
+        }
+      ]
+    },
+    {
+      "productSku": "1GVTD013A0",
+      "entryType": "product",
+      "canonicalProductSku": "1GVTD013A0",
+      "lifecycle": "active",
+      "newWorkEligible": true,
+      "currentPackagingVersion": "2026-10-29",
+      "newWorkPackagingDefaultVersion": "2026-10-29",
+      "packagingVersions": [
+        {
+          "packagingVersion": "2026-10-29",
+          "effectiveFrom": "2026-10-29",
+          "effectiveTo": null,
+          "unitsPerCarton": 28,
+          "cartonDimensionsIn": [
+            20,
+            16,
+            12
+          ],
+          "grossWeightLb": 26
         }
       ]
     },

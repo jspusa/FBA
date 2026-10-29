@@ -201,7 +201,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 
     <div class="card manual-zone file-manager-card">
       <div class="detail-file-head">
-        <div class="detail-file-copy"><h2>詳細檔案 <span class="pill" id="detailFileCount">0 個檔案</span></h2><p>這裡顯示目前會放進 ZIP 的全部檔案；移除後會同步重算貨件摘要與檢查結果。</p></div>
+        <div class="detail-file-copy"><h2>詳細檔案 <span class="pill" id="detailFileCount">0 個檔案</span></h2><p>這裡顯示目前會放進 ZIP 與整理資料夾的全部檔案；移除後會同步重算貨件摘要與檢查結果。</p></div>
         <button class="btn danger" id="btnClearAllDetails" type="button">整區清除</button>
       </div>
       <div class="detail-files-wrap">
@@ -323,14 +323,17 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       <div class="row" style="margin-top:12px;">
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn primary" id="btnExport" type="button" disabled>匯出 ZIP</button>
+          <button class="btn" id="btnExportFolder" type="button" disabled>儲存整理好的資料夾</button>
         </div>
       </div>
+      <p class="small" style="margin-top:8px;">資料夾匯出：選擇存放位置後，會建立「FBA_出貨日期」資料夾；內部的貨件分類、檔名與 ZIP 完全相同。未讀到有效出貨日期時，使用台北當天日期。已有同名資料夾時不會覆寫。</p>
+      <p class="small" id="exportStatus" role="status" aria-live="polite"></p>
       <div class="export-warning-panel is-hidden" id="exportWarningPanel">
         <b>匯出前檢查結果：</b>
         <ul id="exportRiskList"></ul>
         <label class="confirm-row">
           <input id="confirmRiskExport" type="checkbox" />
-          <span>我已逐項處理紅色問題，並人工核對橘色項目，仍要匯出這份 ZIP。</span>
+          <span>我已逐項處理紅色問題，並人工核對橘色項目，仍要匯出這批檔案。</span>
         </label>
         <div class="export-warning-actions">
           <button class="btn export-warning" id="btnConfirmRiskExport" type="button" disabled>確認仍要匯出</button>
@@ -376,6 +379,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="fba-core.js"></script>
+<script src="sorter-export.js"></script>
 <script>
 // folders: Map<folderName, { ids:Set<string>, files, hashes, analyses }>
   const folders = new Map();
@@ -387,6 +391,7 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   let restoringWorkspace = true;
   let persistTimer = 0;
   let exportInProgress = false;
+  let pendingExportFormat = 'zip';
   function currentBatchId(){
     try{
       const existing=JSON.parse(localStorage.getItem(BATCH_META_KEY)||'null');
@@ -435,6 +440,8 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     bolDedupNotice: document.getElementById('bolDedupNotice'),
     aliasBody: document.getElementById('aliasBody'),
     btnExport: document.getElementById('btnExport'),
+    btnExportFolder: document.getElementById('btnExportFolder'),
+    exportStatus: document.getElementById('exportStatus'),
     exportWarningPanel: document.getElementById('exportWarningPanel'),
     exportRiskList: document.getElementById('exportRiskList'),
     confirmRiskExport: document.getElementById('confirmRiskExport'),
@@ -1103,32 +1110,37 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
       exported=record?.batchId===currentBatchId();
     }catch{}
     els.btnExport.disabled = count === 0 || exported || exportInProgress;
+    els.btnExportFolder.disabled = count === 0 || exportInProgress;
     els.btnExport.classList.remove('export-ready','export-warning');
+    els.btnExportFolder.classList.remove('export-ready','export-warning');
+    els.btnExportFolder.textContent = '儲存整理好的資料夾';
     hideExportWarningPanel();
     renderOperationalSummary();
     scheduleWorkspaceSave();
 
-    if(exported){
-      els.btnExport.textContent = '本批次已匯出';
-      els.btnExport.title = '本批次 ZIP 已匯出；請到出貨通知繼續，或開始新批次。';
-      return;
-    }
-
     if(count === 0){
-      els.btnExport.textContent = '匯出 ZIP';
+      els.btnExport.textContent = exported ? '本批次已匯出 ZIP' : '匯出 ZIP';
       return;
     }
 
     const findings = getExportFindings();
     if(findings.length === 0){
       els.btnExport.classList.add('export-ready');
+      els.btnExportFolder.classList.add('export-ready');
       els.btnExport.textContent = '匯出 ZIP';
       els.btnExport.title = '四類檔案齊全，Shipment ID、包裝箱數與出貨日期均通過檢查';
     } else {
       els.btnExport.classList.add('export-warning');
+      els.btnExportFolder.classList.add('export-warning');
       els.btnExport.textContent = '檢查後匯出 ZIP';
+      els.btnExportFolder.textContent = '檢查後儲存資料夾';
       const errors=findings.filter(finding=>finding.level==='error').length;
       els.btnExport.title = `目前有 ${errors} 項確定問題、${findings.length-errors} 項需人工確認`;
+    }
+    els.btnExportFolder.title = els.btnExport.title;
+    if(exported){
+      els.btnExport.textContent = '本批次已匯出 ZIP';
+      els.btnExport.title = '本批次 ZIP 已匯出；仍可儲存整理好的資料夾。';
     }
   }
 
@@ -1532,68 +1544,102 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
   }
 
 
-  // ====== Export ZIP ======
-  function showExportWarningPanel(findings){
+  // ====== Export files ======
+  function showExportWarningPanel(findings, format){
+    pendingExportFormat = format;
     els.exportRiskList.innerHTML = findings.map(finding=>findingHtml(finding)).join('');
     els.confirmRiskExport.checked = false;
     els.btnConfirmRiskExport.disabled = true;
+    els.btnConfirmRiskExport.textContent = format === 'folder' ? '確認並選擇資料夾存放位置' : '確認仍要匯出 ZIP';
     els.exportWarningPanel.classList.remove('is-hidden');
     els.exportWarningPanel.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
 
-  async function requestExport(){
-    if(exportInProgress || els.btnExport.disabled) return;
+  async function requestExport(format = 'zip'){
+    const button = format === 'folder' ? els.btnExportFolder : els.btnExport;
+    if(exportInProgress || button.disabled) return;
+    if(format === 'folder' && typeof window.showDirectoryPicker !== 'function'){
+      els.exportStatus.textContent = '目前瀏覽器不支援直接儲存資料夾。請使用 Chrome 或 Edge 開啟本頁，或先匯出 ZIP 再解壓縮。';
+      return;
+    }
     const findings = getExportFindings();
     if(findings.length === 0){
       hideExportWarningPanel();
-      await exportZip();
+      await exportFiles(format);
       return;
     }
-    showExportWarningPanel(findings);
+    showExportWarningPanel(findings, format);
   }
 
-  async function exportZip(){
+  function exportMatchesCurrentBatch(manifest, batchId){
+    if(currentBatchId() !== batchId) return false;
+    let count = 0;
+    for(const meta of folders.values()) count += meta.files.size;
+    return count === manifest.entries.length && manifest.entries.every(entry=>folders.get(entry.folderName)?.files.get(entry.filename) === entry.file);
+  }
+
+  function saveExportHandoff(summary, batchId){
+    if(summary?.batchId !== batchId) return true;
+    const handoff={...summary,pickupDate:normalizeShipmentDate(summary.pickupDate)||'',truckCount:Number.isInteger(summary.truckCount)&&summary.truckCount>0?summary.truckCount:null,exportedAt:Date.now()};
+    const stores = [localStorage, sessionStorage];
+    const previous = stores.map(storage=>storage.getItem(SORTER_HANDOFF_KEY));
+    try{
+      for(const storage of stores) storage.setItem(SORTER_HANDOFF_KEY,JSON.stringify(handoff));
+      return true;
+    }catch(error){
+      stores.forEach((storage,index)=>{
+        try{
+          if(previous[index] === null) storage.removeItem(SORTER_HANDOFF_KEY);
+          else storage.setItem(SORTER_HANDOFF_KEY,previous[index]);
+        }catch(_){}
+      });
+      return false;
+    }
+  }
+
+  async function exportFiles(format){
     if(exportInProgress) return;
     exportInProgress=true;
     els.btnExport.disabled=true;
-    els.btnExport.textContent='正在產生 ZIP…';
+    els.btnExportFolder.disabled=true;
     els.btnConfirmRiskExport.disabled=true;
-    const zip = new JSZip();
+    els.exportStatus.textContent = '';
+    const button = format === 'folder' ? els.btnExportFolder : els.btnExport;
+    button.textContent = format === 'folder' ? '正在儲存資料夾…' : '正在產生 ZIP…';
     try{
-      const sortedFolders = [...folders.keys()].sort((a,b)=>a.localeCompare(b));
-      for(const folderName of sortedFolders){
-        const meta = folders.get(folderName);
-        const dir = zip.folder(folderName);
-        const files = [...meta.files.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-        for(const [fname, file] of files){
-          const buf = await file.arrayBuffer();
-          dir.file(fname, buf);
-        }
-      }
-      const blob = await zip.generateAsync({ type: "blob" });
-      const stamp = new Date();
-      const yyyy = stamp.getFullYear();
-      const mm = String(stamp.getMonth()+1).padStart(2,'0');
-      const dd = String(stamp.getDate()).padStart(2,'0');
-      const filename = `FBA_Sorted_${yyyy}${mm}${dd}.zip`;
       renderOperationalSummary();
-      try{
-        const summary=JSON.parse(localStorage.getItem(SORTER_SUMMARY_KEY)||'null');
-        if(summary?.batchId===currentBatchId()){
-          const handoff={...summary,pickupDate:normalizeShipmentDate(summary.pickupDate)||'',truckCount:Number.isInteger(summary.truckCount)&&summary.truckCount>0?summary.truckCount:null,exportedAt:Date.now()};
-          localStorage.setItem(SORTER_HANDOFF_KEY,JSON.stringify(handoff));
-          sessionStorage.setItem(SORTER_HANDOFF_KEY,JSON.stringify(handoff));
+      const batchId = currentBatchId();
+      const summary = JSON.parse(localStorage.getItem(SORTER_SUMMARY_KEY)||'null');
+      const manifest = FBASorterExport.createExportManifest(folders, { pickupDate:summary?.batchId === batchId ? normalizeShipmentDate(summary.pickupDate) : '' });
+      if(format === 'folder'){
+        // Keep the picker before the first await so the user's click grants access.
+        const parent = await window.showDirectoryPicker({ id:'fba-organized-export', mode:'readwrite', startIn:'downloads' });
+        const receipt = await FBASorterExport.saveOrganizedFolder(manifest, parent);
+        if(!exportMatchesCurrentBatch(manifest, batchId)){
+          els.exportStatus.textContent = `已儲存「${receipt.folderName}」共 ${receipt.fileCount} 個檔案；匯出期間本批資料有變更，請重新檢查後再匯出。尚未更新出貨通知。`;
+          return;
         }
-      }catch{}
-      localStorage.setItem(SORTER_EXPORT_KEY,JSON.stringify({batchId:currentBatchId(),filename,exportedAt:Date.now()}));
-      saveAs(blob, filename);
-      els.btnExport.textContent='本批次已匯出';
-      location.assign('email.html?v=154');
+        const handoffSaved = saveExportHandoff(summary, batchId);
+        els.exportStatus.textContent = `已儲存「${receipt.folderName}」共 ${receipt.fileCount} 個檔案，分類與檔名和 ZIP 相同；${handoffSaved ? '仍可繼續匯出 ZIP。' : '但無法更新出貨通知，請檢查瀏覽器儲存空間。'}`;
+      }else{
+        const blob = await FBASorterExport.createZipBlob(manifest, JSZip);
+        if(!exportMatchesCurrentBatch(manifest, batchId)) throw new Error('匯出期間本批資料有變更，請重新檢查後再匯出');
+        saveAs(blob, manifest.zipFilename);
+        if(!saveExportHandoff(summary, batchId)){
+          els.exportStatus.textContent = `已匯出 ${manifest.zipFilename}，但無法更新出貨通知，請檢查瀏覽器儲存空間。`;
+          return;
+        }
+        localStorage.setItem(SORTER_EXPORT_KEY,JSON.stringify({batchId,filename:manifest.zipFilename,exportedAt:Date.now()}));
+        els.exportStatus.textContent = `已匯出 ${manifest.zipFilename}`;
+        location.assign('email.html?v=154');
+      }
     }catch(error){
+      els.exportStatus.textContent = error?.name === 'AbortError'
+        ? '已取消選擇存放位置，未匯出資料夾。'
+        : `${format === 'folder' ? '資料夾' : 'ZIP'}匯出失敗：${error?.message||'未知錯誤'}`;
+    }finally{
       exportInProgress=false;
       refreshExportState();
-      window.alert(`ZIP 匯出失敗：${error?.message||'未知錯誤'}。請修正後再試一次。`);
-      throw error;
     }
   }
 
@@ -1663,13 +1709,14 @@ textarea,input,select{border:1px solid rgba(0,0,0,.13)!important;border-radius:1
     handleBol
   );
 
-  els.btnExport.addEventListener('click', requestExport);
+  els.btnExport.addEventListener('click', ()=>requestExport('zip'));
+  els.btnExportFolder.addEventListener('click', ()=>requestExport('folder'));
   els.confirmRiskExport.addEventListener('change', ()=>{
     els.btnConfirmRiskExport.disabled = !els.confirmRiskExport.checked;
   });
   els.btnConfirmRiskExport.addEventListener('click', async ()=>{
     if(!els.confirmRiskExport.checked) return;
-    await exportZip();
+    await exportFiles(pendingExportFormat);
     hideExportWarningPanel();
   });
   els.btnCancelRiskExport.addEventListener('click', hideExportWarningPanel);
