@@ -105,7 +105,11 @@ test('email generator separates FBA and AWD messages and excludes departed recip
   assert.match(source, /maximum pallet height is 60 inches/);
   assert.match(source, /shipmentType==='AWD'/);
   assert.doesNotMatch(source, /ray\.chen@jasperpet\.com|>\s*Ray\s*</i);
-  assert.match(source, /id="ccStatus"[^>]*>已預選 6 人</);
+  assert.match(source, /id="ccStatus"[^>]*>已預選 5 人</);
+  const jayden = source.match(/<input\b[^>]*data-cc="jayden\.hsu@jasperpet\.com"[^>]*>/)?.[0];
+  assert.ok(jayden);
+  assert.doesNotMatch(jayden, /\bchecked\b/);
+  assert.match(jayden, /\bdata-no-persist\b/);
 });
 
 test('email table cannot float beside the Outlook signature and leaves one blank line', () => {
