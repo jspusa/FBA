@@ -12,7 +12,7 @@ test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () 
   const result = adapter.createLegacyCatalog(snapshot);
 
   assert.equal(result.schemaVersion, 3);
-  assert.match(result.catalogVersion, /^(?:2026-08-28\.4|2026-09-02|2026-09-21)$/);
+  assert.match(result.catalogVersion, /^(?:2026-08-28\.4|2026-09-02|2026-09-21|2026-10-29)$/);
   assert.ok(Object.keys(result.catalog).length >= 307);
   assert.ok(result.catalog.GTBL05);
   assert.equal(Object.hasOwn(result.catalog, 'EZD040-3'), false, 'incomplete products cannot seed new work');
@@ -22,7 +22,7 @@ test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () 
   assert.ok(snapshot.products.some(product => product.packagingVersions.length > 1), 'immutable historical versions must be shipped to the browser');
   assert.doesNotMatch(JSON.stringify(snapshot), /sourceSheet|"source"\s*:/, 'public FBA snapshot must not expose raw workbook provenance');
 
-  const confirmedPackaging = ['2026-09-02', '2026-09-21'].includes(result.catalogVersion) ? {
+  const confirmedPackaging = ['2026-09-02', '2026-09-21', '2026-10-29'].includes(result.catalogVersion) ? {
     '1ABRD002A0': [36, 20, 16, 12, 32],
     GTAL01: [30, 20, 16, 12, 35],
     GTB05: [90, 20, 16, 12, 26],
@@ -62,6 +62,18 @@ test('checked-in FBA snapshot adapts to the existing inbound catalog shape', () 
       expected,
       `${productSku} must match the checked catalog release`,
     );
+  }
+  if (result.catalogVersion === '2026-10-29') {
+    for (const [sku, units, weight] of [['1AFAD053A0', 110, 28], ['1AFSD013A0', 70, 16], ['1GVTD013A0', 28, 26]]) {
+      const actual = result.catalog[sku];
+      assert.deepEqual([actual.units, actual.length, actual.width, actual.height, actual.weight], [units, 20, 16, 12, weight], sku);
+      assert.equal(snapshot.products.find(product => product.productSku === sku).newWorkEligible, true, sku);
+    }
+    assert.equal(Object.hasOwn(result.catalog, '1AFSD015A0'), false, 'explicitly excluded SKU stays absent');
+    assert.equal(result.catalog['1GSDD033A0'].units, 80);
+    const corrected = snapshot.products.find(product => product.productSku === '1GSDD033A0');
+    assert.equal(corrected.packagingVersions.find(version => version.packagingVersion === '2026-08-25').unitsPerCarton, 90);
+    assert.equal(corrected.newWorkPackagingDefaultVersion, '2026-10-29');
   }
 });
 
