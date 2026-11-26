@@ -105,11 +105,15 @@ test('email generator separates FBA and AWD messages and excludes departed recip
   assert.match(source, /maximum pallet height is 60 inches/);
   assert.match(source, /shipmentType==='AWD'/);
   assert.doesNotMatch(source, /ray\.chen@jasperpet\.com|>\s*Ray\s*</i);
-  assert.match(source, /id="ccStatus"[^>]*>已預選 5 人</);
-  const jayden = source.match(/<input\b[^>]*data-cc="jayden\.hsu@jasperpet\.com"[^>]*>/)?.[0];
-  assert.ok(jayden);
-  assert.doesNotMatch(jayden, /\bchecked\b/);
-  assert.match(jayden, /\bdata-no-persist\b/);
+  assert.match(source, /id="ccStatus"[^>]*>已預選 4 人</);
+  const ccInputs = [...source.matchAll(/<input\b[^>]*data-cc="[^"]+"[^>]*>/g)].map(match => match[0]);
+  assert.equal(ccInputs.filter(input => /\bchecked\b/.test(input)).length, 4);
+  for (const address of ['jayden.hsu@jasperpet.com', 'grace.chen@jasperpet.com']) {
+    const input = ccInputs.find(tag => tag.includes(`data-cc="${address}"`));
+    assert.ok(input, `${address} is still available for manual selection`);
+    assert.doesNotMatch(input, /\bchecked\b/);
+    assert.match(input, /\bdata-no-persist\b/);
+  }
 });
 
 test('email table cannot float beside the Outlook signature and leaves one blank line', () => {
